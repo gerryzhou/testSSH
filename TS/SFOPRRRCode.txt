@@ -1,0 +1,114 @@
+{Copyright Inside Edge Systems, 5/22/12
+By Bill Brower - SFO_Test strategy
+
+Exhibit 2}
+ 
+Inputs: Len1(5);
+vars: Volat(0), mpos(0), BOMode(false), Betsize(2000), NCntr(0);
+
+Volat = Volatility(10);
+BOMode = Volat = Lowest(Volat, 20);
+mpos = marketposition;
+NCntr = Betsize/(average(truerange,10)*bigpointvalue);
+
+if BOMode and mpos < 1 then Buy NCntr contracts next bar Highest(H,5) stop;
+if BOMode and mpos > -1 then sellshort NCntr contracts next bar Lowest(L,5) stop;
+
+Vars: IsBuy(false), IsSell(false), Wick(0), Tail(0);
+Wick = H - maxlist(O,C);
+Tail = minlist(O,C) - L;
+
+If C > HighestFC(H,len1)[1] then begin
+	IsBuy = true;
+	IsSell = false;
+end;
+If C < LowestFC(L,len1)[1] then begin
+	IsBuy = false;
+	IsSell = true;
+end;
+
+{Exits}
+If IsSell and Tail > Wick then Sell("lx") Next Bar market;
+If IsBuy and Tail < Wick then Buytocover("sx") Next Bar market;
+
+//IncludeSystem: "IES_WriteResults","C:\XTRA\WriteResults.csv"; 
+//----------------------------------------------------------------------------------------------------------------------
+{Copyright Inside Edge Systems, 5/22/12
+By Bill Brower - IES_WriteResults strategy
+
+Exhibit 3}
+
+Inputs: DirectoryPath("C:\XTRA\WriteResults.csv");
+Vars: o_PRRR(0), o_PRRR_NoBigWin(0);
+Condition1 = IES_PRRR(o_PRRR, o_PRRR_NoBigWin);
+If LastBarOnChart then
+	FileAppend(DirectoryPath, Symbol+"," +Numtostr(o_PRRR,2)+","+Numtostr(o_PRRR_NoBigWin,2)+ newline);
+
+//----------------------------------------------------------------------------------------------------------------------
+{Copyright Inside Edge Systems, 5/22/12
+By Bill Brower - IES_PRRR function ,
+Set function property to boolean
+
+Exhibit 4}
+
+[LegacyColorValue = true]; 
+
+Inputs: o_PRRR(numericref), //pessimistic return to risk ratio
+o_PRRR_NoBigWin(numericref) //pessimistic return to risk ratio without big win
+;
+
+vars: TotTrades(0), NetEq(0),Mpos(0),MaxNE(0),CurrentDD(0),BarsInMkt(0),SumDD(0),
+	AvgWin(0), AvgLoss(0), PessimisticNet(0), AvgDD(0), FirstBarInMarket(0), BarsInDD(0),
+	AdjAvgDD(0), PAWT(0), PNetLessBigWin(0), AvgWinWithoutBigWin(0),
+	PosProfit(0), BigWin(0), Winners(0), Losers(0), AdjWins(0), AdjLosers(0);
+
+TotTrades = TotalTrades; 
+PosProfit = Positionprofit(1);
+If PosProfit > BigWin then BigWin = PosProfit ;
+
+If  TotTrades > TotTrades[1] then begin
+	If PosProfit > 0 then 
+		Winners = Winners + 1
+	else 
+		Losers = Losers + 1;
+	If FirstBarInMarket = 0 then FirstBarInMarket = barnumber;
+end;
+
+NetEq = openpositionprofit+netprofit;
+Mpos = marketPosition ;
+
+if NetEq > MaxNE then MaxNE = NetEq ;   {compute maximum equity ever reached}
+CurrentDD = MaxNE - NetEq ;             {current drawdown}
+
+if Mpos <> 0 then begin
+	BarsInMkt = BarsInMkt + 1;
+    SumDD = SumDD + CurrentDD ;     {summed daily drawdown}
+    If CurrentDD > 0 then BarsInDD = BarsInDD + 1; // count bars in a drawdown
+end;
+
+If lastbaronchart then begin
+	TotTrades = Winners + Losers ;
+	If Winners > 0 then AvgWin = GrossProfit/Winners;
+	If Losers > 0 then AvgLoss = -Grossloss/Losers;
+	AdjWins = Winners - SquareRoot(Winners);
+	AdjLosers = Losers + SquareRoot(Losers);
+	PessimisticNet = AvgWin*AdjWins - AvgLoss*AdjLosers;
+		
+	{ Adjusted Return to Risk Ratio }
+	If BarsInMkt > 0 and BarsInDD > 0 then AvgDD = SumDD / BarsInDD;  // average drawdown per day
+	If (BarNumber - FirstBarInMarket) > 0 then 
+		AdjAvgDD = AvgDD*BarsInMkt/(BarNumber - FirstBarInMarket); //Adj average drawdown per day
+	If PessimisticNet > 0 and AdjAvgDD > 0 then o_PRRR = PessimisticNet / AdjAvgDD ;
+	If PessimisticNet < 0 then o_PRRR = .001*(AdjAvgDD+PessimisticNet) ;
+	
+	//-------------------Adjusted for big win------------------------
+	If (Winners - 1) <> 0 then AvgWinWithoutBigWin = (Grossprofit - BigWin)/(Winners - 1);
+	If Winners > 0 then PAWT = (GrossProfit - BigWin + AvgWinWithoutBigWin)/Winners;
+	PNetLessBigWin = PAWT*AdjWins - AvgLoss*AdjLosers;
+	If PNetLessBigWin > 0 and AdjAvgDD > 0 then o_PRRR_NoBigWin = PNetLessBigWin/AdjAvgDD;
+	If PNetLessBigWin < 0 then o_PRRR_NoBigWin = .001*(AdjAvgDD+PNetLessBigWin);
+	
+	If TotTrades > 0 then IES_PRRR = true;
+end;
+
+
