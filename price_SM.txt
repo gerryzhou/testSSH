@@ -1,3 +1,4 @@
+http://help.tradestation.com/09_01/tsdevhelp/Subsystems/elword/function/adaptivemovavg_function_.htm
 SMQ12: 532 - 553
 
 SMU12: 514.6 - 534.6
