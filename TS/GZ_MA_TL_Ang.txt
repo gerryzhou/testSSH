@@ -1,0 +1,48 @@
+{ Helpful instructions on the use of EasyLanguage, such as this, appear below and are 
+  contained within French curly braces {}. There is no need to erase these instructions  
+  when using EasyLanguage in order for it to function properly, because this text will 
+  be ignored.} 
+
+{ STEP 1: Replace <FORMULA1> through <FORMULA4> with the formulas you wish to plot.  
+  Note that Value1 through Value4 are numeric variables, temporary holding places for 
+  the results of your numeric formulas.  To assign non-generic names to your plots, you 
+  may replace "Plot1" through "Plot4"  (leaving the quotes) with names you choose.  The 
+  specified names will appear in the chart analysis data window. }
+inputs: 
+	Price( Close ),
+	FastLength( 7 ),
+	SlowLength( 14 ),
+	TLLength( 4 ), 
+	ColorVal( Red ), 
+	ColorBase( Darkgreen ), 	
+	Displace( 0 ) ;
+
+variables:
+	FastAvg( 0 ),
+	SlowAvg( 0 ) ;
+
+
+FastAvg = AverageFC( Price, FastLength ) ;
+SlowAvg = AverageFC( Price, SlowLength ) ;
+
+Value1 = LinearRegAngleFC( FastAvg, TLLength ) ;
+
+Plot1( Value1, "MATLAng" ) ;
+SetPlotColor( 1, ColorVal ) ;
+
+Plot2( 90, "MATLAngUp" ) ;
+Plot3( 0, "MATLAngFlat" ) ;
+Plot4( -90, "MATLAngDn" ) ;
+SetPlotColor( 2, ColorBase ) ;
+SetPlotColor( 3, ColorBase ) ;
+SetPlotColor( 4, ColorBase ) ;
+
+{ OPTIONAL STEPS: To specify alert criteria that will sound an audible alert when 
+  triggered, replace FALSE with your criteria.  To specify a brief alert description 
+  that will be included in the alert notification pop-up window, insert your 
+  description between the quotes ( "" ).  Note that Condition1 is a logical variable, a 
+  temporary holding place for the true-false result of the criteria. }
+
+Condition1 = FALSE ;
+if Condition1 then
+	Alert( "" ) ;
