@@ -14,7 +14,7 @@ inputs:
 	SlowLength( 9 ),
 	TLLength( 3 ), 
 	ColorVal( Red ), 
-	ColorBase( Yellow ), 	
+	ColorBase( Darkgreen ), 	
 	Displace( 0 ) ;
 
 variables:
@@ -27,12 +27,12 @@ FastAvg = AverageFC( Value1, FastLength ) ;
 SlowAvg = AverageFC( Value1, SlowLength ) ;
 
 
-Plot1( FastAvg, "TLAngFastAvg" ) ;
+Plot1( FastAvg, "TLAngFaAvg" ) ;
 SetPlotColor( 1, ColorVal ) ;
 
 Plot2( 90, "TLAngUp" ) ;
 Plot3( 0, "TLAngFlat" ) ;
-Plot4( -90, "TLAngDown" ) ;
+Plot4( -90, "TLAngDn" ) ;
 SetPlotColor( 2, ColorBase ) ;
 SetPlotColor( 3, ColorBase ) ;
 SetPlotColor( 4, ColorBase ) ;
