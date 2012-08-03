@@ -1,0 +1,456 @@
+{  
+This indicator is intended to illustrate creation of a customized trading interface
+that consists of a windows form (a "WinForm") that is created by EasyLanguage code.
+
+This indicator is intended as an illustration of the use of the classes in the 
+elsystem.windows.forms namespace.  Of course, users can create custom trading
+interfaces to suit their specific trading style and needs.
+
+This indicator is a sister indicator, intended for use in Charting, to the "Bracket
+Orders - Entry OCO Breakout with Exit Bracket" indicator that already exists for
+RadarScreen.  It uses similar inputs, and issues similar orders.  Of course, this
+indicator obtains the information it needs through the WinForm, rather than through
+code inputs.
+
+When the "Issue Bracket" button on the WinForm is clicked by the user, two entry
+stop orders are placed, a buy stop and sell short stop, each with associated profit
+target and stop loss exit orders tied to them.  The entry orders are placed user-
+specified distances from the price of the last trade that occurred prior to the
+"Issue Bracket" button being clicked. 
+
+When one side or the other of the OCO entry bracket fills, the appropriate profit
+target and stop loss exit bracket is issued.  
+
+When the indicator's Uninitialized event is triggered, as will occur, for example,
+when the code is recalculated following a data refresh, or a change is made to the
+symbol to which it is applied, the indicator will attempt to cancel any orders that
+it has placed and which are not yet filled, provided that the
+CancelOpenOrdersOnUninitializeEvent value has been set to true using the CheckBox
+created to set this input on the WinForm (see code for the Uninit method, near the
+bottom of the code).
+}
+
+{ the code will make use of classes in these namespaces }
+using elsystem ;
+using tsdata.common ;
+using tsdata.trading ;
+using elsystem.windows.forms ;
+using elsystem.drawing ;
+
+inputs:
+	string DefaultFormAccountNumber( "Select Account" ), { the default account
+	 number to appear on the Form and to be used for trading }
+	int DefaultFormTradeSize( 1 ), { the default size of the position to appear on
+	 the form, and to be traded, in number of contracts or shares }
+	double DefaultLongEntryStopOffset( 0.5 ), { the default amount to appear on the
+	 Form in the Long Entry Stop Offset text box;  this is the offset of the long
+	 entry stop order from the price of the last trade to preceed the user clicking
+	 on the button on the Form to issue orders }
+	double DefaultShortEntryStopOffset( 0.5 ), { the default amount to appear on the
+	 Form in the Short Entry Stop Offset text box;  this is the offset of the short
+	 entry stop order from the price of the last trade to preceed the user clicking
+	 on the button on the Form to issue orders }
+	double DefaultProfitTargetOffset( 1 ), { the default amount to appear on the
+	 Form in the Profit Target Offset text box;  this is the amount by which to
+	 offset the profit target order from the entry price }
+	double DefaultStopLossOffset( 0.5 ), { the default amount to appear on the Form
+	 in the Stop Loss Offset text box;  this is the amount by which to offset the
+	 stop-loss order from the entry price }
+	bool DefaultCheckedCancOpnOrdsOnUninit( true ) ; { set this input to true if
+	 it is desired to cancel any open orders when the indicator is uninitialized - 
+	 when its status is turned off or it is removed from the Chart, RadarScreen, or
+	 OptionStation window;  set this input to false if it is desired to leave open
+	 orders active }
+
+variables:
+	intrabarpersist string SymbolToTrade( "" ),
+	Color MyOrange( NULL ),
+	Color MyBkGroundColor( NULL ),
+	OrdersProvider OrdersInfo( NULL ),
+	AccountsProvider AccountsInfo( NULL ),
+	Form frmMain( NULL ),
+	Panel pnlConfig( NULL ),
+	Panel pnlButtons( NULL ),
+	Label lblConfigHeading( NULL ),
+	Label lblAccountNum( NULL ),
+	ComboBox cbAccountNum( NULL ),
+	Label lblTradeSize( NULL ),
+	TextBox tbTradeSize( NULL ),
+	Label lblLngEntStopOffset( NULL ),
+	TextBox tbLngEntStopOffset( NULL ),
+	Label lblShtEntStopOffset( NULL ),
+	TextBox tbShtEntStopOffset( NULL ),
+	Label lblProfTargetOffset( NULL ),
+	TextBox tbProfTargetOffset( NULL ),
+	Label lblStopLossOffset( NULL ),
+	TextBox tbStopLossOffset( NULL ),
+	CheckBox cbCancOpnOrdOnUninit( NULL	),
+	Label lblHowToSetDefaults( NULL ),
+	Label lblWhyButtonIsGrayed( NULL ),
+	Label lblEnableOrdPlacemnt( NULL ),
+	Button btnIssueBrackets( NULL ),
+	Button btnCancelOpenOrds( NULL ),
+	OrderTicket EntryBuyStopTicket( NULL ),
+	OrderTicket EntryShortStopTicket( NULL ),
+	BracketOrderTicket LongExitBracket( NULL ),
+	BracketOrderTicket ShortExitBracket( NULL ),
+	OSOOrderTicket OSOLngEntryWithExit( NULL ),
+	OSOOrderTicket OSOShtEntryWithExit( NULL ),
+	OCOOrderTicket EntryOCOTicket( NULL ),
+	Order OCOBracketOrder( NULL ) ;
+	
+{ Init method is called when indicator is initialized;  code creates all order
+tickets at initialization }
+method void Init( Object InitSender, InitializedEventArgs InitArgs ) 
+	begin
+	SymbolToTrade = Symbol ;
+	CreateDataProviders() ; { creates the OrdersProvider that will be used to cancel
+	 open orders on Uninitialization, and that controls when the button that causes
+	 orders to be issued is grayed-out }
+	CreateBracketForm() ;
+	ManageOrderEntryButton() ;
+	end ;
+
+{ this method is called when the IssueEntryAndExitBrackets button is clicked }
+method void IssueBrackets_Click( Object btnSender, EventArgs btnArgs )
+	begin
+	CreateOrderTickets() ;
+	OCOBracketOrder = EntryOCOTicket.Send() ; { issue the complete bracket }
+	end ;
+
+{ this method is called when the Cancel Open Orders is clicked }
+method void CancelOrders_Click( Object btnSender, EventArgs btnArgs )
+	begin
+	CancelAllOpenOrdersInSymbol() ;
+	end ;
+	
+{ this is the Updated event handler for the OrdersProvider }
+method void OrdersInfo_Updated( Object OrdersInfoSender, OrderUpdatedEventArgs
+ OrdersInfoArgs )
+ 	begin
+ 	ManageOrderEntryButton() ;
+	end ;
+
+method void cbAccountNum_ChangeAccount( Object cbAccountNumSender, EventArgs
+ cbAccountNumChgArgs )
+	begin
+	ManageOrderEntryButton() ;
+	end ;
+	
+method void ManageOrderEntryButton()
+variables:	int LoopCounter ;
+	begin
+	{ if there are no more open orders for the symbol in the specified account,
+	 re-enable the Form so that new orders can be placed }
+	for LoopCounter = 0 to OrdersInfo.Count - 1
+		begin
+		if OrdersInfo[LoopCounter].AccountID = cbAccountNum.Text then
+			begin
+			GrayOutButton() ;
+			Return ;
+			end ;
+		end ;
+	EnableButton() ;
+	end ;
+	
+method void GrayOutButton()
+	begin
+	btnIssueBrackets.Enabled = false ;
+	lblWhyButtonIsGrayed.ForeColor = Color.Magenta ;
+	end ;
+
+method void EnableButton()
+	begin
+	btnIssueBrackets.Enabled = true ;
+	lblWhyButtonIsGrayed.ForeColor = MyOrange ;
+	end ;
+	
+{ method to create the WinForm and populate it with controls }
+method void CreateBracketForm()
+variables:  int LoopCounter ;
+	begin
+
+	{ create custom colors to be used in the Form }
+	MyOrange = Color.FromARGB( 255, 198, 0 ) ;
+	MyBkGroundColor = Color.FromARGB( 48, 48, 48 ) ;
+
+	{ create main Form and locate it on the desktop }
+	frmMain = Form.Create( "TradeStation Bracket Order Form - " + SymbolToTrade,
+	 450, 400 ) ;
+	frmMain.Location( 300, 300 ) ;
+	frmMain.BackColor = MyBkGroundColor ;
+	frmMain.TopMost = true ;
+
+	{ create the Panels that will go into the Form }
+	pnlConfig = Panel.Create( 250, 250 ) ;
+	pnlConfig.BorderStyle = BorderStyle.fixed3d ;
+	pnlConfig.Location( 0, 0 ) ;
+	pnlConfig.BackColor = MyBkGroundColor ;
+	pnlConfig.ForeColor = Color.LightGray ;
+	
+	pnlButtons = Panel.Create( 200, 250 ) ;
+	pnlButtons.BorderStyle = BorderStyle.fixed3d ;
+	pnlButtons.Location( 250, 0 ) ;
+
+	{ create the labels and controls to go into the Config Panel }
+	lblConfigHeading = Label.Create( "Bracket Configuration", 120, 15 ) ;
+	lblConfigHeading.Location( 70, 9 ) ;
+	
+	lblAccountNum = Label.Create( "Account number:", 90, 25 ) ;
+	lblAccountNum.Location( 15, 32 ) ;
+
+	cbAccountNum = ComboBox.Create( DefaultFormAccountNumber, 100, 25 ) ;
+	cbAccountNum.Location( 140, 30 ) ;
+	cbAccountNum.BackColor = MyBkGroundColor ;
+	cbAccountNum.ForeColor = MyOrange ;
+	cbAccountNum.DropDownStyle = ComboBoxStyle.DropDown ;
+	cbAccountNum.SelectedIndexChanged += cbAccountNum_ChangeAccount ;
+	
+	for LoopCounter = 0 to AccountsInfo.Count - 1
+		begin
+		cbAccountNum.AddItem( AccountsInfo[LoopCounter].AccountID ) ;
+		end ;
+	
+	lblTradeSize = Label.Create( "Quantity:", 75, 25 ) ;
+	lblTradeSize.Location( 15, 62 ) ;
+	
+	tbTradeSize = TextBox.Create( "", 100, 25 ) ;
+	tbTradeSize.Location( 140, 60 ) ;
+	tbTradeSize.Text = NumToStr( DefaultFormTradeSize, 0 ) ;
+	tbTradeSize.BackColor = MyBkGroundColor ;
+	tbTradeSize.ForeColor = MyOrange ;
+	
+	lblLngEntStopOffset = Label.Create( "Long Entry Stop Offset:", 125, 25 ) ;
+	lblLngEntStopOffset.Location( 15, 92 ) ;
+	
+	tbLngEntStopOffset = TextBox.Create( "", 100, 25 ) ;
+	tbLngEntStopOffset.Location( 140, 90 ) ;
+	tbLngEntStopOffset.Text = NumToStr( DefaultLongEntryStopOffset, 7 ) ;
+	tbLngEntStopOffset.BackColor = MyBkGroundColor ;
+	tbLngEntStopOffset.ForeColor = MyOrange ;
+	
+	lblShtEntStopOffset = Label.Create( "Short Entry Stop Offset:", 125, 25 ) ;
+	lblShtEntStopOffset.Location( 15, 122 ) ;
+
+	tbShtEntStopOffset = TextBox.Create( "", 100, 25 ) ;
+	tbShtEntStopOffset.Location( 140, 120 ) ;
+	tbShtEntStopOffset.Text = NumToStr( DefaultShortEntryStopOffset, 7 ) ;
+	tbShtEntStopOffset.BackColor = MyBkGroundColor ;
+	tbShtEntStopOffset.ForeColor = MyOrange ;
+	
+	lblProfTargetOffset = Label.Create( "Profit Target Offset:", 125, 25 ) ;
+	lblProfTargetOffset.Location( 15, 152 ) ;
+
+	tbProfTargetOffset = TextBox.Create( "", 100, 25 ) ;
+	tbProfTargetOffset.Location( 140, 150 ) ;
+	tbProfTargetOffset.Text = NumToStr( DefaultProfitTargetOffset, 7 ) ;
+	tbProfTargetOffset.BackColor = MyBkGroundColor ;
+	tbProfTargetOffset.ForeColor = MyOrange ;
+
+	lblStopLossOffset = Label.Create( "Stop Loss Offset:", 125, 25 ) ;
+	lblStopLossOffset.Location( 15, 182 ) ;
+
+	tbStopLossOffset = TextBox.Create( "", 100, 25 ) ;
+	tbStopLossOffset.Location( 140, 180 ) ;
+	tbStopLossOffset.Text = NumToStr( DefaultStopLossOffset, 7 ) ;
+	tbStopLossOffset.BackColor = MyBkGroundColor ;
+	tbStopLossOffset.ForeColor = MyOrange ;
+	
+	cbCancOpnOrdOnUninit = CheckBox.Create( "Cancel open orders on Uninit event",
+	 200, 25 ) ;
+	cbCancOpnOrdOnUninit.Location( 15, 210 ) ;
+	cbCancOpnOrdOnUninit.Checked = DefaultCheckedCancOpnOrdsOnUninit ;
+	cbCancOpnOrdOnUninit.ForeColor = Color.LightGray ;
+
+	lblHowToSetDefaults = Label.Create( "Note:  To set bracket configuration " +
+	 "default values, format the indicator in the chart, and set the indicator's" +
+	 " inputs to the desired default values.", 425, 28 ) ;	
+	lblHowToSetDefaults.Location( 15, 257 ) ;
+	lblHowToSetDefaults.ForeColor = MyOrange ;
+
+	lblWhyButtonIsGrayed = Label.Create( "Note:  The " + DoubleQuote + "Issue " +
+	 " Entry and Exit Brackets" + DoubleQuote + " button will be grayed out if" +
+	 " there are open orders for the symbol.", 425, 28 ) ;	
+	lblWhyButtonIsGrayed.Location( 15, 290 ) ;
+	lblWhyButtonIsGrayed.ForeColor = MyOrange ;
+		
+	lblEnableOrdPlacemnt = Label.Create( "Note:  Be sure to format the " +
+	 "indicator and, on the General tab of the Format Indicator dialog box, " +
+	 "check the box to enable order placement objects if you wish for the form" +
+	 " to create real or simulated orders.", 425, 38 ) ;	
+	lblEnableOrdPlacemnt.Location( 15, 323 ) ;
+	lblEnableOrdPlacemnt.ForeColor = MyOrange ;
+		
+	{ create the controls to go into the Buttons Panel }
+	btnIssueBrackets = Button.Create( "Issue Entry and Exit Brackets", 160, 25 ) ;
+	btnIssueBrackets.Click += IssueBrackets_Click ;
+	btnIssueBrackets.ForeColor = MyOrange ;
+	btnIssueBrackets.BackColor = MyBkGroundColor ;
+	btnIssueBrackets.Location( 15, 27 ) ;
+	
+	btnCancelOpenOrds = Button.Create( "Cancel Symbol's Open Ords", 160, 25 ) ;
+	btnCancelOpenOrds.Click += CancelOrders_Click ;
+	btnCancelOpenOrds.ForeColor = MyOrange ;
+	btnCancelOpenOrds.BackColor = MyBkGroundColor ;
+	btnCancelOpenOrds.Location( 15, 57 ) ;
+	
+	{ add labels and controls to the Config Panel }
+	pnlConfig.AddControl( lblConfigHeading ) ;
+	pnlConfig.AddControl( lblAccountNum ) ;
+	pnlConfig.AddControl( cbAccountNum ) ;
+	pnlConfig.AddControl( lblTradeSize ) ;
+	pnlConfig.AddControl( tbTradeSize ) ;
+	pnlConfig.AddControl( lblLngEntStopOffset ) ;
+	pnlConfig.AddControl( tbLngEntStopOffset ) ;
+	pnlConfig.AddControl( lblShtEntStopOffset ) ;
+	pnlConfig.AddControl( tbShtEntStopOffset ) ;
+	pnlConfig.AddControl( lblProfTargetOffset ) ;
+	pnlConfig.AddControl( tbProfTargetOffset ) ;
+	pnlConfig.AddControl( lblStopLossOffset ) ;
+	pnlConfig.AddControl( tbStopLossOffset ) ;
+	pnlConfig.AddControl( cbCancOpnOrdOnUninit ) ;
+	
+	{ add controls to the Buttons Panel }
+	pnlButtons.AddControl( btnIssueBrackets ) ; 
+	pnlButtons.AddControl( btnCancelOpenOrds ) ;
+	
+	{ add the Panels to the Form and Show the Form }
+	frmMain.AddControl( pnlConfig ) ;
+	frmMain.AddControl( pnlButtons ) ;
+	frmMain.AddControl( lblHowToSetDefaults ) ;
+	frmMain.AddControl( lblWhyButtonIsGrayed ) ;
+	frmMain.AddControl( lblEnableOrdPlacemnt ) ;
+	
+	frmMain.Show() ;
+	OrdersInfo.Updated += OrdersInfo_Updated ;
+	
+	end ;
+
+method void CreateOrderTickets()
+variables:  
+	int TradeSize,
+	string AccountNum,
+	int SymTyp,
+	double ProfitTargOffset,
+	double StopLossOffset,
+	double TickSize ;
+	begin
+
+	TradeSize = StrToNum( tbTradeSize.Text ) ;
+	AccountNum = cbAccountNum.Text ;
+	SymTyp = Category ;
+	ProfitTargOffset = StrToNum( tbProfTargetOffset.Text ) ;
+	StopLossOffset = StrToNum( tbStopLossOffset.Text ) ;
+	TickSize = MinMove / PriceScale ;
+	
+	// Long Entry Stop OrderTicket - EntryBuyStopTicket
+	EntryBuyStopTicket = new OrderTicket ;
+	EntryBuyStopTicket.Symbol = SymbolToTrade ;
+	EntryBuyStopTicket.SymbolType = SymTyp ;
+	EntryBuyStopTicket.Account = AccountNum ;
+	EntryBuyStopTicket.Quantity = TradeSize ;
+	EntryBuyStopTicket.Action = OrderAction.buy ;
+	EntryBuyStopTicket.Type = OrderType.stopmarket ;
+	EntryBuyStopTicket.StopPrice = Close + StrToNum( tbLngEntStopOffset.Text ) ;
+	
+	// LongExitBracket - Profit Target and Stop Loss
+	LongExitBracket = new BracketOrderTicket ;
+	LongExitBracket.Symbol = SymbolToTrade ;
+	LongExitBracket.SymbolType = SymTyp ;
+	LongExitBracket.Account = AccountNum ;
+	LongExitBracket.Quantity = TradeSize ;
+	LongExitBracket.Action = OrderAction.sell ;
+	LongExitBracket.TargetType = OrderType.limit ;
+	LongExitBracket.ProtectionType = OrderType.stopmarket ;
+	LongExitBracket.LimitPriceStyle = PriceStyle.ParentPlus ;
+	LongExitBracket.LimitPriceOffset = Round( ProfitTargOffset / TickSize, 0 ) ;
+	LongExitBracket.StopPriceStyle = PriceStyle.ParentPlus ;
+	LongExitBracket.StopPriceOffset = Round( -StopLossOffset / TickSize, 0 ) ;
+	
+	// Short Entry Stop OrderTicket - EntryShortStopTicket
+	EntryShortStopTicket = new OrderTicket ;
+	EntryShortStopTicket.Symbol = SymbolToTrade ;
+	EntryShortStopTicket.SymbolType = SymTyp ; 
+	EntryShortStopTicket.Account = AccountNum ;
+	EntryShortStopTicket.Quantity = TradeSize ;
+	EntryShortStopTicket.Action = OrderAction.sellshort ;
+	EntryShortStopTicket.Type = OrderType.stopmarket ;
+	EntryShortStopTicket.StopPrice = Close - StrToNum( tbShtEntStopOffset.Text ) ;
+
+	// ShortExitBracket - Profit Target and Stop Loss
+	ShortExitBracket = new BracketOrderTicket ;
+	ShortExitBracket.Symbol = SymbolToTrade ;
+	ShortExitBracket.SymbolType = SymTyp ;
+	ShortExitBracket.Account = AccountNum ;
+	ShortExitBracket.Quantity = TradeSize ;
+	ShortExitBracket.Action = OrderAction.BuyToCover ;
+	ShortExitBracket.TargetType = OrderType.Limit ;
+	ShortExitBracket.ProtectionType = OrderType.StopMarket ;
+	ShortExitBracket.LimitPriceStyle = PriceStyle.ParentPlus ;
+	ShortExitBracket.LimitPriceOffset = Round( -ProfitTargOffset / TickSize, 0 ) ;
+	ShortExitBracket.StopPriceStyle = PriceStyle.ParentPlus ;
+	ShortExitBracket.StopPriceOffset = Round( StopLossOffset / TickSize, 0 ) ;
+	
+	// Long side OSO - Entry and Exit
+	OSOLngEntryWithExit = new OSOOrderTicket ;
+	OSOLngEntryWithExit.PrimaryTicket = EntryBuyStopTicket ;
+	OSOLngEntryWithExit.SecondaryTickets.Add( LongExitBracket ) ;
+	
+	// Short side OSO - Entry and Exit
+	OSOShtEntryWithExit = new OSOOrderTicket ;
+	OSOShtEntryWithExit.PrimaryTicket = EntryShortStopTicket ;
+	OSOShtEntryWithExit.SecondaryTickets.Add( ShortExitBracket ) ;
+		
+	// Entry OCO ticket - Composed of two OSO's
+	EntryOCOTicket = new OCOOrderTicket ;
+	EntryOCOTicket.Siblings.Add( OSOLngEntryWithExit ) ;
+	EntryOCOTicket.Siblings.Add( OSOShtEntryWithExit ) ;
+	
+	end ;
+	
+method void CreateDataProviders()
+	begin
+	{ create AccountsProvider }
+	AccountsInfo = new AccountsProvider ;
+	AccountsInfo.Realtime = false ;
+	AccountsInfo.Load = true ;
+
+	{ create OrdersProvider }
+	OrdersInfo = new OrdersProvider ;
+	OrdersInfo.Symbols += SymbolToTrade ;
+	OrdersInfo.Realtime = true ;
+	OrdersInfo.States += "cancelpending, partiallyfilled, received, sending," +
+	 "sent, queued" ;
+	OrdersInfo.Load = true ;
+	end ;
+
+{ when indicator is uninitialized, cancel any open orders if user has chosen to do
+ so }
+method void Uninit( Object UninitSender, UnInitializedEventArgs UninitArgs ) 
+	begin
+	if cbCancOpnOrdOnUninit.Checked then
+		CancelAllOpenOrdersInSymbol() ;
+	end ; 
+
+{ this method can be used to cancel all open orders in the symbol }
+method void CancelAllOpenOrdersInSymbol()
+variables:  int Count ;
+	begin
+	if OrdersInfo <> NULL then
+		begin
+		{ if order exists and can be cancelled, cancel it }
+		for Count = 0 to OrdersInfo.Count - 1
+			begin
+			if OrdersInfo[Count].CanCancel() then
+				OrdersInfo[Count].Cancel() ;
+			end ;
+		end ;
+	end ;
+	
+if LastBarOnChart and BarStatus( 1 ) = 2 then
+	frmMain.Show() ;
+	
+	
+{ ** Copyright (c) 2001 - 2011 TradeStation Technologies, Inc. All rights reserved. ** 
+  ** TradeStation reserves the right to modify or overwrite this analysis technique 
+     with each release. ** }

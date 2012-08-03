@@ -1,0 +1,404 @@
+{  
+This indicator is intended to illustrate how bracket orders can be placed using
+objects in EasyLanguage.
+
+Two entry stop orders are placed, a buy stop and sell short stop, using an
+OCOOrderTicket object to create the bracket.  The entry orders are placed a user-
+specified distance from the price of the first trade that occurs following the
+indicator's Start input being set to true.  
+
+When one side or the other of the OCO entry bracket fills, a new OCO exit bracket
+order is issued, consisting of a stop-loss order and a profit target.  A
+BracketOrderTicket object is used to create the exit bracket.
+
+A BracketOrderTicket object is not used to create the entry bracket because a
+BracketOrderTicket object cannot issue a bracket consisting of two different types
+of "order action."  Since the the entry bracket contains both a buy order and a sell
+short order, two different order actions, a BracketOrderckTicket cannot issue the
+entry bracket.  On the other hand, a BracketOrderTicket can be used to issue the
+profit target and stop-loss exit bracket, since both orders in the exit bracket take
+the same action (either both orders sell, to exit a long position, or both orders
+buy to cover, to exit a short position). 
+
+When the indicator's Uninitialized event is triggered, as will occur, for example,
+when the code is recalculated following a data refresh, or a change to the symbol to
+which it is applied, or a change to one of the indicator's inputs, the indicator
+will attempt to cancel any orders that it has placed and which are not filled (see
+code for the Uninit method, near the bottom of the code).
+}
+
+{ the code will make use of classes in these namespaces }
+using elsystem ;
+using tsdata.common ;
+using tsdata.trading ;
+
+inputs:
+	bool Start( false ), { set to true to cause entry bracket order to be issued on
+	 the next tick }
+	string AccountNum( "Enter Account Number" ), { the account number to be used for
+	 trading }
+	int TradeSize( 1 ), { the size of the position, in number of contracts or
+	 shares, that is to be entered and exited }
+	double EntryOffsetFromLastTrade( 0.5 ), { the amount to offset the two entry
+	 orders from the price of the first trade that follows setting the Start input
+	 to true }
+	double ProfitTargetOffset( 1 ), { the amount by which to offset the profit
+	 target order from the average entry price }
+	double StopLossOffset( 0.5 ), { the amount by which to offset the stop-loss
+	 order from the average entry price }
+	bool CancelOpenOrdersOnUninitializeEvent( true ) ; { set this input to true if
+	 it is desired to cancel any open orders when the indicator is uninitialized - 
+	 when its status is turned off or it is removed from the Chart, RadarScreen, or
+	 OptionStation window;  set this input to false if it is desired to leave open
+	 orders active }
+
+variables:
+	OrderTicket EntryBuyStopTicket( NULL ),
+	OrderTicket EntryShortStopTicket( NULL ),
+	BracketOrderTicket LongExitBracket( NULL ),
+	BracketOrderTicket ShortExitBracket( NULL ),
+	OCOOrderTicket EntryOCOTicket( NULL ),
+	Order LongEntryOrder( NULL ),
+	Order ShortEntryOrder( NULL ),
+	Order LongExitOrderSide1( NULL ),
+	Order LongExitOrderSide2( NULL ),
+	Order ShortExitOrderSide1( NULL ),
+	Order ShortExitOrderSide2( NULL ),
+	PositionsProvider PositionInfo( NULL ),
+	OrdersProvider OrdersInfo( NULL ) ;
+
+{ Init method is called when indicator is initialized;  code creates all order
+tickets at initialization }
+method void Init( Object InitSender, InitializedEventArgs InitArgs ) 
+variables:  string SymbolToTrade ;
+	begin
+
+	SymbolToTrade = Symbol ;
+	
+	// Long Entry Stop OrderTicket - EntryBuyStopTicket
+	EntryBuyStopTicket = new OrderTicket ;
+	EntryBuyStopTicket.Symbol = SymbolToTrade ;
+	EntryBuyStopTicket.SymbolType = Category ;
+	EntryBuyStopTicket.Account = AccountNum ;
+	EntryBuyStopTicket.Quantity = TradeSize ;
+	EntryBuyStopTicket.Action = OrderAction.buy ;
+	EntryBuyStopTicket.Type = OrderType.stopmarket ;
+	EntryBuyStopTicket.StopPrice = Close + EntryOffsetFromLastTrade ;
+	
+	// Short Entry Stop OrderTicket - EntryShortStopTicket
+	EntryShortStopTicket = new OrderTicket ;
+	EntryShortStopTicket.Symbol = SymbolToTrade ;
+	EntryShortStopTicket.SymbolType = Category ;
+	EntryShortStopTicket.Account = AccountNum ;
+	EntryShortStopTicket.Quantity = TradeSize ;
+	EntryShortStopTicket.Action = OrderAction.sellshort ;
+	EntryShortStopTicket.Type = OrderType.stopmarket ;
+	EntryShortStopTicket.StopPrice = Close - EntryOffsetFromLastTrade ;
+
+	// LongExitBracket - Profit Target and Stop Loss
+	LongExitBracket = new BracketOrderTicket ;
+	LongExitBracket.Symbol = SymbolToTrade ;
+	LongExitBracket.SymbolType = Category ;
+	LongExitBracket.Account = AccountNum ;
+	LongExitBracket.Quantity = TradeSize ;
+	LongExitBracket.Action = OrderAction.sell ;
+	LongExitBracket.TargetType = OrderType.limit ;
+	LongExitBracket.ProtectionType = OrderType.stopmarket ;
+
+	// ShortExitBracket - Profit Target and Stop Loss
+	ShortExitBracket = new BracketOrderTicket ;
+	ShortExitBracket.Symbol = SymbolToTrade ;
+	ShortExitBracket.SymbolType = Category ;
+	ShortExitBracket.Account = AccountNum ;
+	ShortExitBracket.Quantity = TradeSize ;
+	ShortExitBracket.Action = OrderAction.BuyToCover ;
+	ShortExitBracket.TargetType = OrderType.Limit ;
+	ShortExitBracket.ProtectionType = OrderType.StopMarket ;
+
+	// Entry OCO ticket - Short Entry and Long Entry
+	EntryOCOTicket = new OCOOrderTicket ;
+	EntryOCOTicket.Siblings.Add( EntryBuyStopTicket ) ;
+	EntryOCOTicket.Siblings.Add( EntryShortStopTicket ) ;
+	
+	// Positions Provider
+	PositionInfo = new PositionsProvider ;
+	PositionInfo.Accounts += AccountNum ;
+	PositionInfo.Symbols += SymbolToTrade ;
+	PositionInfo.Realtime = true ;
+	PositionInfo.Updated += PositionUpdate ;
+	PositionInfo.Load = true ;
+		
+	// Orders Provider
+	OrdersInfo = new OrdersProvider ;
+	OrdersInfo.Accounts += AccountNum ;
+	OrdersInfo.Symbols += SymbolToTrade ;
+	OrdersInfo.States += "cancelpending, partiallyfilled, received, sending, sent" ;
+	OrdersInfo.Realtime = true ;
+	OrdersInfo.Updated += OrderUpdate ;
+	OrdersInfo.Load = true ;
+	
+	PlotOutputs() ;
+	
+	end ;
+
+{ this method is called from the bottom of the code;  it issues the initial entry
+ bracket and assigns event handlers to be called when entry order update events
+ occur }
+method void IssueEntryBracket()
+	begin
+
+	EntryBuyStopTicket.StopPrice = Close + EntryOffsetFromLastTrade ;
+	EntryShortStopTicket.StopPrice = Close - EntryOffsetFromLastTrade ;
+	LongEntryOrder = EntryOCOTicket.Send().FirstSibling ;
+	ShortEntryOrder = LongEntryOrder.NextSibling ;
+	LongEntryOrder.Updated += LongEntryUpdated ;		
+	ShortEntryOrder.Updated += ShortEntryUpdated ;		
+	
+	PlotOutputs() ;
+	
+	end ;
+
+{ event handler for long entry order update events }
+method void LongEntryUpdated( Object EntryOCOOrder, OrderUpdatedEventArgs
+ EntryOCOUpdateArgs ) 
+	begin
+	{ set properties of long exit bracket and issue it }
+	if LongEntryOrder.State = OrderState.Filled then
+		begin
+		LongExitBracket.LimitPrice = LongEntryOrder.AvgFilledPrice +
+		 ProfitTargetOffset ;
+		LongExitBracket.StopPrice = LongEntryOrder.AvgFilledPrice - StopLossOffset ;
+		LongExitOrderSide1 = LongExitBracket.Send() ;
+		LongExitOrderSide2 = LongExitOrderSide1.NextSibling ;
+		LongExitOrderSide1.Updated += ExitOrderUpdate ;
+		LongExitOrderSide2.Updated += ExitOrderUpdate ;
+		end ;	
+		
+	PlotOutputs() ;
+	end ;
+
+{ event handler for short entry order update events }
+method void ShortEntryUpdated( Object EntryOCOOrder, OrderUpdatedEventArgs
+ EntryOCOUpdateArgs ) 
+	begin
+	{ Set properties of short exit bracket and issue it }
+	if ShortEntryOrder.State = OrderState.Filled then
+		begin
+		ShortExitBracket.LimitPrice = ShortEntryOrder.AvgFilledPrice -
+		 ProfitTargetOffset ;
+		ShortExitBracket.StopPrice = ShortEntryOrder.AvgFilledPrice + StopLossOffset ;
+		ShortExitOrderSide1 = ShortExitBracket.Send() ;
+		ShortExitOrderSide2 = ShortExitOrderSide1.NextSibling ;
+		ShortExitOrderSide1.Updated += ExitOrderUpdate ;
+		ShortExitOrderSide2.Updated += ExitOrderUpdate ;
+		end ;	
+		
+	PlotOutputs() ;
+	end ;
+
+{ when an exit order update event occurs, update plots }
+method void ExitOrderUpdate( Object ExitOrder, OrderUpdatedEventArgs
+ ExitUpdateArgs )
+	begin
+	PlotOutputs() ;
+	end ;
+
+
+{ when a position update occurs, update plots }
+method void PositionUpdate( Object PosProvide, PositionUpdatedEventArgs
+ PosUpdateArgs )
+	begin
+	PlotOutputs() ;
+	end ;
+
+
+{ when an order update occurs, update plots }
+method void OrderUpdate( Object OrdProvide, OrderUpdatedEventArgs
+ OrdUpdateArgs )
+	begin
+	PlotOutputs() ;
+	end ;
+
+
+method void PlotOutputs()
+	begin
+
+	Plot1( Start, "Start", iff( Start, Green, Red ) ) ;
+
+	Plot2( AccountNum, "Account" ) ;
+	
+	if PositionInfo.Count >= 1 then
+		Plot3( NumToStr( PositionInfo[0].Quantity, 0 ), "Position" )
+	else
+		Plot3( "-", "Position" ) ;
+	
+	if OrdersInfo <> NULL then
+		Plot4( NumToStr( OrdersInfo.Count, 0 ), "Open Orders" )
+	else
+		Plot4( "-", "Open Orders" ) ;
+	
+	if LongEntryOrder <> NULL then
+		begin
+		Plot5( LongEntryOrder.State.ToString(), "LE State" ) ;
+	
+		if LongEntryOrder.State = OrderState.Received then
+			SetPlotBGColor( 5, DarkBrown ) ;
+	
+		if LongEntryOrder.State = OrderState.Filled then
+			begin
+			Plot6( NumToStr( LongEntryOrder.AvgFilledPrice, 5 ), "LE Fill" ) ;
+			SetPlotBGColor( 5, DarkGreen ) ;
+			SetPlotBGColor( 6, DarkGreen ) ;
+			SetPlotBGColor( 7, DarkRed ) ;
+			SetPlotBGColor( 8, DarkRed ) ;
+			end
+		else
+			Plot6( "-", "LE Fill" ) ;
+		end
+	else
+		begin
+		Plot5( "-", "LE State" ) ;
+		Plot6( "-", "LE Fill" ) ;
+		end	;
+		
+	if ShortEntryOrder <> NULL then
+		begin
+		Plot7( ShortEntryOrder.State.ToString(), "SE State" ) ;
+		
+		if ShortEntryOrder.State = OrderState.received then
+			SetPlotBGColor( 7, DarkBrown ) ;
+	
+		if ShortEntryOrder.State = OrderState.Filled then
+			begin
+			Plot8( NumToStr( ShortEntryOrder.AvgFilledPrice, 5 ), "SE Fill" ) ;
+			SetPlotBGColor( 5, DarkRed ) ;
+			SetPlotBGColor( 6, DarkRed ) ;
+			SetPlotBGColor( 7, DarkGreen ) ;
+			SetPlotBGColor( 8, DarkGreen ) ;
+			end
+		else
+			Plot8( "-", "SE Fill" ) ;
+		end 
+	else
+		begin
+		Plot7( "-", "SE State" ) ;
+		Plot8( "-", "SE Fill" ) ;
+		end	;
+	
+	if LongExitOrderSide1 <> NULL then
+		begin
+		Plot9( LongExitOrderSide1.State.ToString(), "LX Side1" ) ;
+		Plot10( LongExitOrderSide2.State.ToString(), "LX Side2" ) ;
+		
+		if LongExitOrderSide1.State = OrderState.Received then
+			SetPlotBGColor( 9, DarkBrown ) ;
+			
+		if LongExitOrderSide2.State = OrderState.Received then
+			SetPlotBGColor( 10, DarkBrown ) ;
+		 	
+		if LongExitOrderSide1.State = OrderState.Filled then
+			begin
+			Plot11( NumToStr( LongExitOrderSide1.AvgFilledPrice, 5 ), "LX Fill" ) ;
+			SetPlotBGColor( 9, DarkGreen ) ;
+			SetPlotBGColor( 10, DarkRed ) ;
+			SetPlotBGColor( 11, DarkGreen ) ;
+			end
+		else if LongExitOrderSide2.State = OrderState.Filled then
+			begin
+			Plot11( NumToStr( LongExitOrderSide2.AvgFilledPrice, 5 ), "LX Fill" ) ;
+			SetPlotBGColor( 9, DarkRed ) ;
+			SetPlotBGColor( 10, DarkGreen ) ;
+			SetPlotBGColor( 11, DarkGreen ) ;
+			end
+		else
+			Plot11( "-", "LX Fill" ) ;
+		end 
+	else
+		begin
+		Plot9( "-", "LX Side1" ) ;
+		Plot10( "-", "LX Side2" ) ;
+		Plot11( "-", "LX Fill" ) ;
+		end	;
+	
+	if ShortExitOrderSide1 <> NULL then
+		begin
+		Plot12( ShortExitOrderSide1.State.ToString(), "SX Side1" ) ;
+		Plot13( ShortExitOrderSide2.State.ToString(), "SX Side2" ) ;
+
+		if ShortExitOrderSide1.State = OrderState.Received then
+			SetPlotBGColor( 12, DarkBrown ) ;
+		
+		if ShortExitOrderSide2.State = OrderState.Received then
+			SetPlotBGColor( 13, DarkBrown ) ;
+
+		if ShortExitOrderSide1.State = OrderState.Filled then
+			begin
+			Plot14( NumToStr( ShortExitOrderSide1.AvgFilledPrice, 5 ), "SX Fill" ) ;
+			SetPlotBGColor( 12, DarkGreen ) ;
+			SetPlotBGColor( 13, DarkRed ) ;
+			SetPlotBGColor( 14, DarkGreen ) ;
+			end 
+		else if ShortExitOrderSide2.State = OrderState.Filled then
+			begin
+			Plot14( NumToStr( ShortExitOrderSide2.AvgFilledPrice, 5 ), "SX Fill" ) ;
+			SetPlotBGColor( 12, DarkRed ) ;
+			SetPlotBGColor( 13, DarkGreen ) ;
+			SetPlotBGColor( 14, DarkGreen ) ;
+			end
+		else
+			Plot14( "-", "SX Fill" ) ;
+		end 
+	else
+		begin
+		Plot12( "-", "SX Side1" ) ;
+		Plot13( "-", "SX Side2" ) ;
+		Plot14( "-", "SX Fill" ) ;
+		end	;
+
+	end ;
+
+{ when indicator is uninitialized, cancel any open orders }
+method void Uninit( Object UninitSender, UnInitializedEventArgs UninitArgs ) 
+	begin
+
+	if CancelOpenOrdersOnUninitializeEvent then	
+		begin
+		{ if order exists and can be cancelled, cancel it }
+		if LongEntryOrder <> NULL then
+			if LongEntryOrder.CanCancel() then
+				LongEntryOrder.Cancel() ;
+	
+		if ShortEntryOrder <> NULL then
+			if ShortEntryOrder.CanCancel() then
+				ShortEntryOrder.Cancel() ;
+		
+		if LongExitOrderSide1 <> NULL then
+			if LongExitOrderSide1.CanCancel() then
+				LongExitOrderSide1.Cancel() ;
+		
+		if LongExitOrderSide2 <> NULL then
+			if LongExitOrderSide2.CanCancel() then
+				LongExitOrderSide2.Cancel() ;
+		
+		if ShortExitOrderSide1 <> NULL then
+			if ShortExitOrderSide1.CanCancel() then
+				ShortExitOrderSide1.Cancel() ;
+		
+		if ShortExitOrderSide2 <> NULL then
+			if ShortExitOrderSide2.CanCancel() then
+				ShortExitOrderSide2.Cancel() ;
+		end ;
+	
+	end ; 
+
+{ issue entry bracket one time on the first real-time tick that occurs when the
+ Start input is true }
+Once( GetAppInfo( aiRealtimeCalc ) = 1 and Start )
+	IssueEntryBracket() ;
+
+PlotOutputs() ;
+
+
+{ ** Copyright (c) 2001 - 2011 TradeStation Technologies, Inc. All rights reserved. ** 
+  ** TradeStation reserves the right to modify or overwrite this analysis technique 
+     with each release. ** }

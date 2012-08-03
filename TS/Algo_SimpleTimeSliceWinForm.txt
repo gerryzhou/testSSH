@@ -1,0 +1,601 @@
+{
+This indicator generates a WinForm which is used to control acquisition, over time,
+of a position in the symbol to which the indicator is applied.  This indicator is
+intended to illustrate how an algorithm can be implemented and controlled using
+EasyLanguage.  The code buys the desired number of contracts or shares, over time,
+by issuing limit orders and then converting each limit order to a market order if
+the limit order is unfilled after a specific amount of time in the market.
+
+The Form provides a means for the user to enter the account number, the total
+desired position's size, the size of each trade used to accumulate the position, the
+offset of each limit order from the last price traded in the market, the amount of
+time that each limit order is allowed to remain active before being converted to a
+market order, and whether or not to cancel an open order when the code
+re-initializes (as would occur, for example, if the chart were changed to a
+different symbol).
+
+The algorithm will automatically stop purchasing more shares or contracts when the
+desired long position has been obtained, regardless of whether the long position is
+obtained by the algorithm or through other means (such as through the Order Bar).
+
+The algorithm will automatically notice, and adjust for, any additions or reductions
+of the position that are created by other means.  For example, if the user buys or
+sells some shares or contracts using the Order Bar, the algorithm will notice this
+and will continue to operate to achieve the desired long position.  Should the user
+take action to cause more shares or contracts to be acquired than are specified in
+the Tot Desired Position text box, the algorithm will stop.
+
+If an issued limit order is not filled in the allotted time, it is converted to a
+market order and another limit order is issued.  If the limit order is filled in the
+allotted time then, at the expiration of the allotted time, a new limit order is
+issued.
+
+The user may adjust the algorithm while it is running.  For example, if the user
+wishes to shorten or lengthen the time between orders, he can make this adjustment
+on the Form, and then click the "Apply Config Settings" button to cause his new
+settings to take effect when the next order action occurs.
+
+This indicator places day orders (good for the day).  This prevents the algorithm
+placing orders in certain after-market sessions, when day orders are not accepted.
+Bear in mind that some markets do not allow after-hours market orders.  This means
+that the algorithm, which relies on conversion of limit orders to market orders,
+cannot be used in these markets after hours.  
+
+This indicator is intended for use in Charting.  To monitor orders and positions,
+the user may wish to enable Account Orders & Positions graphics in the chart.  This
+can be done through the Format menu after clicking anywhere on the chart (to select
+it as the active window).  A TradeManager window can be used for additional
+monitoring of orders and positions.
+}
+
+{ the code will make use of classes in these namespaces }
+using elsystem ;
+using tsdata.trading ;
+using elsystem.windows.forms ;
+using elsystem.drawing ;
+
+inputs:
+	string DefaultFormAccountNumber( "Select Account" ), { the default account
+	 number to appear on the Form }
+	int DefaultFormTotDesiredPosn( 10000 ), { the default total position size - the
+	 default total number of shares or contracts to be acquired by the algorithm }
+	int DefaultFormSizeOfEachOrder( 100 ), { the default size of each trade to
+	 appear on the Form when the Form is first generated, in number of shares or
+	 contracts }
+	double DefaultEntryPriceOffset( 0.5 ), { the default amount to appear on the
+	 Form in the Entry Price Offset text box;  this is the offset of the entry limit
+	 order from the price of the last trade to preceed the user clicking on the
+	 button on the Form to begin executing the algorithm }
+	int DefaultSecondsBtwnOrders( 10 ), { the default number of seconds to appear in 
+	the Seconds Between Orders text box on the Form }
+	bool DefaultCheckedCancOpnOrdsOnUninit( true ) ; { set this input to true if it
+	 is desired to cancel any open orders when the indicator is uninitialized (when
+	 its status is turned off or it is removed from the Chart, RadarScreen, or
+	 OptionStation window);  set this input to false if it is desired to leave open
+	 orders active }
+
+variables:
+	intrabarpersist string SymbolToTrade( "" ),
+	Color clrFormForeColor( NULL ),
+	Color clrFormBackColor( NULL ),
+	AccountsProvider AccountsInfo( NULL ),
+	PositionsProvider PositionInfo( NULL ),
+	OrdersProvider FilledOrdersInfo( NULL ),
+	intrabarpersist bool AlgoRunning( false ),
+	intrabarpersist bool PositionNotComplete( false ),
+	intrabarpersist double TimerInterval( 0 ),
+	intrabarpersist double SizeOfEachOrder( 0 ),
+	intrabarpersist double TotDesiredPosition( 0 ),
+	intrabarpersist double EntryPriceOffset( 0 ),
+	intrabarpersist bool TimerElapsed( false ), 
+	Form frmMain( NULL ),
+	Panel pnlConfig( NULL ),
+	Label lblConfigHeading( NULL ),
+	Label lblAccountNum( NULL ),
+	ComboBox cbAccountNum( NULL ),
+	Label lblDesiredTotPosn( NULL ),
+	TextBox tbDesiredTotPosn( NULL ),
+	Label lblSizeEachOrder( NULL ),
+	TextBox tbSizeEachOrder( NULL ),
+	Label lblEntryPriceOffset( NULL ),
+	TextBox tbEntryPriceOffset( NULL ),
+	Label lblSecondsBtwnOrders( NULL ),
+	TextBox tbSecondsBtwnOrders( NULL ),
+	CheckBox chkCancOpnOnUninit( NULL	),
+	Label lblHowToSetDefaults( NULL ),
+	Label lblEnableOrdPlacemnt( NULL ),
+	Label lblTimeToNextOrder( NULL ),
+	Button btnApplyConfig( NULL ),
+	Button btnRunAlgo( NULL ),
+	Button btnStopAlgo( NULL ),
+	OrderTicket EntryBuyTicket( NULL ),
+	ReplaceTicket ReplaceMktOrderTkt( NULL ),
+	Order EntryOrder( NULL ),
+	Timer tmrOrderTimer( NULL ),
+	Timer tmrLabelUpdateTimer( NULL ),
+	DateTime OrderConversionTime( NULL ) ;
+		
+{ Init method is called when indicator is initialized;  all necessary DataProviders
+and OrderTickets are created so that they can be used in the event that user starts
+the algo running }
+method void Init( Object InitSender, InitializedEventArgs InitArgs ) 
+	begin
+	SymbolToTrade = Symbol ;
+	CreateAccountsProvider() ; 
+	CreateAlgoForm() ;
+	CreatePositionsProvider() ;
+	CreateOrdersProvider() ;
+	CreateOrderTickets() ;
+	frmMain.TopMost = true ; { bring Form to front }
+	end ;
+
+{ code updates algo settings and begins running the algo when Run Algo button on the
+ Form is clicked }
+method void RunAlgo_Click( Object BtnSender, EventArgs BtnArgs )
+	begin
+	lblTimeToNextOrder.Visible = false ;
+	ApplyConfigSettings() ; { apply the current settings retrieved from the Form }
+	CheckPosition() ;
+	if PositionNotComplete and AlgoRunning = false then
+		begin
+		AlgoRunning = true ;
+		IssueNextOrder() ;
+ 		end ;
+	end ;
+
+method void ApplyConfigSettings()
+	begin
+	TimerInterval = StrToNum( tbSecondsBtwnOrders.Text ) * 1000 ;
+	SizeOfEachOrder = Round( StrToNum( tbSizeEachOrder.Text ), 0 ) ;
+	TotDesiredPosition =  Round( StrToNum( tbDesiredTotPosn.Text ), 0 ) ;
+	EntryPriceOffset = StrToNum( tbEntryPriceOffset.Text ) ;
+	end ;
+	
+{ check current position size against the size of the desired position in order to
+determine whether algo should continue to run }
+method void CheckPosition()
+	begin
+	
+	if PositionInfo.Count > 0 then
+		PositionNotComplete = IffLogic( PositionInfo[0].Quantity <
+		 TotDesiredPosition, true, false )
+	else
+		PositionNotComplete = true ;
+	
+	{ if position is complete, stop the algo }
+	if PositionNotComplete = false then
+		StopAlgo() ;
+		
+	end ;
+
+{ issue the next limit order, if one is needed, to continue building the long
+ position }	
+method void IssueNextOrder()
+variables:	int SharesRemainingToBuy ;
+	begin
+
+	if PositionInfo.Count > 0 then
+		SharesRemainingToBuy = TotDesiredPosition - PositionInfo[0].Quantity
+	else
+		SharesRemainingToBuy = TotDesiredPosition ;
+		
+	EntryBuyTicket.Quantity = MinList( SharesRemainingToBuy, SizeOfEachOrder ) ;
+	EntryBuyTicket.LimitPrice = Close - EntryPriceOffset ;
+				
+	if EntryBuyTicket.Quantity > 0 then
+		begin
+		EntryOrder = EntryBuyTicket.Send() ;
+		if EntryOrder <> NULL then
+			begin
+			lblEnableOrdPlacemnt.ForeColor = clrFormForeColor ;
+			RestartTimers() ;
+			end
+		else
+			lblEnableOrdPlacemnt.ForeColor = Color.Magenta ;
+		end	;	
+	
+	end	;
+
+{ method to handle creation and re-starting of order timer and label update timer }
+method void RestartTimers()
+	begin	
+	
+	if tmrOrderTimer = NULL then
+		begin
+	 	tmrOrderTimer = new Timer ;
+		tmrOrderTimer.Elapsed += OrderTimer_Elapsed ;
+		tmrOrderTimer.AutoReset = false ;
+		end	;
+	
+	if tmrLabelUpdateTimer = NULL then
+		begin
+	 	tmrLabelUpdateTimer = new Timer ;
+	 	tmrLabelUpdateTimer.Interval = 500 ; { 500 ms update timer }
+		tmrLabelUpdateTimer.Elapsed += LabelUpdateTimer_Elapsed ;
+		tmrLabelUpdateTimer.AutoReset = true ;
+		end	;
+	
+	tmrOrderTimer.Enable = false ;
+	tmrOrderTimer.Interval = TimerInterval ;
+	
+	OrderConversionTime = DateTime.Now + TimeSpan.Create( 0, 0, TimerInterval *
+	 0.001 ) ;
+		
+	tmrOrderTimer.Enable = true ;
+	TimerElapsed = false ;
+	tmrLabelUpdateTimer.Enable = true ;
+	
+	end ;
+
+{ convert open limit order to market when limit order timer elapses }
+method void OrderTimer_Elapsed( Object TmrSender, TimerElapsedEventArgs TmrArgs )
+	begin
+	
+	{ if the limit order is not completely filled when the timer elapses, replace
+	 the limit order with a market order;  if the limit order has been filled when
+	 the timer elapses, place a new limit order if the position is not yet
+	 complete }
+	TimerElapsed = true ;
+	if EntryOrder.LeftQuantity <> 0 and EntryOrder.State = OrderState.Received then
+		begin
+		ReplaceMktOrderTkt.Quantity = EntryOrder.LeftQuantity ;
+		EntryOrder.Replace( ReplaceMktOrderTkt ) ;
+		end
+	else if EntryOrder.LeftQuantity = 0 and EntryOrder.State = OrderState.Filled then
+		begin
+		CheckPosition() ;
+		if AlgoRunning and PositionNotComplete then
+			IssueNextOrder()
+		else
+			StopAlgo() ;
+		end
+	{ else timer may have elapsed before order was received so, if order is in
+	 sending or sent state, restart timers }
+	else { if EntryOrder.State = OrderState.Sending or EntryOrder.State =
+	 OrderState.Sent then }
+		begin 
+		CheckPosition() ;
+		if AlgoRunning and PositionNotComplete then
+			RestartTimers()
+		else
+			StopAlgo() ;
+		end	;	
+
+	end ;
+
+{ after a limit order is converted to a market order and filled, check the position
+and, if necessary, place a new limit order }
+method void FilledOrders_Updated( Object OrdProvSender, OrderUpdatedEventArgs
+ OrdProvUpdateArgs ) 
+	begin
+
+	if EntryOrder <> NULL then
+		begin
+		if OrdProvUpdateArgs.Order = EntryOrder and ( OrdProvUpdateArgs.Order.Type =
+		 OrderType.Market or ( OrdProvUpdateArgs.Order.Type = OrderType.Limit and
+		 TimerElapsed ) ) then
+	 		begin
+			CheckPosition() ;
+			if AlgoRunning and PositionNotComplete then
+				IssueNextOrder()
+			else
+				StopAlgo() ;
+			end	;
+		end ;
+		
+	end ;
+
+{ any time there is an update to the position, check the position to be sure that
+ the position is not completed }
+method void PositionInfo_Updated( Object PosnInfoSender, PositionUpdatedEventArgs
+ PosInfoArgs ) 
+	begin
+	CheckPosition() ;
+	end ;
+
+{ if user changes that account number selected in the Form, the PositionsProvider,
+ OrdersProvider, and entry OrderTicket must be updated with the new account number }
+method void cbAccountNum_ChangeAccount( Object cbAccountNumSender, EventArgs
+ cbAccountNumChgArgs )
+ 	begin
+
+	{ update the Account setting of the PositionsProvider and the OrdersProvider }
+	PositionInfo.Load = false ;
+	PositionInfo.Accounts.Clear() ;
+	PositionInfo.Accounts += cbAccountNum.Text ;
+	PositionInfo.Load = true ;
+	
+	FilledOrdersInfo.Load = false ;
+	FilledOrdersInfo.Accounts.Clear() ;
+	FilledOrdersInfo.Accounts += cbAccountNum.Text ;
+	FilledOrdersInfo.Load = true ;
+
+	{ update the Account property of the entry OrderTicket }
+	EntryBuyTicket.Account = cbAccountNum.Text ;
+
+	end	; 	
+
+{ set the variables that control the algo when the Apply Config Settings button is
+ clicked }
+method void ApplyConfig_Click( Object BtnSender, EventArgs BtnArgs )
+	begin
+	ApplyConfigSettings() ;		
+	end ;
+
+method void LabelUpdateTimer_Elapsed( Object TmrSender, TimerElapsedEventArgs
+ TmrArgs )
+ variables:
+ 	int SecondsRemaining,
+ 	string strSecondsRemaining ;
+	begin
+	
+	if EntryOrder <> NULL then
+		begin
+		if EntryOrder.State = OrderState.SendFailed then
+			begin
+			StopAlgo() ;
+			lblTimeToNextOrder.Text =  "Order send failed - Check Algo " +
+		 	 "Configuration Settings at Left" ;  
+			lblTimeToNextOrder.Visible = true ;
+			end
+		else if EntryOrder.State <> OrderState.Unsent then
+			begin
+			SecondsRemaining = ( OrderConversionTime - DateTime.Now ).Seconds ;
+			SecondsRemaining = MaxList( SecondsRemaining, 0 ) ;
+			strSecondsRemaining = NumToStr( SecondsRemaining, 0 ) ;
+			lblTimeToNextOrder.Text = "Seconds to next order: " +
+			 strSecondsRemaining ;
+			lblTimeToNextOrder.Visible = true ;
+			end ;
+		end ;
+		
+	end ;
+
+{ disable order timer and cancel any open orders when the Stop Algo button is
+ clicked }
+method void StopAlgo_Click( Object BtnSender, EventArgs BtnArgs )
+	begin
+	StopAlgo() ;
+	end ;
+
+{ stop algo and perform clean-up }
+method void StopAlgo()
+	begin
+
+	if tmrOrderTimer <> NULL then
+		tmrOrderTimer.Enable = false ;
+		
+	if tmrLabelUpdateTimer <> NULL then
+		tmrLabelUpdateTimer.Enable = false ;
+
+	lblTimeToNextOrder.Visible = false ;
+	CancelOpenOrder() ;
+	AlgoRunning = false ;
+
+	end ;
+
+method void CancelOpenOrder()
+	begin
+
+	if EntryOrder <> NULL then
+		begin
+		if EntryOrder.CanCancel() then
+			EntryOrder.Cancel() ;
+		end	;
+		
+	end ;
+	
+{ method to create the WinForm and populate it with controls }
+method void CreateAlgoForm()
+variables:  int LoopCounter ;
+	begin
+
+	{ create custom colors to be used in the Form }
+	clrFormForeColor = Color.FromARGB( 243, 227, 37 ) ;
+	clrFormBackColor = Color.FromARGB( 0, 0, 60 ) ;
+	
+	{ create main algo Form and locate it on the desktop }
+	frmMain = Form.Create( "TradeStation - Simple Algo (Time Slice) - " +
+	 SymbolToTrade, 450, 350 ) ;
+	frmMain.Location( 300, 300 ) ;
+	frmMain.BackColor = clrFormBackColor ;
+
+	{ create the Panels that will go into the Form }
+	pnlConfig = Panel.Create( 450, 230 ) ;
+	pnlConfig.BorderStyle = BorderStyle.fixed3d ;
+	pnlConfig.Location( 0, 0 ) ;
+	pnlConfig.BackColor = clrFormBackColor ;
+	pnlConfig.ForeColor = Color.White ;
+	
+	{ create the labels and controls to go into the Config Panel }
+	lblConfigHeading = Label.Create( "Algo Configuration", 120, 15 ) ;
+	lblConfigHeading.Location( 70, 9 ) ;
+	
+	lblAccountNum = Label.Create( "Account number:", 90, 25 ) ;
+	lblAccountNum.Location( 10, 42 ) ;
+
+	{ create accounts ComboBox }
+	cbAccountNum = ComboBox.Create( DefaultFormAccountNumber, 110, 25 ) ;
+	cbAccountNum.Location( 130, 40 ) ;
+	cbAccountNum.BackColor = clrFormBackColor ;
+	cbAccountNum.ForeColor = clrFormForeColor ;
+	cbAccountNum.DropDownStyle = ComboBoxStyle.DropDown ;
+	cbAccountNum.SelectedIndexChanged += cbAccountNum_ChangeAccount ;
+	
+	for LoopCounter = 0 to AccountsInfo.Count - 1
+		begin
+		cbAccountNum.AddItem( AccountsInfo[LoopCounter].AccountID ) ;
+		end ;
+	
+	{ create labels and associated text boxes for user to enter values used to
+	 control the algorithm }
+	lblDesiredTotPosn = Label.Create( "Tot Desired Position:", 120, 25 ) ;
+	lblDesiredTotPosn.Location( 10, 72 ) ;
+	
+	tbDesiredTotPosn = TextBox.Create( "", 110, 25 ) ;
+	tbDesiredTotPosn.Location( 130, 70 ) ;
+	tbDesiredTotPosn.Text = NumToStr( DefaultFormTotDesiredPosn, 0 ) ;
+	tbDesiredTotPosn.BackColor = clrFormBackColor ;
+	tbDesiredTotPosn.ForeColor = clrFormForeColor ;
+	
+	lblSizeEachOrder = Label.Create( "Size of Each Order:", 120, 25 ) ;
+	lblSizeEachOrder.Location( 10, 102 ) ;
+	
+	tbSizeEachOrder = TextBox.Create( "", 110, 25 ) ;
+	tbSizeEachOrder.Location( 130, 100 ) ;
+	tbSizeEachOrder.Text = NumToStr( DefaultFormSizeOfEachOrder, 0 ) ;
+	tbSizeEachOrder.BackColor = clrFormBackColor ;
+	tbSizeEachOrder.ForeColor = clrFormForeColor ;
+	
+	lblEntryPriceOffset = Label.Create( "Entry Price Offset:", 120, 25 ) ;
+	lblEntryPriceOffset.Location( 10, 132 ) ;
+
+	tbEntryPriceOffset = TextBox.Create( "", 110, 25 ) ;
+	tbEntryPriceOffset.Location( 130, 130 ) ;
+	tbEntryPriceOffset.Text = NumToStr( DefaultEntryPriceOffset, 7 ) ;
+	tbEntryPriceOffset.BackColor = clrFormBackColor ;
+	tbEntryPriceOffset.ForeColor = clrFormForeColor ;
+	
+	lblSecondsBtwnOrders = Label.Create( "Secs Between Orders:", 120, 25 ) ;
+	lblSecondsBtwnOrders.Location( 10, 162 ) ;
+
+	tbSecondsBtwnOrders = TextBox.Create( "", 110, 25 ) ;
+	tbSecondsBtwnOrders.Location( 130, 160 ) ;
+	tbSecondsBtwnOrders.Text = NumToStr( DefaultSecondsBtwnOrders, 0 ) ;
+	tbSecondsBtwnOrders.BackColor = clrFormBackColor ;
+	tbSecondsBtwnOrders.ForeColor = clrFormForeColor ;
+	
+	lblTimeToNextOrder = Label.Create( "Sec. to next order: ", 145, 45 ) ;
+	lblTimeToNextOrder.Location( 265, 134 ) ;
+	lblTimeToNextOrder.Visible = false ;
+	
+	chkCancOpnOnUninit = CheckBox.Create( "Cancel open orders on Uninit event",
+	 200, 25 ) ;
+	chkCancOpnOnUninit.Location( 10, 190 ) ;
+	chkCancOpnOnUninit.Checked = DefaultCheckedCancOpnOrdsOnUninit ;
+	chkCancOpnOnUninit.ForeColor = Color.White ;
+
+	btnApplyConfig = Button.Create( "Apply Config Settings", 125, 25 ) ;
+	btnApplyConfig.Location( 265, 37 ) ;	
+	btnApplyConfig.ForeColor = Color.Black ;
+	btnApplyConfig.BackColor = Color.FromArgb( 240, 240, 240 ) ;
+	btnApplyConfig.Click += ApplyConfig_Click ;
+	
+	btnRunAlgo = Button.Create( "Run Algo", 125, 25 ) ;
+	btnRunAlgo.Location( 265, 67 ) ;	
+	btnRunAlgo.ForeColor = Color.Black ;
+	btnRunAlgo.BackColor = Color.Green ;
+	btnRunAlgo.Click += RunAlgo_Click ;
+
+	btnStopAlgo = Button.Create( "Stop Algo", 125, 25 ) ;
+	btnStopAlgo.Location( 265, 97 ) ;	
+	btnStopAlgo.ForeColor = Color.Black ;
+	btnStopAlgo.BackColor = Color.Red ;
+	btnStopAlgo.Click += StopAlgo_Click ;
+
+	{ additional long labels in the form to remind user of key points }
+	lblHowToSetDefaults = Label.Create( "Note:  To set Algo configuration default" +
+	 " values, format the indicator in the chart, and set the indicator's inputs " +
+	 "to the desired default values.", 425, 28 ) ;	
+	lblHowToSetDefaults.Location( 10, 240 ) ;
+	lblHowToSetDefaults.ForeColor = clrFormForeColor ;
+
+	lblEnableOrdPlacemnt = Label.Create( "Note:  Be sure to format the " +
+	 "indicator and, on the General tab of the Format Indicator dialog box, " +
+	 "check the box to enable order placement objects if you wish for the form" +
+	 " to create real or simulated orders.", 425, 38 ) ;	
+	lblEnableOrdPlacemnt.Location( 10, 275 ) ;
+	lblEnableOrdPlacemnt.ForeColor = clrFormForeColor ;
+		
+	{ add labels and controls to the Config Panel }
+	pnlConfig.AddControl( lblConfigHeading ) ;
+	pnlConfig.AddControl( lblAccountNum ) ;
+	pnlConfig.AddControl( cbAccountNum ) ;
+	pnlConfig.AddControl( lblDesiredTotPosn ) ;
+	pnlConfig.AddControl( tbDesiredTotPosn ) ;
+	pnlConfig.AddControl( lblSizeEachOrder ) ;
+	pnlConfig.AddControl( tbSizeEachOrder ) ;
+	pnlConfig.AddControl( lblEntryPriceOffset ) ;
+	pnlConfig.AddControl( tbEntryPriceOffset ) ;
+	pnlConfig.AddControl( lblSecondsBtwnOrders ) ;
+	pnlConfig.AddControl( tbSecondsBtwnOrders ) ;
+	pnlConfig.AddControl( chkCancOpnOnUninit ) ;
+	pnlConfig.AddControl( lblTimeToNextOrder ) ;
+	pnlConfig.AddControl( btnApplyConfig ) ;
+	pnlConfig.AddControl( btnRunAlgo ) ;
+	pnlConfig.AddControl( btnStopAlgo ) ;
+	
+	{ add the Panels to the Form and Show the Form }
+	frmMain.AddControl( pnlConfig ) ;
+	frmMain.AddControl( lblHowToSetDefaults ) ;
+	frmMain.AddControl( lblEnableOrdPlacemnt ) ;
+	
+	frmMain.Show() ;
+	
+	end ;
+	
+method void CreateOrderTickets()
+	begin
+	
+	EntryBuyTicket = new OrderTicket ;
+	EntryBuyTicket.Symbol = SymbolToTrade ;
+	EntryBuyTicket.Account = cbAccountNum.Text ;
+	EntryBuyTicket.SymbolType = Category ;
+	EntryBuyTicket.Action = OrderAction.Buy ;
+	EntryBuyTicket.Duration = "day" ;
+	EntryBuyTicket.Type = OrderType.Limit ;
+	
+	{ create the market order ReplaceTicket that will be used if the limit order
+	 ticket is not filled within the allotted time }
+	ReplaceMktOrderTkt = new ReplaceTicket ;
+	ReplaceMktOrderTkt.Type = OrderType.Market ;
+
+	end ;
+	
+method void CreateAccountsProvider()
+	begin
+	{ retrieve information on user's accounts, so that account numbers can be used
+	 to populate the accounts ComboBox }
+	AccountsInfo = new AccountsProvider ;
+	AccountsInfo.Realtime = false ;
+	AccountsInfo.Load = true ;
+	end ;
+	
+{ PositionsProvider will be used to track the quantity of shares in the account }
+method void CreatePositionsProvider()
+	begin
+	PositionInfo = new PositionsProvider ;
+	PositionInfo.Symbols += SymbolToTrade ;
+	PositionInfo.Accounts += cbAccountNum.Text ;
+	PositionInfo.Types += "any" ;
+	PositionInfo.Realtime = true ;
+	PositionInfo.Updated += PositionInfo_Updated ;
+	PositionInfo.Load = true ;
+	end ;
+	
+{ OrdersProvider will be used to track filled orders, particularly filled orders
+ that result from converting unfilled limit orders to market orders }
+method void CreateOrdersProvider()
+	begin
+	FilledOrdersInfo = new OrdersProvider ;
+	FilledOrdersInfo.Accounts += cbAccountNum.Text ;
+	FilledOrdersInfo.Symbols += SymbolToTrade ;
+	FilledOrdersInfo.States += "filled" ;
+	FilledOrdersInfo.Realtime = true ;
+	FilledOrdersInfo.Updated += FilledOrders_Updated ;
+	FilledOrdersInfo.Load = true ;
+	end	;
+
+{ event handler for analysis technique's Uninitialized event }	
+method void Uninit( Object UninitSender, UnInitializedEventArgs UninitArgs ) 
+	begin
+	{ if the check box to cancel all orders on Uninit is checked, cancel open entry
+	 order, if there is one }
+	if chkCancOpnOnUninit.Checked then
+		CancelOpenOrder() ;
+	end ;
+	
+	
+{ ** Copyright (c) 2001 - 2011 TradeStation Technologies, Inc. All rights reserved. ** 
+  ** TradeStation reserves the right to modify or overwrite this analysis technique 
+     with each release. ** }

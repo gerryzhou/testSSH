@@ -22,26 +22,23 @@ variables:
 	FastAvg( 0 ),
 	SlowAvg( 0 ) ;
 
+Value1 = LinearRegAngleFC( Price, TLLength ) ;
 
-FastAvg = AverageFC( Price, FastLength ) ;
-SlowAvg = AverageFC( Price, SlowLength ) ;
+FastAvg = AverageFC( Value1, FastLength ) ;
+SlowAvg = AverageFC( Value1, SlowLength ) ;
 
-Value1 = LinearRegAngleFC( FastAvg, TLLength ) ;
-Value2 = LinearRegAngleFC( SlowAvg, TLLength ) ;
-
-Plot1( 90, "MATLAngUp" ) ;
-Plot2( 0, "MATLAngFlat" ) ;
-Plot3( -90, "MATLAngDn" ) ;
+Plot1( 90, "TLAngMAUp" ) ;
+Plot2( 0, "TLAngMAFlat" ) ;
+Plot3( -90, "TLAngMADn" ) ;
 SetPlotColor( 1, ColorBase ) ;
 SetPlotColor( 2, ColorBase ) ;
 SetPlotColor( 3, ColorBase ) ;
 
-Plot4( Value1, "MATLAngFa" ) ;
+Plot4( FastAvg, "TLAngMAFa" ) ;
 SetPlotColor( 4, ColorValFa ) ;
 
-Plot5( Value2, "MATLAngSl" ) ;
+Plot5( SlowAvg, "TLAngMASl" ) ;
 SetPlotColor( 5, ColorValSl ) ;
-
 
 
 { OPTIONAL STEPS: To specify alert criteria that will sound an audible alert when 

@@ -1,0 +1,524 @@
+{
+1.  This indicator is designed to trade a pair of symbols (a spread) from a Chart
+	that contains both symbols, inserted into the chart as Data1 and Data2.  This
+	indicator is designed to work with liquid symbols that have bars at	each bar
+	interval in both data streams (no missing bars due to illiquidity).
+2.  A "Long the Spread" position is long the symbol in Data1 and short the symbol in 
+	Data2.  A "Short the Spread" position is Short the Symbol in Data1 and Long the
+	symbol in Data2.
+3.  The entry conditions for a long entry are set by the input "LongEntryCond" and
+	the entry conditions for a short entry are set by the input "ShortEntryCond".
+4.  Dot markers are plotted when "LongEntryCond" and "ShortEntryCond" are true.  
+	When "LongEntryCond" is true, a bright marker (colored cyan, by default) is
+	plotted below the bar.  A dark marker (dark cyan, by default) identifies a long
+	condition that will not generate entries because the last entry signal was long
+	(no pyramiding is allowed - see item 5, below).	 Likewise, a bright marker
+	(colored magenta, by default) is plotted above the bar for a short condition
+	("ShortEntryCond" is true) and a dark marker (dark magenta, by default) is used
+	to identify a short signal that will not generate a short entry because the last
+	signal was a short signal.	Dots for the first entry in real-time will be
+	brightly colored (cyan or magenta, by default) regardless of the color of the
+	prior dot. Thus, if the code is running in real-time, a bright, not dark, dot
+	means an entry should be placed.  If no entry is triggered, troubleshooting by
+	the user is	required.  
+5.	The first real-time bar is painted if the "PaintFirstRTBar" input is set to
+	true.  However, because this study does not update intrabar, painting of the
+	first real-time bar does not occur until the bar closes.
+6.	The indicator does NOT allow pyramiding.
+7.  No specific exits are coded - a position is closed out when an opposite	
+	direction entry is made.  In order to reverse the position, the code first exits
+	the existing position, then initiates a new position in the direction opposite
+	the direction of the previously held position.
+8.  Orders are placed at the close of the Data1 bar only.
+9.  When the indicator is inserted, turned on, or otherwise re-calculates, if an 
+	existing position exists in either symbol, or open orders exist for either
+	symbol, a run-time error is generated.
+10. This indicator is NOT designed to work correctly when manual intervention is
+	taken to open or close positions and/or place orders.
+11. This indicator is designed to work only with equities.
+12. The bar intervals of Data1 and Data2 must be the same.
+13. State variables are used to control the sequence of events in some cases.  Here
+	are descriptions of the meaning of various values of the states:
+
+	Input State variable:
+	
+	State	Description
+	-----	----------------------------------------------------------------
+  	  0		"Enabled" input is not true
+  	  1		"Enabled" input is set to true
+  	  2		State 1 and a valid account number in the "AccountNumber" input
+  	  3(*)	State 2 and input "DollarsPerTradePerSymbol" > 0
+	
+	* An input state of 3 is required to send orders.
+	
+
+	Position State variable:
+	
+	State	Description
+	-----	----------------------------------------------------------------
+  	  0		Flat -> no quantity in either data stream
+  	  1		Long the Spread
+ 	 -1		Short the Spread
+  	  2		Other
+	
+	
+	Order State variable:
+	
+	State	Description
+	-----	----------------------------------------------------------------
+  	  0		No open orders in either data stream symbol
+  	  1		Open orders exist for either data stream symbol
+  	  2		Other (original value set by the code)
+	
+	
+	Main State variable:
+	
+	State	Description
+	-----	----------------------------------------------------------------
+  	  1		Long or Short setup occurred and other entry conditions are met
+  	  2		State 1 and ExitExistingPositions() method called
+  	  3		State 2 and no open positions for either symbol
+  	  4		State 3 and no open orders for either symbol
+  	  5		State 4 and EntryMethod() called
+  	  6		State 5 and in a spread position
+}
+
+{ set up namespaces }
+using elsystem ;
+using elsystem.collections ;
+using tsdata.common ;
+using tsdata.trading ;
+
+inputs:
+	bool Enabled( false ), { if true, indicator can place orders }
+	string AccountNumber( "Enter Equities Account Number" ), 
+	int DollarsPerTradePerSymbol( 1000 ), { dollars per trade per symbol }
+	bool LongEntryCond( Average( C Data1 / C Data2, 5 ) crosses under
+	 Average( C Data1 / C Data2, 10 ) ), { conditions for a "Long the Spread"
+	 position }
+	bool ShortEntryCond( Average( C Data1 / C Data2, 5 ) crosses over
+	 Average( C Data1/C Data2, 10 ) ), { conditions for a "Short the Spread"
+	 position }
+ 	DotOffsetTicks( 0 ), { Offset number of ticks for marker dots }
+ 	PaintFirstRTBar( true), { true = first real-time bar is painted }
+ 	RTBarColor( Yellow ) ; { color for painting the first real-time bar.  This will
+ 	 override any color set in the format indicator dialog. }
+ 	 
+variables:
+	N( 0 ), { used for loop counter }
+	DotOffset( 0 ), { offset price amount for dot offsets }
+	FirstRTDot( false ),
+	intrabarpersist RealTime( 0 ), 
+	LastDotDir( 0 ), { last direction of dot marker }
+	Dictionary CodeControl( NULL ), { used for state machines }
+	PositionsProvider PP1( NULL ), { PositionsProvider for Data1 }
+	PositionsProvider PP2( NULL ), { PositionsProvider for Data2 }
+	OrdersProvider OP1( NULL ), { OrdersProvider for Data1 }
+	OrdersProvider OP2( NULL ), { OrdersProvider for Data2 }
+	AccountsProvider AP1( NULL ), { to check for valid account numer }
+	Order LongEntryOrder( NULL ), { order object for long entry }
+	Order ShortEntryOrder( NULL ), { order object for short entry }
+	Order LXOrder( NULL ), { exit order object for long position }
+	Order SXOrder( NULL ), { exit order object for short position }
+	OrderTicket LE_OrderTicket( NULL ), { Long Entry OrderTicket }
+	OrderTicket LX_OrderTicket( NULL ), { Long Exit OrderTicket }
+	OrderTicket SE_OrderTicket( NULL ), { Short Entry OrderTicket }
+	OrderTicket SX_OrderTicket( NULL ) ; { Short Exit OrderTicket }
+	
+method void EvaluateEntryConditions()
+variables:
+	int PositionState,
+	int MainState,
+	int OrderState,
+	bool FirstTradeOK,
+	bool RevToLongOK,
+	bool RevToShortOK ;
+	begin
+	{ set variables to be used in entry evaluation }
+	PositionState = CodeControl["PositionState"] astype int ;
+	MainState = CodeControl["MainState"] astype int ;
+	OrderState = CodeControl["OrderState"] astype int ;
+	FirstTradeOK = CodeControl["FirstTrade"] astype int = 0 
+	 and MainState = 0 ;
+	RevToLongOK = MainState = 6 and PositionState = -1 ; { allow reverse to long }
+	RevToShortOK = MainState = 6 and PositionState = 1 ; { allow reverse to short }
+
+	if CodeControl["FirstTrade"] astype int <> 0 
+		and (( LongEntryCond and PositionState <> -1 and LastDotDir = -1 ) 
+		or ( ShortEntryCond and PositionState <> 1 and LastDotDir = 1 )) 
+	then
+		RaiseRuntimeError( "Incorrect position for reversing exists." ) ;
+		
+	if LongEntryCond and OrderState = 0 and ( RevToLongOK or FirstTradeOK ) then
+		begin
+		CodeControl["MainState"] = 1 ;
+		CodeControl["GoLong"] = 1 ;
+		CodeControl["GoShort"] = 0 ;
+		once CodeControl["FirstTrade"] = 1 ;
+		ExitExistingPositions() ;	
+		end 
+	else if ShortEntryCond and OrderState = 0 and 
+	 ( RevToShortOK or FirstTradeOK ) then
+		begin
+		CodeControl["MainState"] = 1 ;
+		CodeControl["GoShort"] = 1 ;
+		CodeControl["GoLong"] = 0 ;
+		once CodeControl["FirstTrade"] = 1 ;
+		ExitExistingPositions() ;	
+		end ;
+	end ;
+
+method void ExitExistingPositions()
+variables: int Sym1Qty, int Sym2Qty ;
+	begin
+	Sym1Qty = CodeControl["Symbol1Qty"] astype int ;
+	Sym2Qty = CodeControl["Symbol2Qty"] astype int ;
+	
+	if CodeControl["MainState"] astype int = 1 then 
+		CodeControl["MainState"] = 2 ;
+		
+	switch ( CodeControl["PositionState"] astype int )
+		begin
+		
+		Case 1: { position is Long the Spread }
+		LX_OrderTicket.Symbol = Symbol of Data1 ;
+		LX_OrderTicket.Quantity = Sym1Qty ;
+		LXOrder = LX_OrderTicket.send() ;
+		SX_OrderTicket.Symbol = Symbol of Data2 ;
+		SX_OrderTicket.Quantity = - Sym2Qty ;
+		SXOrder = SX_OrderTicket.send() ;
+		
+		Case -1: { position is Short the Spread }
+		SX_OrderTicket.Symbol = Symbol of Data1 ;
+		SX_OrderTicket.Quantity = - Sym1Qty ;
+		SXOrder = SX_OrderTicket.send() ;
+		LX_OrderTicket.Symbol = Symbol of Data2 ;
+		LX_OrderTicket.Quantity = Sym2Qty ;
+		LXOrder = LX_OrderTicket.send() ;
+		
+		end ;
+		
+	UpdatePositionState() ;
+	end ;	
+
+method void UpdatePositionState()
+variables:
+	int Sym1Qty, 
+	int Sym2Qty,
+	bool LongTheSpread,
+	bool ShortTheSpread ;	
+	begin
+		
+	if PP1.Count > 0 then { checking the Count property ensures a position 
+	 exists prior to accessing the quantity of the position }
+		begin
+		Sym1Qty = PP1.Position[Symbol of Data1, AccountNumber].Quantity astype int ;
+		once CodeControl["FirstTrade"] = 1 ;
+		if CodeControl["MainState"] = 0 then
+			RaiseRuntimeError( "Position detected prior to initial entry signal.") ;
+		end ;
+	
+	if PP2.Count > 0 then { checking the Count property ensures a position 
+	 exists prior to accessing the quantity of the position }
+	 	begin
+	 	Sym2Qty = PP2.Position[Symbol of Data2, AccountNumber].Quantity astype int ;
+	 	once CodeControl["FirstTrade"] = 1 ;
+	 	if CodeControl["MainState"] = 0 then
+			RaiseRuntimeError("Position detected prior to initial entry signal.") ;
+	 	end ;
+	 	
+	CodeControl["Symbol1Qty"]= Sym1Qty  ;
+	CodeControl["Symbol2Qty"] = Sym2Qty ;
+	LongTheSpread = Sym1Qty > 0 and Sym2Qty < 0 ;
+	ShortTheSpread = Sym1Qty < 0 and Sym2Qty > 0 ;
+	
+	if LongTheSpread then 
+		CodeControl["PositionState"] = 1
+	else if ShortTheSpread then 
+		CodeControl["PositionState"] = -1
+	else if Sym1Qty = 0 and Sym2Qty = 0 then { Flat }
+		begin
+		CodeControl["PositionState"] = 0 ;
+		if CodeControl["MainState"] astype int = 2 then
+			begin
+			CodeControl["MainState"] = 3 ; { increment the state }
+			CheckOpenOrders() ;
+			end ;
+		end
+	else
+		CodeControl["PositionState"] = 2 ; { other }
+	
+	{ check for a spread position to set state machine }
+	if ( LongTheSpread or ShortTheSpread ) and 
+	 CodeControl["MainState"] astype int = 5 then
+	 	CodeControl["MainState"] = 6 ; { increment main state variable }
+	
+	if CodeControl["MainState"] astype int = 6 
+	 and CodeControl["PositionState"] = 2 then
+		RaiseRuntimeError( "Position does not match expected." ) ;
+	 		
+	end ;
+
+method void CheckOpenOrders()
+variables: int OP1Orders, int OP2Orders ;
+	begin
+	OP1Orders = OP1.Count ;
+	OP2Orders = OP2.Count ;
+	
+	if ( OP1Orders > 0 or OP2Orders > 0 ) and CodeControl["MainState"] = 0 then
+		RaiseRuntimeError("Open or sent orders detected prior to initial entry." ) ;
+	
+	if ( OP1Orders > 0 or OP2Orders > 0 ) and CodeControl["MainState"] = 6 then
+		RaiseRuntimeError( "Manual orders detected." ) ;
+			 
+	if OP1Orders = 0 and OP2Orders = 0 then { no open orders }
+		begin
+		CodeControl["OrderState"] = 0 ;
+		if CodeControl["MainState"] astype int = 3 then
+			begin
+			CodeControl["MainState"] = 4 ;
+			EntryMethod() ;
+			end ;
+		end
+	else
+		CodeControl["OrderState"] = 1 ; { open orders exist }
+	end ;	
+			
+method void EntryMethod()
+	begin
+	if CodeControl["MainState"] astype int = 4 then
+		if CodeControl["GoLong"] astype int = 1 then
+			begin
+			CodeControl["GoLong"] = 0 ;
+			IssueLongSpreadOrder() ;
+			end
+		else if CodeControl["GoShort"] astype int = 1 then
+			begin
+			CodeControl["GoShort"] = 0 ;
+			IssueShortSpreadOrder() ;
+			end ;	
+	end ;
+
+method void IssueLongSpreadOrder()
+	begin
+	if CodeControl["MainState"] astype int = 4 then
+		CodeControl["MainState"] = 5 ; { increment main state variable }
+		
+	{ Configure Order Tickets - Buy Data1 and SellShort Data2 }	
+	if Close of Data1 > 0 and Close of Data2 > 0 then { calculate number of shares }
+		begin
+		LE_OrderTicket.Symbol = Symbol of Data1 ; { buy will be for Data1 }
+		LE_OrderTicket.Quantity = DollarsPerTradePerSymbol / Close of Data1 ;
+		LongEntryOrder = LE_OrderTicket.send() ; { send long entry ticket }
+		
+		SE_OrderTicket.Symbol = Symbol of Data2 ; { sell short will be for Data2 }
+		SE_OrderTicket.Quantity = DollarsPerTradePerSymbol / Close of Data2 ;	
+		ShortEntryOrder = SE_OrderTicket.send() ; { send short entry ticket }
+		end ;
+		
+	UpdatePositionState() ;	
+	end ;	
+
+method void IssueShortSpreadOrder()
+	begin
+	if CodeControl["MainState"] astype int = 4 then
+		CodeControl["MainState"] = 5 ; { increment main state variable }
+		
+	{ Configure Order Tickets -  Buy Data2 and SellShort Data1 }
+	if Close of Data1 > 0 and Close of Data2 > 0 then { calculate number of shares }
+		begin
+		LE_OrderTicket.Symbol = Symbol of Data2 ; { buy will be for Data2 }	
+		LE_OrderTicket.Quantity = DollarsPerTradePerSymbol / Close of Data2 ;
+		LongEntryOrder = LE_OrderTicket.send() ; { send long entry ticket }
+		
+		SE_OrderTicket.Symbol = Symbol of Data1 ; { sell short will be for Data1 }
+		SE_OrderTicket.Quantity = DollarsPerTradePerSymbol / Close of Data1 ;
+		ShortEntryOrder = SE_OrderTicket.send() ; { send short entry ticket }
+		end ;
+	
+	UpdatePositionState() ;	
+	end ;	
+	
+method void PP1_Updated( Object sender, PositionUpdatedEventArgs args ) 
+	begin
+	UpdatePositionState() ;
+	end ;
+
+method void PP2_Updated( Object sender, PositionUpdatedEventArgs args ) 
+	begin
+	UpdatePositionState() ;
+	end ;
+
+method void OP1_Updated( Object sender, OrderUpdatedEventArgs args ) 
+	begin
+	CheckOpenOrders() ;
+	end ;
+
+method void OP2_Updated( Object sender, OrderUpdatedEventArgs args ) 
+	begin
+	CheckOpenOrders() ;
+	end ;
+
+once 
+	begin
+	{ check to ensure both symbols are equity symbols }
+	if Category of Data1 <> 2 or Category of Data2 <> 2 then
+		RaiseRuntimeError( "This indicator is designed for stocks only." ) ;
+	
+	{ check to ensure bar intervals match }	
+	if ( BarInterval of Data1 <> BarInterval of Data2 ) or ( BarType of Data1 <>
+	 BarType of Data2 ) then
+		RaiseRuntimeError( "This indicator requires bar intervals to match." ) ;
+	
+	{ set up Dictionary items }
+	CodeControl = Dictionary.create() ;
+	CodeControl.Add( "GoLong", 0 ) ;
+	CodeControl.Add( "GoShort", 0 ) ;
+	CodeControl.Add( "Symbol1Qty", 0 ) ;
+	CodeControl.Add( "Symbol2Qty", 0 ) ;
+	CodeControl.Add( "FirstTrade", 0 ) ;
+	CodeControl.Add( "RealTime", 0 ) ;
+	CodeControl.Add( "MainState", 0 ) ;
+	CodeControl.Add( "InputState", 0 ) ;
+	CodeControl.Add( "PositionState", 2 ) ;
+	CodeControl.Add( "OrderState", 2 ) ;
+	
+	LE_OrderTicket = new OrderTicket ;
+	LX_OrderTicket = new OrderTicket ;
+	SE_OrderTicket = new OrderTicket ;
+	SX_OrderTicket = new OrderTicket ;
+	
+	LE_OrderTicket.Account = AccountNumber ;	
+	LE_OrderTicket.SymbolType = SecurityType.stock ;
+	LE_OrderTicket.Action = OrderAction.buy ;
+	LE_OrderTicket.Type = OrderType.market ;
+	LE_OrderTicket.Duration = "GTC" ;
+	
+	LX_OrderTicket.Account = AccountNumber ;
+	LX_OrderTicket.SymbolType = SecurityType.stock ;
+	LX_OrderTicket.Action = OrderAction.sell ;
+	LX_OrderTicket.Type = OrderType.market ;
+	LX_OrderTicket.Duration = "GTC" ;
+	
+	SE_OrderTicket.Account = AccountNumber ;
+	SE_OrderTicket.SymbolType = SecurityType.stock ;
+	SE_OrderTicket.Action = OrderAction.sellshort ;
+	SE_OrderTicket.Type = OrderType.market ;
+	SE_OrderTicket.Duration = "GTC" ;
+	
+	SX_OrderTicket.Account = AccountNumber ;
+	SX_OrderTicket.SymbolType = SecurityType.stock ;
+	SX_OrderTicket.Action = OrderAction.buytocover ;
+	SX_OrderTicket.Type = OrderType.market ;
+	SX_OrderTicket.Duration = "GTC" ;
+	
+	PP1 = new PositionsProvider ;
+	PP1.Realtime = true ;	
+	PP1.Symbols += Symbol of Data1 ;
+	PP1.Types += "long, short" ;
+	PP1.Accounts += AccountNumber ;
+	PP1.Load = true ;
+	
+	PP2 = new PositionsProvider ;
+	PP2.Realtime = true ;
+	PP2.Symbols += Symbol of Data2 ;
+	PP2.Types += "long, short" ;
+	PP2.Accounts += AccountNumber ;
+	PP2.Load = true ;	
+	
+	OP1 = new OrdersProvider ;
+	OP1.Realtime = true ;
+	OP1.Symbols += Symbol of Data1 ;
+	OP1.Accounts += AccountNumber ;
+	OP1.States += "cancelpending, partiallyfilled, received, sending, sent, queued" ;
+	OP1.Load = true ;
+	
+	OP2 = new OrdersProvider ;
+	OP2.Realtime = true ;
+	OP2.Symbols += Symbol of Data2 ;
+	OP2.Accounts += AccountNumber ;
+	OP2.States += "cancelpending, partiallyfilled, received, sending, sent, queued" ;
+	OP2.Load = true ;
+	
+	AP1 = new AccountsProvider ;
+	AP1.Load = true ;
+	AP1.Realtime = true ;
+	
+	{ set state machine for inputs }
+	if Enabled then
+		begin
+		CodeControl["InputState"] = 1 ;
+		for N = 0 to AP1.Count - 1
+			begin
+			if AP1[N].AccountID = AccountNumber then { valid account found }
+			 	begin
+				CodeControl["InputState"] = 2 ;
+				if DollarsPerTradePerSymbol > 0 then 
+					CodeControl["InputState"] = 3 ; { state = 3 required for entry }	
+				break ;
+				end ;
+			end ;
+		end ;
+	
+	{ set the updated event handlers }
+	PP1.Updated += PP1_Updated ;
+	PP2.Updated += PP2_Updated ;
+	OP1.Updated += OP1_Updated ;
+	OP2.Updated += OP2_Updated ;
+	
+	UpdatePositionState() ; { update position state machine }
+	CheckOpenOrders() ; { update order state machine }
+	DotOffset = DotOffsetTicks * MinMove / PriceScale ;
+	end ;
+
+{ set GlobalDictionary key "RealTime" to 1 when in real time }
+once ( GetAppInfo( aiRealTimeCalc ) = 1 )
+	begin
+	CodeControl["RealTime"] = 1 ;
+	RealTime = 1 ;
+	end ;
+
+{ call method to check for entry conditions }	
+if CodeControl["RealTime"] astype int = 1 and BarStatus( 1 ) = 2 and 
+ CodeControl["InputState"] astype int = 3 then	
+	EvaluateEntryConditions() ;
+
+{ plot markers for Long and Short setups }
+if BarStatus( 1 ) = 2 then
+	begin
+	if LongEntryCond then 
+		begin
+		if LastDotDir = -1 or ( RealTime = 1 and FirstRTDot = false ) then
+			Plot1( L - DotOffset, "LongCond" )
+		else if LastDotDir = 1 then
+			Plot2( L - DotOffset, "LongNoPyr" ) ;
+		LastDotDir = 1 ;
+		once ( CodeControl["RealTime"] = 1 )
+			FirstRTDot = true ;	
+		end ;
+	
+	if ShortEntryCond then
+		begin
+		if LastDotDir = 1 or ( RealTime = 1 and FirstRTDot = false ) then 
+			Plot3( H + DotOffset, "ShortCond" )
+		else if LastDotDir = -1 then
+			Plot4( H + DotOffset, "ShortNoPyr" ) ;
+		LastDotDir = -1 ;
+		once ( CodeControl["RealTime"] = 1 )
+			FirstRTDot = true ;
+		end ;	
+	end ;
+
+{ paint the first real-time bar }
+once ( BarStatus( 1 ) = 2 and PaintFirstRTBar and RealTime = 1 and RealTime[1] = 0 )
+	begin
+	Plot5( High, "RTBarHigh", RTBarColor ) ;
+	Plot6( Low, "RTBarLow", RTBarColor ) ;
+	Plot7( Open, "RTBarOpen", RTBarColor ) ;
+	Plot8( Close, "RTBarClose", RTBarColor ) ;	
+	end ;
+			
+	
+{ ** Copyright (c) 2001 - 2011 TradeStation Technologies, Inc. All rights reserved. ** 
+  ** TradeStation reserves the right to modify or overwrite this analysis technique 
+     with each release. ** }
