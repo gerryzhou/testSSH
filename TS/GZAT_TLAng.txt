@@ -1,0 +1,17 @@
+{ Helpful instructions on the use of EasyLanguage, such as this, appear below and are 
+  contained within French curly braces {}.  There is no need to erase these 
+  instructions when using EasyLanguage in order for it to function properly, because 
+  this text will be ignored. }
+
+{ STEP 1 OF 2: Replace <CRITERIA> with the criteria that will cause a Sell Short limit 
+  order to be placed on the next bar. }
+
+Condition1 = <CRITERIA> ;
+
+{ STEP 2 OF 2: Replace "Entry Name" (leaving the quotes) with a short name for the 
+  entry and replace <PRICE> with the desired limit order price level.  The entry name 
+  will appear on the chart above/below the trade arrows and in the trade by trade 
+  performance report. }
+
+if Condition1 then
+	Sell Short ( "Entry Name" ) next bar at <PRICE> limit ;
