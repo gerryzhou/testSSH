@@ -36,14 +36,72 @@ method void Init( )
 	CreateAccountsProvider() ; 
 	CreatePositionsProvider() ;
 	CreateOrdersProvider() ;
-	CheckPosition();
+	CreateOrderTickets();
+	{CheckPosition();}
 	end ;
 
+{-----------------------------------------}
 method void ApplyConfigSettings()
 	begin
 
 	end ;
+
+{-----------------------------------------}	
+Method bool CheckDate() {YYYMMDD: 2012-1900 MMDD}
+Variable: bool is_date;
+	begin
+		Print("Check date:", Date, ", DayOfWeek:", Dayofweek(Date));
+		if Date < 1120930 and Date > 1120805 and Dayofweek(Date) > 1 and Dayofweek(Date) < 5 then
+			is_date = True 
+		else 
+			is_date = False ;
+		Return is_date ;
+	end;
+
+{-----------------------------------------}	
+Method bool CheckTime() {YYYMMDD: 2012-1900 MMDD}
+Variable: bool is_time;
+	begin
+		Print("Check time:", Currenttime);
+		if Currenttime < 1330 and Currenttime > 925 then
+			is_time = True 
+		else 
+			is_time = False ;
+		Return is_time ;
+	end;
+
+{ method to handle creation and re-starting of order timer and label update timer }
+method void RestartTimers()
+	begin	
 	
+	if tmrOrderTimer = NULL then
+		begin
+	 	tmrOrderTimer = new Timer ;
+		tmrOrderTimer.Elapsed += OrderTimer_Elapsed ;
+		tmrOrderTimer.AutoReset = false ;
+		end	;
+	
+	if tmrLabelUpdateTimer = NULL then
+		begin
+	 	tmrLabelUpdateTimer = new Timer ;
+	 	tmrLabelUpdateTimer.Interval = 500 ; { 500 ms update timer }
+		tmrLabelUpdateTimer.Elapsed += LabelUpdateTimer_Elapsed ;
+		tmrLabelUpdateTimer.AutoReset = true ;
+		end	;
+	
+	tmrOrderTimer.Enable = false ;
+	tmrOrderTimer.Interval = TimerInterval ;
+	
+	OrderConversionTime = DateTime.Now + TimeSpan.Create( 0, 0, TimerInterval *
+	 0.001 ) ;
+		
+	tmrOrderTimer.Enable = true ;
+	TimerElapsed = false ;
+	tmrLabelUpdateTimer.Enable = true ;
+	
+	end ;
+
+{-----------------------------------------}	
 method void CreateAccountsProvider()
 	begin
 	{ retrieve information on user's accounts, so that account numbers can be used
@@ -80,13 +138,34 @@ method void CreateOrdersProvider()
 	{FilledOrdersInfo.Updated += FilledOrders_Updated ;}
 	FilledOrdersInfo.Load = true ;
 	end	;
+
+{-----------------------------------------}
+method void CreateOrderTickets()
+	begin
 	
+	EntryBuyTicket = new OrderTicket ;
+	EntryBuyTicket.Symbol = SymbolToTrade ;
+	EntryBuyTicket.Account = AccountNumber ;
+	EntryBuyTicket.SymbolType = Category ;
+	EntryBuyTicket.Action = OrderAction.Buy ;
+	EntryBuyTicket.Duration = "day" ;
+	EntryBuyTicket.Type = OrderType.Limit ;
+	
+	{ create the market order ReplaceTicket that will be used if the limit order
+	 ticket is not filled within the allotted time }
+	ReplaceMktOrderTkt = new ReplaceTicket ;
+	ReplaceMktOrderTkt.Type = OrderType.Market ;
+
+	end ;
+		
 { check current position size against the size of the desired position in order to
 determine whether algo should continue to run }
 method void CheckPosition()
 variables:  int Count, string SymbolToTrade ;
 	begin
-	Print("CheckPosition: ", Currenttime, ", Currentbar:", Currentbar, ", Symbol:", Symbol);
+		Print("Is date OK:" , CheckDate());
+		Print("Is time OK:", CheckTime());
+		Print("CheckPosition: ", Currenttime, ", Currentbar:", Currentbar, ", Symbol:", Symbol);
 		if (PositionInfo.Count > 0) then
 		begin			
 			Print("Qty", PositionInfo.Position[0].Quantity);
@@ -95,7 +174,103 @@ variables:  int Count, string SymbolToTrade ;
 		end;
 		
 	end ;
+
+{-----------------------------------------}
+method void IssueNextOrder()
+variables:	int SharesRemainingToBuy ;
+	begin
+
+	if PositionInfo.Count > 0 then
+		SharesRemainingToBuy = TotDesiredPosition - PositionInfo[0].Quantity
+	else
+		SharesRemainingToBuy = TotDesiredPosition ;
+		
+	EntryBuyTicket.Quantity = MinList( SharesRemainingToBuy, SizeOfEachOrder ) ;
+	EntryBuyTicket.LimitPrice = Close - EntryPriceOffset ;
+				
+	if EntryBuyTicket.Quantity > 0 then
+		begin
+		EntryOrder = EntryBuyTicket.Send() ;
+		if EntryOrder <> NULL then
+			begin			
+			RestartTimers() ;
+			end
+		else
+			{lblEnableOrdPlacemnt.ForeColor = Color.Magenta ;}
+		end	;	
 	
+	end	;
+
+{-----------------------------------------}	
+method void CancelOpenOrder()
+	begin
+
+	if EntryOrder <> NULL then
+		begin
+		if EntryOrder.CanCancel() then
+			EntryOrder.Cancel() ;
+		end	;
+		
+	end ;
+
+{ convert open limit order to market when limit order timer elapses }
+method void OrderTimer_Elapsed( Object TmrSender, TimerElapsedEventArgs TmrArgs )
+	begin
+	
+	{ if the limit order is not completely filled when the timer elapses, replace
+	 the limit order with a market order;  if the limit order has been filled when
+	 the timer elapses, place a new limit order if the position is not yet
+	 complete }
+	TimerElapsed = true ;
+	if EntryOrder.LeftQuantity <> 0 and EntryOrder.State = OrderState.Received then
+		begin
+		ReplaceMktOrderTkt.Quantity = EntryOrder.LeftQuantity ;
+		EntryOrder.Replace( ReplaceMktOrderTkt ) ;
+		end
+	else if EntryOrder.LeftQuantity = 0 and EntryOrder.State = OrderState.Filled then
+		begin
+		CheckPosition() ;
+		if AlgoRunning and PositionNotComplete then
+			IssueNextOrder()
+		else
+			StopAlgo() ;
+		end
+	{ else timer may have elapsed before order was received so, if order is in
+	 sending or sent state, restart timers }
+	else { if EntryOrder.State = OrderState.Sending or EntryOrder.State =
+	 OrderState.Sent then }
+		begin 
+		CheckPosition() ;
+		if AlgoRunning and PositionNotComplete then
+			RestartTimers()
+		else
+			StopAlgo() ;
+		end	;	
+
+	end ;
+	
+{ after a limit order is converted to a market order and filled, check the position
+and, if necessary, place a new limit order }
+method void FilledOrders_Updated( Object OrdProvSender, OrderUpdatedEventArgs
+ OrdProvUpdateArgs ) 
+	begin
+
+	if EntryOrder <> NULL then
+		begin
+		if OrdProvUpdateArgs.Order = EntryOrder and ( OrdProvUpdateArgs.Order.Type =
+		 OrderType.Market or ( OrdProvUpdateArgs.Order.Type = OrderType.Limit and
+		 TimerElapsed ) ) then
+	 		begin
+			CheckPosition() ;
+			if AlgoRunning and PositionNotComplete then
+				IssueNextOrder()
+			else
+				StopAlgo() ;
+			end	;
+		end ;
+		
+	end ;
+{-----------------------------------------}		
 	Once(Currentbar = 1)
 		Begin
 		Print("Time init:", Currenttime);
