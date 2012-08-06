@@ -1,0 +1,107 @@
+
+{ the code will make use of classes in these namespaces }
+using elsystem ;
+using tsdata.trading ;
+using elsystem.windows.forms ;
+using elsystem.drawing ;
+
+inputs:
+	string AccountNumber( "21055300" ), 
+	string SymbolToTrade( "SMU12" ),
+	int SizeOfEachOrder( 1 ), 
+	double EntryPriceOffset( 0.5 ), 
+	bool LiquidateAtSessionClose( true ) ; 
+
+variables:	
+	AccountsProvider AccountsInfo( NULL ),
+	PositionsProvider PositionInfo( NULL ),
+	OrdersProvider FilledOrdersInfo( NULL ),
+	intrabarpersist bool AlgoRunning( false ),
+	intrabarpersist bool PositionNotComplete( false ),
+	intrabarpersist double TimerInterval( 0 ),
+	intrabarpersist bool TimerElapsed( false ), 	
+	OrderTicket EntryBuyTicket( NULL ),
+	ReplaceTicket ReplaceMktOrderTkt( NULL ),
+	Order EntryOrder( NULL ),
+	Timer tmrOrderTimer( NULL ),
+	Timer tmrLabelUpdateTimer( NULL ),
+	DateTime OrderConversionTime( NULL ) ;
+		
+{ Init method is called when indicator is initialized;  all necessary DataProviders
+and OrderTickets are created so that they can be used in the event that user starts
+the algo running }
+method void Init( ) 
+	begin
+	{SymbolToTrade = Symbol ;}
+	CreateAccountsProvider() ; 
+	CreatePositionsProvider() ;
+	CreateOrdersProvider() ;
+	CheckPosition();
+	end ;
+
+method void ApplyConfigSettings()
+	begin
+
+	end ;
+	
+method void CreateAccountsProvider()
+	begin
+	{ retrieve information on user's accounts, so that account numbers can be used
+	 to populate the accounts ComboBox }
+	 Print("CreateAccountsProvider");
+	AccountsInfo = new AccountsProvider ;
+	AccountsInfo.Realtime = false ;
+	AccountsInfo.Load = true ;
+	end ;
+	
+{ PositionsProvider will be used to track the quantity of shares in the account }
+method void CreatePositionsProvider()
+	begin
+	Print("CreatePositionsProvider");
+	PositionInfo = new PositionsProvider ;
+	PositionInfo.Symbols += SymbolToTrade ;
+	PositionInfo.Accounts += AccountNumber;
+	PositionInfo.Types += "any" ;
+	PositionInfo.Realtime = true ;
+	{PositionInfo.Updated += PositionInfo_Updated ;}
+	PositionInfo.Load = true ;
+	end ;
+	
+{ OrdersProvider will be used to track filled orders, particularly filled orders
+ that result from converting unfilled limit orders to market orders }
+method void CreateOrdersProvider()
+	begin
+	Print("CreateOrdersProvider");
+	FilledOrdersInfo = new OrdersProvider ;
+	FilledOrdersInfo.Accounts += AccountNumber ;
+	FilledOrdersInfo.Symbols += SymbolToTrade ;
+	FilledOrdersInfo.States += "filled" ;
+	FilledOrdersInfo.Realtime = true ;
+	{FilledOrdersInfo.Updated += FilledOrders_Updated ;}
+	FilledOrdersInfo.Load = true ;
+	end	;
+	
+{ check current position size against the size of the desired position in order to
+determine whether algo should continue to run }
+method void CheckPosition()
+variables:  int Count, string SymbolToTrade ;
+	begin
+	Print("CheckPosition: ", Currenttime, ", Currentbar:", Currentbar, ", Symbol:", Symbol);
+		if (PositionInfo.Count > 0) then
+		begin			
+			Print("Qty", PositionInfo.Position[0].Quantity);
+			Print("Mkt Value", PositionInfo.Position[0].MarketValue);	
+			Print("P/L", PositionInfo.Position[0].OpenPL);  			
+		end;
+		
+	end ;
+	
+	Once(Currentbar = 1)
+		Begin
+		Print("Time init:", Currenttime);
+		Init();
+		End;
+	if LastBarOnChart then
+		Begin
+			CheckPosition();
+		End;

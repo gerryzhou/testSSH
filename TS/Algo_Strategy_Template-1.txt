@@ -1,0 +1,499 @@
+// EasyLanguageTemplate  [ Strategy ]
+
+// Just select features from the Template
+// that you need for your strategy
+// delete the ones you do not need.
+
+
+[ IntraBarOrderGeneration = False ];
+// True = Enables Entries or Exits
+// on every Tick during the bar
+// Much more complex coding
+// If using IOG then Backtesting
+// must have Look Inside Bar Testing
+// activated to be approximately accurate
+
+[ BaseCurrency = Account ];
+// Can ONLY be put on Forex Symbol
+// Give an error on non Forex symbols
+// Forces account currency to be
+// the default for reports, etc.
+
+//[ SameTickOpt = True ];
+// Can ONLY be put on Indicators
+// Forces a change in price by one tick
+// before TS will process code
+
+//[ InfiniteLoopDetect = False ];
+// Forces Loop Detection OFF
+
+[ LegacyColorValue = True ];
+// True = Old EL Colors as default
+// False = New RGB Colors as default
+
+
+
+Inputs:
+    SMAFLength(18),
+    SMASLength(34),
+    StartTime(945),
+    EndTime(1145),
+    LTrailingTicks(0),
+    STrailingTicks(0);
+
+
+Variables:
+    //{ Setup Variables For Inputs }
+    vSMAFLength(0),
+    vSMASLength(0),
+    vStartTime(0),
+    vEndTime(0),
+    vLTrailingTicks(0),
+    vSTrailingTicks(0),
+
+    EOB(False),
+    Price( "" ),
+    Decimals( 0 ),
+
+    { Daily NetProfits }
+    vNetProfit(0),
+    vDailyNetProfit(0),
+
+
+    { Calculation Variables }
+    IntraBarPersist SMAFast(0),
+    IntraBarPersist SMASlow(0),
+
+    { Trade High & Low }
+    IntraBarPersist TLHigh(0),
+    IntraBarPersist TLLow(0),
+
+    { Daily High, Low, Open & Close when using IntraDay Charts }
+    IntraBarPersist PriorDayHigh(0),
+    IntraBarPersist PriorDayLow(0),
+    IntraBarPersist PriorDayOpen(0),
+    IntraBarPersist PriorDayClose(0),
+    IntraBarPersist TodayOpen(0),
+    IntraBarPersist TodayHigh(0),
+    IntraBarPersist TodayLow(0),
+
+    { Weekly High & Weekly Low when using IntraDay Charts }
+    IntraBarPersist WeekHigh(0),
+    IntraBarPersist WeekLow(0),
+
+    { Monthly High & Monthly Low when using IntraDay Charts }
+    IntraBarPersist MonthHigh(0),
+    IntraBarPersist MonthLow(0),
+
+    { TradeStation Variables }
+    IntraBarPersist MP(0),    		// MarketPosition
+    IntraBarPersist MP1(0),             // Prior Tick MarketPosition
+    IntraBarPersist PP(0),    		// PositionProfit
+    IntraBarPersist BSE(0),    		// BarsSinceEntry
+    IntraBarPersist BSExit(0),          // BarsSinceExit
+    IntraBarPersist BarsLastExit(0),
+    IntraBarPersist CC(0),    		// CurrentContracts
+    IntraBarPersist CC1(0),             // Prior Tick CurrentContracts
+    IntraBarPersist PPPC(0),		// PositionProfit Per Contract
+    IntraBarPersist PPPE(0),		// PositionProfit Per Entry
+    IntraBarPersist CE(0),		// CurrentEntries
+    IntraBarPersist EP(0),    		// EntryPrice
+    IntraBarPersist AEP(0),    		// Average Entry Price
+    IntraBarPersist vBarNumber(0),      // BarNumber
+    IntraBarPersist LastBar(False),     // LastBarOnChart
+    IntraBarPersist vCategory(0),       // Category
+    IntraBarPersist VCurrentBar(0),
+    IntraBarPersist CE1(0),	        // CurrentEntries
+    IntraBarPersist PPTotal(0),	        // PositionProfit Total
+    OneTick(0),
+    vBarType(0),
+    vBarInterval(0);
+
+
+{ End Of Bar }
+EOB = BarStatus(1) = 2;
+
+//{ ++++++++++++++++++++++++++++++ }
+//{ +++++++ CurrentBar = 1 +++++++ }
+//{ ++++++++++++++++++++++++++++++ }
+once EOB then
+begin
+    // Place code here you want processed ONLY on the First Bar of the Chart
+
+    //{ Category Setup }
+    vCategory=Category;
+
+    //{ Decimal Place SetUp by Goose }
+    Price = NumToStr( MinMove/PriceScale, 10 ) ;
+    for Value2 = 1 to 12
+    begin
+        	if RightStr( Price, 1 ) = "0" then
+	    Price = LeftStr( Price, StrLen( Price ) - 1 )
+	else
+	    Value2 = 12 ;	   // stop loop when zero not found
+	end ;
+
+    Decimals = StrLen(Price) -2 ;	// subtract 2 for decimals
+
+	{ One Tick }
+    OneTick = MinMove / PriceScale;
+
+    //{ Order Entry Routing SetUp For Stocks }
+    If vCategory = 2 then SetRouteName("ARCX");
+
+
+    //{ BarType - // 0=tick 1=IntraDay 2=Daily 3=Weekly 4=Monthly }
+    vBarType=BarType;
+    vBarInterval=BarInterval;
+
+    //{ Store Inputs into Variables - reduced CPU load }
+    vSMAFLength 	= SMAFLength;
+    vSMASLength 	= SMASLength;
+    vStartTime 		= StartTime;
+    vEndTime 		= EndTime;
+    vLTrailingTicks = LTrailingTicks;
+    vSTrailingTicks = STrailingTicks;
+
+end;
+
+
+//{ +++++++++++++++++++++++++++++++ }
+//{ ++++ TradeStation Variables +++ }
+//{ +++++++++++++++++++++++++++++++ }
+//{ Get TradeStation Variables - use commands one time only to reduce CPU load}
+LastBar = LastBarOnChart;
+MP1 = MP;            // Prior Tick MarketPosition
+MP = MarketPosition;
+EP = EntryPrice;
+AEP= AvgEntryPrice;
+PP = PositionProfit;
+CC1 = CC;            // Prior Tick CurrentContracts
+CC = CurrentContracts;
+CE = CurrentEntries;
+If CurrentBar = 1 then
+    vBarNumber = 1
+else
+    vBarNumber = vBarNumber[1] + 1;
+
+{ TICK level BarsSinceEntry WorkAround }
+// TradeStation BarsSinceEntry Command is
+// Inaccurate with Stop & Reverse Entries
+// or Scaling In Trades
+// This workaround is always correct
+
+If (MP <> 0 and MP1 = 0)          // This tick in a Trade & Prior tick was Flat
+        or (MP = 1 and MP1 = -1)  // This tick in a LONG Trade & Prior tick was SHORT Trade
+        or (MP = -1 and MP1 = 1)  // This tick in a SHORT Trade & Prior tick was LONG Trade
+        or (CC > CC1)             // Another Entry in the same direction
+        then
+   BSE = 0
+else
+If EOB and MP <> 0 then        // Increase BarSinceEntry Counter at End of Bar only
+    BSE = BSE + 1
+else
+If MP = 0 and MP1 <> 0 then     // This Tick no trade & last tick was in a trade
+    BSE = -999;
+
+{ or - Bar Level BarsSinceEntry WorkAround }
+If (MP <> 0 and MP[1] = 0)       // Current Bar in a Trade, Prior Bar Flat
+or (MP = 1 and MP[1] = -1)       // Current Bar Long, Prior bar Short
+or (MP = -1 and MP[1] = 1)       // Current Bar Short, Prior bar Long
+or CC > CC[1] then               // Scaling In Trade
+begin
+   BSE = 0;
+end
+else
+If MP <> 0 then
+begin
+   BSE = BSE[1] + 1;
+end
+else
+If MP = 0 then
+begin
+   BSE = -999;
+end;
+
+
+{ BarsSinceExit WorkAround - Bar Level }
+// TradeStation BarsSinceExit Command is Inaccurate with Stop & Reverse Entries and Scaling-In Multiple Entries
+If MP <> 0 then
+begin
+    BarsLastExit = 0;
+end
+else
+If BarsSinceExit(1) = 0 or (MP = 0 and MP[1] <> 0) then
+begin
+    BarsLastExit = BarsLastExit[1] + 1;
+end;
+
+
+{ BarsSinceExit WorkAround - Tick Level }
+// TradeStation BarsSinceExit Command is Inaccurate with Stop & Reverse Entries and Scaling-In Multiple Entries
+
+MP1 = MP;
+MP  = MarketPosition;
+CC1 = CC;
+CC  = CurrentContracts;
+
+If (MP = 0 and MP[1] <> 0)    // This tick bar Flat and Prior tick was in a Trade
+        or CC < CC1           // this tick less contracts
+then
+begin
+    BSExit = 0;   // New Exit Just Occurred this bar set BSExit Variable
+                   // Place any code here you want executed on same bar as exit occurred
+end
+else
+If EOB then
+begin
+    BSExit = BSExit[1] + 1;   // Increase BSExit bar counter for number of bars since last exit occurred
+end;
+
+
+{ BarStatus(1) = 0 WorkAround }
+// Code donated by Goose
+// To process code on the First Tick of a Bar BarStatus(1) = 0 is problematic
+// This workaround provides a reliable solution
+
+
+[IntrabarOrderGeneration = True]
+
+Variables:
+    IntrabarPersist Bar_Number( 0 ) ;
+
+if Bar_Number <> CurrentBar then
+begin
+    Bar_Number = CurrentBar ;
+    // Put code here you want processed on first tick of a bar
+end ;
+
+
+{ Position Profit Per Contract & Per Entry }
+If CE > 0 and CC > 0 then
+begin
+	{ PPTotal = PositionProfit Total }
+	PPTotal = PP;
+	{ PPPC = PositionProfit Per Contract }
+	If PPTotal <> 0 then
+		PPPC = PPTotal / CC;
+	{ PPPE = PositionProfit Per Entry }
+	If PPTotal <> 0 then
+		PPPE = PPTotal / CE;
+end;
+
+
+{ +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ }
+{ ++++ IntraDay Calculation of Daily High, Low, Open & Close ++++++ }
+{ +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ }
+If Date <> Date[1] and BarStatus(1) = 2 then
+begin
+    PriorDayClose = Close[1];
+    PriorDayHigh = TodayHigh;
+    PriorDayLow = TodayLow;
+    PriorDayOpen = TodayOpen;
+
+    TodayHigh = High;
+    TodayLow = Low;
+    TodayOpen = Open;
+end
+else
+begin
+    TodayHigh = MaxList( High, TodayHigh ) ;
+    TodayLow  = MinList( Low, TodayLow ) ;
+end;
+
+
+{ +++++++++++++++++++++++++++++++++++++++++++++++ }
+{ +++++ IntraDay Chart - Weekly High & Low ++++++ }
+{ +++++++++++++++++++++++++++++++++++++++++++++++ }
+If DayOfWeek( Date ) < DayOfWeek( Date[1] )  then
+begin
+    WeekHigh = High;
+    WeekLow = Low;
+end
+else
+begin
+    WeekHigh = MaxList( High, WeekHigh ) ;
+    WeekLow  = MinList( Low, WeekLow ) ;
+end;
+
+
+{ +++++++++++++++++++++++++++++++++++++++++++++++ }
+{ +++++ IntraDay Chart - Monthly High & Low ++++++ }
+{ +++++++++++++++++++++++++++++++++++++++++++++++ }
+If Month(Date) <> Month(Date[1]) then
+begin
+    MonthHigh = High;
+    MonthLow = Low;
+end
+else
+begin
+    MonthHigh = MaxList( High, MonthHigh ) ;
+    MonthLow  = MinList( Low, MonthLow ) ;
+end;
+
+
+//{ ++++++++++++++++++++++++++++++++++++++ }
+//{ ++++ First Bar of Each New Day  ++++++ }
+//{ ++++++++++++++++++++++++++++++++++++++ }
+If Date <> Date[1] then
+begin
+    // Place code here you want executed on the first bar of each new day
+end;
+
+
+//{ ++++++++++++++++++++++++++++++++++++++++++ }
+//{ ++++ First Bar of Each New Session  ++++++ }
+//{ ++++++++++++++++++++++++++++++++++++++++++ }
+If CurrentSession(0) <> CurrentSession(0)[1] then
+begin
+    // Place code here you want executed on First Bar of each New Session
+end;
+
+
+//{ ++++++++++++++++++++++++++++++++++++++ }
+//{ ++++ First Bar of Today ONLY  ++++++++ }
+//{ ++++++++++++++++++++++++++++++++++++++ }
+If Date <> Date[1] and Date = CurrentDate then
+begin
+    // Place code here you want executed on First Bar if Today is the Current Date
+end;
+
+
+//{ ++++++++++++++++++++++++++++++++++++++++++ }
+//{ ++++ First Bar of Yesterday ONLY  ++++++++ }
+//{ ++++++++++++++++++++++++++++++++++++++++++ }
+If Date <> Date[1] and Date = CurrentDate - 1 then
+begin
+    // Place code here you want executed on First Bar Of Yesterday ONLY
+end;
+
+
+//{ ++++++++++++++++++++++++++++++++++++++++ }
+//{ ++++ First Bar of Each New Week  +++++++ }
+//{ ++++++++++++++++++++++++++++++++++++++++ }
+If (( vCategory = 2 and Date <> Date[1] )
+    or ( vCategory <> 2 and CurrentSession(0) <> CurrentSession(0)[1] ) )
+    and ( ( vCategory = 2 and DayOfWeek(Date) = 1 )
+    or ( vCategory <> 2 and DayOfWeek(Date) = 0 ) ) then
+begin
+    // Place code here you want executed of First Bar of each New Week
+end;
+
+
+//{ ++++++++++++++++++++++++++++++++++++++++ }
+//{ ++++ First Bar of Each New Month  ++++++ }
+//{ ++++++++++++++++++++++++++++++++++++++++ }
+If Month(Date) <> Month(Date[1]) then
+begin
+    // Place code here you want executed of First Bar of each New Month
+end;
+
+
+{ ++++++++++++++++++++++++++++++++++++++++++++++++++ }
+{ ++++++++++  First Bar of MONDAY Only  ++++++++++++ }
+{ ++++++++++++++++++++++++++++++++++++++++++++++++++ }
+// For this example if you wanted to execute code on the first bar of Monday Opening Bar ONLY
+// 0 = Sunday, 1=Monday, 2=Tuesday, etc.
+
+If DayOfWeek(Date) = 1 and Date <> Date[1] then
+begin
+    // Put code here to execute on First Bar of every Monday
+end;
+
+
+
+//{ +++++++++++++++++++++++++++++++++++ }
+//{ ++++ New Trade High & Low   +++++++ }
+//{ +++++++++++++++++++++++++++++++++++ }
+If (MP <> 0 and MP[1] = 0)   	                // In Trade This Bar and Prior Bar Was Flat
+    or (MP = 1 and MP[1] = -1 ) 	// In SHORT Trade This Bar and Prior Bar was LONG Trade
+    or (MP = -1 and MP[1] = 1 )  then   // In LONG Trade This Bar and Prior Bar was SHORT Trade
+begin
+    { First Bar of a New Trade }
+    TLHigh = High;
+    TLLow = Low;
+end
+else
+{ Still in Trade so Track Trade High & Trade Low }
+If MP <> 0 then
+begin
+    TLHigh = MaxList( High, TLHigh ) ;
+    TLLow =  MinList( Low, TLLow ) ;
+end
+else
+{ Flat - Reset Variables }
+If MP = 0 then
+begin
+    TLHigh = 0;
+    TLLow = 9999;
+end;
+
+
+//{ +++++++++++++++++++++++++++++++++++++++ }
+//{ ++++++ Calculations Section  ++++++++++ }
+//{ +++++++++++++++++++++++++++++++++++++++ }
+If EOB then
+begin
+    // Place calculations here you only want to run once per bar at the end of each bar
+
+    // IntraDay Chart Calculation of Daily NetProfit
+    // Strategy Code
+    // Can use this to calculate Daily NetProfit
+    // One use is to stop trading if hit a given daily Profit Objective or Loss Amount
+    If Date = CurrentDate and Date <> Date[1] then
+    begin
+        vNetProfit = NetProfit;
+    end
+    else
+    If Date = CurrentDate then
+    begin
+        { Calculate Daily NetProfits }
+        vDailyNetProfit = NetProfit - vNetProfit;
+    end;
+
+    { Calculations }
+    SMAFast = Average(Close,vSMAFLength);
+    SMASlow = Average(Close,vSMASLength);
+
+end;
+
+
+//{ +++++++++++++++++++++ }
+//{ +++ Entries +++++++++ }
+//{ +++++++++++++++++++++ }
+If Time >= vStartTime and Time < vEndTime then
+begin
+    //{ Order Routing SetUp For Stocks }
+    If vCategory = 2 then
+        SetRouteName("ARCX");
+
+    //{ LONG Initial Entry }
+    If SMAFast crosses above SMASlow then
+         Buy ("L-SMA-X") next bar at market;
+
+    //{ SHORT Initial Entry }
+    If SMASlow crosses under SMASlow then
+        SellShort ("S-SMA-X") next bar at market;
+
+end;     // If BarStatus(1) = 2 then
+
+
+//{ +++++++++++++ }
+//{ ++ Exits ++++ }
+//{ +++++++++++++ }
+If MP <> 0 then
+begin
+    //{ Order Routing SetUp for Stocks }
+    If vCategory = 2 then
+        SetRouteName("ARCX");
+
+    // Exits Here
+
+    If MP = 1 and Close < TLHigh - (vLTrailingTicks * OneTick) then
+        Sell ("LX-Trailing") next bar at market;
+
+    If MP = -1 and Close > TLLow + (vSTrailingTicks * OneTick) then
+        BuyToCover ("SX-Trailing") next bar at market;
+
+
+end;    // If MP <> 0 then
