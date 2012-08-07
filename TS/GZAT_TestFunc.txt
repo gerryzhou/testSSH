@@ -80,14 +80,14 @@ method void RestartTimers()
 		tmrOrderTimer.Elapsed += OrderTimer_Elapsed ;
 		tmrOrderTimer.AutoReset = false ;
 		end	;
-	
+	{
 	if tmrLabelUpdateTimer = NULL then
 		begin
 	 	tmrLabelUpdateTimer = new Timer ;
 	 	tmrLabelUpdateTimer.Interval = 500 ; { 500 ms update timer }
 		tmrLabelUpdateTimer.Elapsed += LabelUpdateTimer_Elapsed ;
 		tmrLabelUpdateTimer.AutoReset = true ;
-		end	;
+		end	;}
 	
 	tmrOrderTimer.Enable = false ;
 	tmrOrderTimer.Interval = TimerInterval ;
@@ -181,11 +181,9 @@ variables:	int SharesRemainingToBuy ;
 	begin
 
 	if PositionInfo.Count > 0 then
-		SharesRemainingToBuy = TotDesiredPosition - PositionInfo[0].Quantity
-	else
-		SharesRemainingToBuy = TotDesiredPosition ;
+		SharesRemainingToBuy = PositionInfo[0].Quantity;
 		
-	EntryBuyTicket.Quantity = MinList( SharesRemainingToBuy, SizeOfEachOrder ) ;
+	EntryBuyTicket.Quantity = SizeOfEachOrder ;
 	EntryBuyTicket.LimitPrice = Close - EntryPriceOffset ;
 				
 	if EntryBuyTicket.Quantity > 0 then
@@ -196,7 +194,7 @@ variables:	int SharesRemainingToBuy ;
 			RestartTimers() ;
 			end
 		else
-			{lblEnableOrdPlacemnt.ForeColor = Color.Magenta ;}
+			RestartTimers() ;{lblEnableOrdPlacemnt.ForeColor = Color.Magenta ;}
 		end	;	
 	
 	end	;
@@ -213,6 +211,22 @@ method void CancelOpenOrder()
 		
 	end ;
 
+{ stop algo and perform clean-up }
+method void StopAlgo()
+	begin
+
+	if tmrOrderTimer <> NULL then
+		tmrOrderTimer.Enable = false ;
+	{	
+	if tmrLabelUpdateTimer <> NULL then
+		tmrLabelUpdateTimer.Enable = false ;
+
+	lblTimeToNextOrder.Visible = false ;}
+	CancelOpenOrder() ;
+	AlgoRunning = false ;
+
+	end ;
+	
 { convert open limit order to market when limit order timer elapses }
 method void OrderTimer_Elapsed( Object TmrSender, TimerElapsedEventArgs TmrArgs )
 	begin
