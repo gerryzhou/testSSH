@@ -10,6 +10,7 @@
   specified names will appear in the chart analysis data window. }
 inputs: 
 	Price( Close ),
+	NormRatio(100),
 	FastLength( 4 ),
 	SlowLength( 9 ),
 	TLLength( 4 ), 
@@ -22,10 +23,10 @@ variables:
 	FastAvg( 0 ),
 	SlowAvg( 0 ) ;
 
-Value1 = LinearRegAngleFC( Price, TLLength ) ;
+Value1 = LinearRegAngleFC( NormRatio*Price, TLLength ) ;
 
-FastAvg = AverageFC( Value1, FastLength ) ;
-SlowAvg = AverageFC( Value1, SlowLength ) ;
+FastAvg = GZ_TLAngMA(Price, NormRatio, FastLength, TLLength); {AverageFC( Value1, FastLength ) ;}
+SlowAvg = GZ_TLAngMA(Price, NormRatio, SlowLength, TLLength); {AverageFC( Value1, SlowLength ) ;}
 
 Plot1( 90, "TLAngMAUp" ) ;
 Plot2( 0, "TLAngMAFlat" ) ;
@@ -44,9 +45,9 @@ SetPlotColor( 5, ColorValSl ) ;
 { OPTIONAL STEPS: To specify alert criteria that will sound an audible alert when 
   triggered, replace FALSE with your criteria.  To specify a brief alert description 
   that will be included in the alert notification pop-up window, insert your 
-  description between the quotes ( "" ).  Note that Condition1 is a logical variable, a 
+  description between the quotes ( " ).  Note that Condition1 is a logical variable, a 
   temporary holding place for the true-false result of the criteria. }
 
 Condition1 = FALSE ;
 if Condition1 then
-	Alert( "" ) ;
+	Alert( " ") ;

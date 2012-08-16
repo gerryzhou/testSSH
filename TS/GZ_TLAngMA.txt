@@ -1,0 +1,12 @@
+inputs: 
+	Price( numericseries ),
+	NormRatio(numericseries),
+	MALength( numericsimple ),
+	TLLength( numericsimple );
+
+
+Value1 = LinearRegAngleFC( NormRatio*Price, TLLength ) ;
+
+GZ_TLAngMA = AverageFC( Value1, MALength ) ;
+
+
