@@ -58,6 +58,8 @@ variables:
 	BracketOrderTicket LongExitBracket( NULL ),
 	BracketOrderTicket ShortExitBracket( NULL ),
 	OCOOrderTicket EntryOCOTicket( NULL ),
+	ReplaceTicket ReplaceLmtTicket (NULL),
+	ReplaceTicket ReplaceMktTicket (NULL),
 	Order LongEntryOrder( NULL ),
 	Order ShortEntryOrder( NULL ),
 	Order LongExitOrderSide1( NULL ),
@@ -65,7 +67,8 @@ variables:
 	Order ShortExitOrderSide1( NULL ),
 	Order ShortExitOrderSide2( NULL ),
 	PositionsProvider PositionInfo( NULL ),
-	OrdersProvider OrdersInfo( NULL ) ;
+	OrdersProvider OrdersInfo( NULL ),
+	int BarCounter(2) ;
 
 { Init method is called when indicator is initialized;  code creates all order
 tickets at initialization }
@@ -159,6 +162,52 @@ method void IssueEntryBracket()
 	
 	end ;
 
+{ this method is called from the bottom of the code;  it issues the initial entry
+ bracket and assigns event handlers to be called when entry order update events
+ occur }
+method void replaceExitBuyWithLimit(double prc)
+	begin
+		ReplaceLmtTicket = ReplaceTicket.Create() ;
+		
+		ReplaceLmtTicket.Quantity = TradeSize ;
+		ReplaceLmtTicket.Type = OrderType.limit ;
+		ReplaceLmtTicket.LimitPrice = prc ;	
+		
+		if ShortExitOrderSide1 <> NULL and ShortExitOrderSide1.State = OrderState.received
+			and ShortExitOrderSide1.Type = OrderType.limit then
+			ShortExitOrderSide1.Replace(ReplaceLmtTicket);
+
+		
+		if ShortExitOrderSide2 <> NULL and ShortExitOrderSide2.State = OrderState.received
+			and ShortExitOrderSide2.Type = OrderType.limit then
+			ShortExitOrderSide2.Replace(ReplaceLmtTicket);
+
+		
+		PlotOutputs("replaceExitBuyWithLimit") ;	
+	end ;
+
+{ this method is called from the bottom of the code;  it issues the initial entry
+ bracket and assigns event handlers to be called when entry order update events
+ occur }
+method void replaceExitSellWithLimit(double prc)
+	begin
+		ReplaceLmtTicket = ReplaceTicket.Create() ;
+		
+		ReplaceLmtTicket.Quantity = TradeSize ;
+		ReplaceLmtTicket.Type = OrderType.limit ;
+		ReplaceLmtTicket.LimitPrice = prc ;	
+		
+		if LongExitOrderSide1 <> NULL and LongExitOrderSide1.State = OrderState.received
+			and LongExitOrderSide1.Type = OrderType.limit then
+			LongExitOrderSide1.Replace(ReplaceLmtTicket);
+		
+		if LongExitOrderSide2 <> NULL and LongExitOrderSide2.State = OrderState.received
+			and LongExitOrderSide2.Type = OrderType.limit then
+			LongExitOrderSide2.Replace(ReplaceLmtTicket);
+		
+		PlotOutputs("replaceExitSellWithLimit") ;	
+	end ;
+	
 { event handler for long entry order update events }
 method void LongEntryUpdated( Object EntryOCOOrder, OrderUpdatedEventArgs
  EntryOCOUpdateArgs ) 
@@ -174,6 +223,7 @@ method void LongEntryUpdated( Object EntryOCOOrder, OrderUpdatedEventArgs
 		LongExitOrderSide2 = LongExitOrderSide1.NextSibling ;
 		LongExitOrderSide1.Updated += ExitOrderUpdate ;
 		LongExitOrderSide2.Updated += ExitOrderUpdate ;
+		BarCounter = 2;
 		Print("LongExitBracket Input.");
 		end ;	
 		
@@ -195,6 +245,7 @@ method void ShortEntryUpdated( Object EntryOCOOrder, OrderUpdatedEventArgs
 		ShortExitOrderSide2 = ShortExitOrderSide1.NextSibling ;
 		ShortExitOrderSide1.Updated += ExitOrderUpdate ;
 		ShortExitOrderSide2.Updated += ExitOrderUpdate ;
+		BarCounter = 2;
 		Print("ShortExitBracket Input.");
 		end ;	
 		
@@ -224,7 +275,7 @@ method void OrderUpdate( Object OrdProvide, OrderUpdatedEventArgs
 	PlotOutputs("OrderUpdate") ;
 	end ;
 
-
+{ update plots }
 method void PlotOutputs(string message)
 	begin
 
@@ -391,7 +442,6 @@ method void Uninit( Object UninitSender, UnInitializedEventArgs UninitArgs )
 { issue entry bracket one time on the first real-time tick that occurs when the
  Start input is true }
 {Once( GetAppInfo( aiRealtimeCalc ) = 1 and Start ) }
-
 Once(Currentbar = 1)
 		Begin
 		Print("Time init:", Currenttime);
@@ -402,6 +452,18 @@ if LastBarOnChart then
 		Begin
 			once IssueEntryBracket() ;
 			PlotOutputs("Start to trade") ;
+			if(BarCounter > 0) then
+				BarCounter -= 1
+			else
+				Begin
+					if(PositionInfo[0].Quantity > 0) then
+						replaceExitSellWithLimit(Close+ProfitTargetOffset)
+					Else if(PositionInfo[0].Quantity < 0) then
+						replaceExitBuyWithLimit(Close-ProfitTargetOffset)
+					Else
+						print("--Flat--");
+				end;
+				
 		End;
 		
 { ** Copyright (c) 2001 - 2011 TradeStation Technologies, Inc. All rights reserved. ** 
