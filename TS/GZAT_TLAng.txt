@@ -46,11 +46,22 @@ inputs:
 	 target order from the average entry price }
 	double StopLossOffset( 0.5 ), { the amount by which to offset the stop-loss
 	 order from the average entry price }
+	Price( Close ),
+	double ResistanceP(HighD(3)),
+	double SupportP(LowD(3)),
+	NormRatio(100),
+	int FastLength( 4 ),
+	int SlowLength( 9 ),
+	int TLLength( 4 ),
+	double ExtremeBullTLAng(45),
+	double ExtremeBearTLAng(-45),
+	
 	bool CancelOpenOrdersOnUninitializeEvent( true ) ; { set this input to true if
 	 it is desired to cancel any open orders when the indicator is uninitialized - 
 	 when its status is turned off or it is removed from the Chart, RadarScreen, or
 	 OptionStation window;  set this input to false if it is desired to leave open
 	 orders active }
+	 
 
 variables:
 	OrderTicket EntryBuyStopTicket( NULL ),
@@ -68,14 +79,40 @@ variables:
 	Order ShortExitOrderSide2( NULL ),
 	PositionsProvider PositionInfo( NULL ),
 	OrdersProvider OrdersInfo( NULL ),
-	int BarCounter(2) ;
+	int BarCounter(2),
+	double CurFastTLAngMA( 0 ),
+	double CurSlowTLAngMA( 0 ),
+	double MinFastTLAngMA( 0 ),
+	double MaxFastTLAngMA( 0 ) ;
 
+consts:
+	{Position and Order status}
+	int PosFlatNoOrder(1),
+	int PosFlatEnOrder(2),
+	int PosLongNoOrder(3),
+	int PosLongExOrder(4),
+	int PosShortNoOrder(5),
+	int PosShortExOrder(6),
+	int PosOrderConflict(7),
+	{Bull Bear status}
+	int ExtremeBullish(1),
+	int Bullish(2),
+	int Bull2Bear(3),
+	int Bear2Bull(4),
+	int Bearish(5),
+	int ExtremeBearish(6),
+	int NoBullNoBear(-1),
+	{Buy Sell Signal}
+	int BuySignal(1),
+	int SellSignal(2),
+	int NoBuySellSignal(-1);
+	
 { Init method is called when indicator is initialized;  code creates all order
 tickets at initialization }
 method void Init() 
 variables:  string SymbolToTrade ;
 	begin
-	print("Start....");
+	print("Init....");
 
 	SymbolToTrade = Symbol ;
 	
@@ -144,11 +181,73 @@ variables:  string SymbolToTrade ;
 	PlotOutputs("Init") ;
 	
 	end ;
+	
+Method void InitLastBarOnChart()
+	begin
+		if(BarCounter > 0) then
+			BarCounter -= 1
+		else
+			Begin
+				if(PositionInfo[0].Quantity > 0) then
+					ReplaceExitSellWithLimit(Close+ProfitTargetOffset)
+				Else if(PositionInfo[0].Quantity < 0) then
+					ReplaceExitBuyWithLimit(Close-ProfitTargetOffset)
+				Else
+					print("--Flat--");
+			End;
+	end;
 
-{ this method is called from the bottom of the code;  it issues the initial entry
- bracket and assigns event handlers to be called when entry order update events
- occur }
-method void IssueEntryBracket()
+Method int GetTradingStatus ()
+	begin
+		return PosOrderConflict;
+	end;
+
+
+{-----------------------Indicators and signals---------------------------}
+Method int GetBullBearStatus()
+	begin
+		CurFastTLAngMA = GZ_TLAngMA(Price, NormRatio, FastLength, TLLength);
+		if CurFastTLAngMA > 0 and CurFastTLAngMA > MaxFastTLAngMA then
+			MaxFastTLAngMA = CurFastTLAngMA 
+		else if CurFastTLAngMA < 0 and CurFastTLAngMA < MinFastTLAngMA then
+			MinFastTLAngMA = CurFastTLAngMA ;
+			
+		If CurFastTLAngMA > 0 then
+			Begin
+				If CurFastTLAngMA > ExtremeBullTLAng then
+					Begin
+						If Price > ResistanceP then
+							Return ExtremeBullish 
+						Else Return Bullish ;
+					End
+				Else if CurFastTLAngMA cross above CurFastTLAngMA[1] then
+					Return Bear2Bull ;				
+			End
+		else if CurFastTLAngMA < 0 then
+			Begin
+				If CurFastTLAngMA < ExtremeBearTLAng then
+					Begin
+						If Price < SupportP then
+							Return ExtremeBearish 
+						Else Return Bearish ;
+					End
+				Else if CurFastTLAngMA cross below CurFastTLAngMA[1] then
+					Return Bull2Bear ;		
+			End;
+			
+		Return NoBullNoBear ;
+	end;
+	
+Method int GetBuySellSignal()
+	begin
+		Return NoBuySellSignal ;
+	end;
+			
+	
+{-----------------------Orders and tickets---------------------------}
+
+{ method void IssueEntryBracket: entry with OCO stop buy and stop sell }
+method void IssueEntryOCOBracket()
 	begin
 
 	EntryBuyStopTicket.StopPrice = Close + EntryOffsetFromLastTrade ;
@@ -162,10 +261,8 @@ method void IssueEntryBracket()
 	
 	end ;
 
-{ this method is called from the bottom of the code;  it issues the initial entry
- bracket and assigns event handlers to be called when entry order update events
- occur }
-method void replaceExitBuyWithLimit(double prc)
+{ method void replaceExitBuyWithLimit: replace buy order for exit with limit price }
+method void ReplaceExitBuyWithLimit(double prc)
 	begin
 		ReplaceLmtTicket = ReplaceTicket.Create() ;
 		
@@ -176,20 +273,16 @@ method void replaceExitBuyWithLimit(double prc)
 		if ShortExitOrderSide1 <> NULL and ShortExitOrderSide1.State = OrderState.received
 			and ShortExitOrderSide1.Type = OrderType.limit then
 			ShortExitOrderSide1.Replace(ReplaceLmtTicket);
-
 		
 		if ShortExitOrderSide2 <> NULL and ShortExitOrderSide2.State = OrderState.received
 			and ShortExitOrderSide2.Type = OrderType.limit then
 			ShortExitOrderSide2.Replace(ReplaceLmtTicket);
-
 		
 		PlotOutputs("replaceExitBuyWithLimit") ;	
 	end ;
 
-{ this method is called from the bottom of the code;  it issues the initial entry
- bracket and assigns event handlers to be called when entry order update events
- occur }
-method void replaceExitSellWithLimit(double prc)
+{ method void replaceExitSellWithLimit: replace sell order for exit with limit price }
+method void ReplaceExitSellWithLimit(double prc)
 	begin
 		ReplaceLmtTicket = ReplaceTicket.Create() ;
 		
@@ -208,7 +301,21 @@ method void replaceExitSellWithLimit(double prc)
 		PlotOutputs("replaceExitSellWithLimit") ;	
 	end ;
 	
-{ event handler for long entry order update events }
+Method int GetOrderStatus()
+	begin
+		Return PosFlatNoOrder;
+	end;
+
+
+{-----------------------Positions---------------------------}
+Method int GetPosition() 
+	begin
+		Return PositionInfo[0].Quantity ;
+	end;
+
+{-----------------------Event Handlers---------------------------}
+	
+{ method void LongEntryUpdated: event handler for long entry order update events }
 method void LongEntryUpdated( Object EntryOCOOrder, OrderUpdatedEventArgs
  EntryOCOUpdateArgs ) 
 	begin
@@ -230,7 +337,7 @@ method void LongEntryUpdated( Object EntryOCOOrder, OrderUpdatedEventArgs
 	PlotOutputs("LongEntryUpdated") ;
 	end ;
 
-{ event handler for short entry order update events }
+{ method void ShortEntryUpdated: event handler for short entry order update events }
 method void ShortEntryUpdated( Object EntryOCOOrder, OrderUpdatedEventArgs
  EntryOCOUpdateArgs ) 
 	begin
@@ -252,30 +359,31 @@ method void ShortEntryUpdated( Object EntryOCOOrder, OrderUpdatedEventArgs
 	PlotOutputs("ShortEntryUpdated") ;
 	end ;
 
-{ when an exit order update event occurs, update plots }
+{ method void ExitOrderUpdate: when an exit order update event occurs, update plots }
 method void ExitOrderUpdate( Object ExitOrder, OrderUpdatedEventArgs
  ExitUpdateArgs )
 	begin
 	PlotOutputs("ExitOrderUpdate") ;
 	end ;
 
-
-{ when a position update occurs, update plots }
+{ method void PositionUpdate: when a position update occurs, update plots }
 method void PositionUpdate( Object PosProvide, PositionUpdatedEventArgs
  PosUpdateArgs )
 	begin
 	PlotOutputs("PositionUpdate") ;
 	end ;
 
-
-{ when an order update occurs, update plots }
+{ method void OrderUpdate: when an order update occurs, update plots }
 method void OrderUpdate( Object OrdProvide, OrderUpdatedEventArgs
  OrdUpdateArgs )
 	begin
 	PlotOutputs("OrderUpdate") ;
 	end ;
 
-{ update plots }
+
+{-----------------------Plots and output---------------------------}
+
+{ method void PlotOutputs: update plots }
 method void PlotOutputs(string message)
 	begin
 
@@ -405,7 +513,10 @@ method void PlotOutputs(string message)
 
 	end ;
 
-{ when indicator is uninitialized, cancel any open orders }
+
+{-----------------------Uninit and Cancellation---------------------------}
+
+{ method void Uninit: when indicator is uninitialized, cancel any open orders }
 method void Uninit( Object UninitSender, UnInitializedEventArgs UninitArgs ) 
 	begin
 
@@ -439,32 +550,23 @@ method void Uninit( Object UninitSender, UnInitializedEventArgs UninitArgs )
 	
 	end ; 
 
-{ issue entry bracket one time on the first real-time tick that occurs when the
- Start input is true }
+
+
+{ -----------------------------Main Application-------------------------- }
+
 {Once( GetAppInfo( aiRealtimeCalc ) = 1 and Start ) }
 Once(Currentbar = 1)
-		Begin
-		Print("Time init:", Currenttime);
-		Init();
-		End;
+	Begin
+	Print("Time init:", Currenttime);
+	Init();
+	End;
 
 if LastBarOnChart then
-		Begin
-			once IssueEntryBracket() ;
-			PlotOutputs("Start to trade") ;
-			if(BarCounter > 0) then
-				BarCounter -= 1
-			else
-				Begin
-					if(PositionInfo[0].Quantity > 0) then
-						replaceExitSellWithLimit(Close+ProfitTargetOffset)
-					Else if(PositionInfo[0].Quantity < 0) then
-						replaceExitBuyWithLimit(Close-ProfitTargetOffset)
-					Else
-						print("--Flat--");
-				end;
-				
-		End;
+	Begin
+		once IssueEntryOCOBracket() ;
+		PlotOutputs("LastBarOnChart working on") ;
+		InitLastBarOnChart();						
+	End;
 		
 { ** Copyright (c) 2001 - 2011 TradeStation Technologies, Inc. All rights reserved. ** 
   ** TradeStation reserves the right to modify or overwrite this analysis technique 
