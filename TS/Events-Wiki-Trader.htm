@@ -1,0 +1,699 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<head>
+    <title>Events - Wiki Trader</title>
+        
+    <META HTTP-EQUIV="Pragma" CONTENT="no-cache">
+    <META HTTP-EQUIV="Expires" CONTENT="-1">
+    <script language="javascript">
+      var contextPath = '/wiki';
+    </script>
+            <link rel="stylesheet" href="/wiki/styles/main-action.css?spaceKey=EasyLanguage" type="text/css" />
+            <link rel="shortcut icon" href="/wiki/images/icons/favicon.ico">
+    <link rel="icon" type="image/png" href="/wiki/images/icons/favicon.png">
+    <script src="/wiki/decorators/effects.js"></script>
+
+
+        
+
+            <link rel="stylesheet" href="/wiki/styles/main-action.css?pluginCompleteKey=com.atlassian.confluence.themes.leftnavigation%3Amain&stylesheetName=leftnav.css" type="text/css" />
+    <script language="JavaScript" type="text/JavaScript">
+<!--
+function MM_displayStatusMsg(msgStr) { //v1.0
+  status=msgStr;
+  document.MM_returnValue = true;
+}
+
+//-->
+</script>
+<script language="JavaScript" type="text/JavaScript">
+<!--
+function MM_openBrWindow(theURL,winName,features) { //v2.0
+  window.open(theURL,winName,features);
+}
+//-->
+</script>
+<script language="JavaScript" type="text/JavaScript">
+<!--
+function MM_swapImage() { //v3.0
+  var i,j=0,x,a=MM_swapImage.arguments; document.MM_sr=new Array; for(i=0;i<(a.length-2);i+=3)
+   if ((x=MM_findObj(a[i]))!=null){document.MM_sr[j++]=x; if(!x.oSrc) x.oSrc=x.src; x.src=a[i+2];}
+}
+//-->
+</script>
+
+
+<style type="text/css">
+<!--
+.sitesidedisc {  
+	font-family: verdana; 
+	font-size: 7pt; 
+	color: black; 
+	text-decoration:none;
+	}
+.smallunderline {
+	font-family: Verdana, Arial, Helvetica, sans-serif;
+	font-size: 9px;
+	font-style: normal;
+	line-height: normal;
+	font-weight: normal;
+	font-variant: normal;
+	color: #000000;
+	text-decoration: underline;
+}
+	
+	-->
+</style>
+
+</head>
+
+            <body onload="placeFocus()">
+    <table width="100%" border="0" cellspacing="0" cellpadding="0">
+  <tr>
+    <td align="center" bgcolor="#FFFFFF">
+<table width="951" height="49" border="0" align="center" cellpadding="0" cellspacing="0">
+          <tr>
+            <td width="350" height="61" valign="top"><a href="http://www.tradestation.com/community" target="_top"><img src="https://community.tradestation.com/support/images/logo_new_4.gif" width="350" height="55" border="0"></a></td>
+            <td height="19" align="center" valign="middle"><a href="https://www.tradestation.com/newaccount/preaccount.asp" onMouseOut="MM_swapImgRestore()" onMouseOver="MM_swapImage('999','','https://www.tradestation.com/support/images/Masthead_over_01.gif',1)"></a></td>
+          </tr>
+        </table></td>
+  </tr>
+</table>
+<table width="100%" border="0" cellpadding="0" cellspacing="0">
+  <tr>
+    <td height="5" valign="bottom" background="https://www.tradestation.com/support/images/bkg2.gif"><img src="https://www.tradestation.com/support/images/spacer.gif" width="2" height="5"></td>
+  </tr>
+  <tr>
+    <td height="1" valign="bottom" bgcolor="000000"><img src="https://www.tradestation.com/support/images/spacer.gif" width="1" height="1"></td>
+  </tr>
+</table>
+
+
+
+<div id="PageContent">
+    <div id="topBar" class="topBar" style="height:2.2em;" >
+        <div class="topBarDiv" style="float:left; margin-top:0.5em; white-space: nowrap;">
+                        &nbsp;             
+    <script language="JavaScript">
+        function showBreadcrumbsEllipsis()
+        {
+            document.getElementById('breadcrumbsEllipsis').style.display = 'none';
+            document.getElementById('breadcrumbsExpansion').style.display = 'inline';
+        }
+    </script>
+
+                <a href="/wiki/dashboard.action">Dashboard</a>
+     &gt;
+
+                        <a href="/wiki/display/EasyLanguage">EasyLanguage</a> &gt;
+        
+        
+        
+        
+        
+                                    <span id="breadcrumbs"><span id="breadcrumbsEllipsis"/><a href="#" onclick="showBreadcrumbsEllipsis();return false;" title="Home&nbsp;&gt;&nbsp;2. Using EasyLanguage">...</a></span><span id="breadcrumbsExpansion" style="display:none;"><a href='/wiki/display/EasyLanguage/Home'>Home</a>&nbsp;&gt;&nbsp;<a href='/wiki/display/EasyLanguage/2.+Using+EasyLanguage'>2. Using EasyLanguage</a></span>&nbsp;&gt;&nbsp;</span><a href='/wiki/display/EasyLanguage/Programming+Techniques'>Programming Techniques</a>&nbsp;&gt;&nbsp;<a href="/wiki/display/EasyLanguage/Events">Events</a>
+                                                                        
+            </div>
+        <div style="float:right; white-space: nowrap;">
+                <form method="POST" action="/wiki/dosearchsite.action" name="searchForm" style="padding: 1px; margin: 1px">
+        <input type="hidden" name="quickSearch" value="true" />
+        
+        <input type="hidden" name="searchQuery.spaceKey" value="conf_global" />
+        <input type="text" accessKey="s" name="searchQuery.queryString" size="25"/>
+        <input type="submit" value="Search"/>
+    </form>
+        </div>
+    </div>
+    <table cellpadding="0" cellspacing="0" width="100%" style="margin-top:0px;">
+        <tr>
+                    <td width="150px" valign="top" class="sidebar" nowrap>
+                <div class="leftnav">
+                     <div id="logodiv">
+                        					        					                          </div>
+                      <div id="menu">
+                        
+                        
+<h5><a href="#" onCLick="toggleVisibility('pagenav'); return false;"><img src="/wiki/images/icons/docs_16.gif" width=16 height=16 border=0 align=absmiddle > Page Operations</a></h5>
+<div id="pagenav"class="subnav" style="display:none;">
+   <ul>
+	   		   <li><a  id="viewPageLink"  href="/wiki/display/EasyLanguage/Events"  class="current"    accessKey="v">View</a></li>
+	   		   <li><a  id="editPageLink"  href="/wiki/pages/editpage.action?pageId=35024"    accessKey="e">Edit</a></li>
+	   		   <li><a  href="/wiki/pages/viewpageattachments.action?pageId=35024"    accessKey="a"><u>A</u>ttachments (0)</a></li>
+	   		   <li><a  id="viewPageLink"  href="/wiki/pages/pageinfo.action?pageId=35024"    accessKey="i"><u>I</u>nfo</a></li>
+	      </ul>
+</div>
+
+                        
+                        
+<h5><a href="#" onCLick="toggleVisibility('browsenav'); return false;"><img src="/wiki/images/icons/browse_space.gif" height="16" width="16" border="0" align="absmiddle" title="Find Content"> Browse Space</a></h5>
+<div id="browsenav"class="subnav" style="display:none;">
+	<ul>
+					<li><a href="/wiki/pages/listpages.action?key=EasyLanguage" >Pages</a></li>
+					<li><a href="/wiki/labels/listlabels-heatmap.action?key=EasyLanguage" >Labels</a></li>
+					<li><a href="/wiki/spaces/listattachmentsforspace.action?key=EasyLanguage" >Attachments</a></li>
+					<li><a href="/wiki/spaces/viewmailarchive.action?key=EasyLanguage" >Mail</a></li>
+					<li><a href="/wiki/pages/viewrecentblogposts.action?key=EasyLanguage" >News</a></li>
+					<li><a href="/wiki/pages/templates/listpagetemplates.action?key=EasyLanguage" >Templates</a></li>
+					<li><a href="/wiki/spaces/viewspacesummary.action?key=EasyLanguage" >Advanced</a></li>
+			</ul>
+</div>
+
+<h5><a href="#" onCLick="toggleVisibility('addcontent'); return false;"><img src="/wiki/images/icons/add_16.gif" height="16" width="16" border="0" align="absmiddle" title="Find Content"> Add Content</a></h5>
+<div id="addcontent" class="subnav" style="display:none;">
+    <ul>
+										
+									<li><a href="/wiki/pages/createpage.action?spaceKey=EasyLanguage&fromPageId=35024"><img src="/wiki/images/icons/add_page_16.gif" height="16" width="16" border="0" align="absmiddle" title="Add Page">&nbsp;Add Page</a></li>
+						    			</ul>
+
+</div>
+
+                      </div>
+                </div>
+            </td>
+                    <td valign="top" width="100%">
+                <!-- Inner content table -->
+                <table width="100%" cellpadding="2" cellspacing="0">
+                    <tr>
+                        <td colspan="2" style="background-color:#F0F0F0">
+                           <div>
+                                                                                                <div style="float:right; margin-right:5px;">
+                                                                            
+    <span class="smalltext">
+                    Welcome <a href="/wiki/display/~61427">GerryZhouTS</a> |
+
+                            <a href="/wiki/users/viewuserhistory.action" onClick="window.open(this.href,'user_history', 'width=620, height=250, resizable'); return false;" title="View History">History</a> |
+            
+            <a href="/wiki/users/viewuserprofile.action?username=61427">Preferences</a> |
+
+            
+            <a href="/wiki/logout.action" id="logout">Log Out</a>&nbsp;
+            </span>
+                                                <a href="/wiki/display/EasyLanguage/Events?decorator=printable" rel="nofollow"><img src="/wiki/images/icons/print_16.gif" width="16" height="16" hspace="1" vspace="1" align="absmiddle" border="0" alt="View a printable version of the current page." title="View a printable version of the current page."/></a>
+
+                                                                                
+            <a href="/wiki/pages/doexportpage.action?pageId=35024&type=TYPE_PDF" rel="nofollow">
+        <img src="/wiki/images/icons/attachments/pdf.gif" height="16" width="16" border="0" align="absmiddle" title="Export Page as PDF"></a>
+                                                                                                                </div>
+                                                            </div>
+                            <div style="float:left;">
+                            </div>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td width="100%" valign="top" style="border-left:1px solid #CCC; border-top:1px solid #CCC;">
+                            <div style="margin-bottom:10px; margin-left:10px;">
+                                <div style="float:right; margin-right:5px;">
+
+    
+                                        <a href="/wiki/labels/addfavourite.action?entityId=35024" title="Add this page to your favourites list"><img border="0" src="/wiki/images/icons/star_grey.gif" width="16" height="16" align="absmiddle"></a>
+                        
+    
+                                                            <a href="/wiki/pages/addpagenotification.action?pageId=35024" title="Watch this page"><img border="0" src="/wiki/images/icons/watch_16.gif" align="absmiddle"></a>
+                                        </div>
+                                <div class="logoSpaceLink" style="margin-top: 5px; margin-bottom:5px">            <a href="/wiki/display/EasyLanguage">EasyLanguage</a>    </div>
+                                <div class="pagetitle" style="padding: 0px; margin-bottom:5px; margin-top: 2px;">
+                                                                            Events
+                                    </div>
+                            </div>
+                                                        <div id="content" style="margin-left:10px;" >
+                                <!--
+    Root decorator: all decisions about how a page is to be decorated via the
+                    inline decoration begins here.
+-->
+
+
+
+<!--
+    Switch based upon the context. However, for now, just delegate to a decorator
+    identified directly by the context.
+-->
+
+
+    
+    <!--[if gte IE 5.5000]>
+<script language="JavaScript">
+function correctPNG() // correctly handle PNG transparency in Win IE 5.5 or higher.
+   {
+   for(var i=0; i<document.images.length; i++)
+      {
+	  var img = document.images[i]
+	  var imgName = img.src.toUpperCase()
+	  if (imgName.substring(imgName.length-3, imgName.length) == "PNG")
+	     {
+		 var imgID = (img.id) ? "id='" + img.id + "' " : ""
+		 var imgClass = (img.className) ? "class='" + img.className + "' " : ""
+		 var imgTitle = (img.title) ? "title='" + img.title + "' " : "title='" + img.alt + "' "
+		 var imgStyle = "display:inline-block;" + img.style.cssText
+		 if (img.align == "left") imgStyle = "float:left;" + imgStyle
+		 if (img.align == "right") imgStyle = "float:right;" + imgStyle
+		 if (img.parentElement.href) imgStyle = "cursor:hand;" + imgStyle
+		 var strNewHTML = "<span " + imgID + imgClass + imgTitle
+		 + " style=\"" + "width:" + img.width + "px; height:" + img.height + "px;" + imgStyle + ";"
+	     + "filter:progid:DXImageTransform.Microsoft.AlphaImageLoader"
+		 + "(src=\'" + img.src + "\', sizingMethod='scale');\"></span>"
+		 img.outerHTML = strNewHTML
+		 i = i-1
+	     }
+      }
+   }
+window.attachEvent("onload", correctPNG);
+</script>
+<![endif]-->
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<style>
+    .imageLink{
+        margin:2px;
+        vertical-align: bottom;
+        float:left;
+    }
+
+        /*Overwritten styles in the main.css*/
+        .greybox {
+            border: 0px;
+            border-top: 1px solid #ddd;
+            border-bottom: 1px solid #ddd;
+            background-color: #F0F0F0;
+	        padding: 3px;
+	        margin: 0;
+        }
+</style>
+
+
+
+
+
+
+
+
+
+
+
+    
+<div id="pageInfoBar">
+   <!--<div style="float:right;">
+          <div class="greybox"><center>
+    
+                                        <a href="/wiki/labels/addfavourite.action?entityId=35024" title="Add this page to your favourites list"><img border="0" src="/wiki/images/icons/star_grey.gif" width="16" height="16" align="absmiddle"></a>
+                        
+    
+                                                            <a href="/wiki/pages/addpagenotification.action?pageId=35024" title="Watch this page"><img border="0" src="/wiki/images/icons/watch_16.gif" align="absmiddle"></a>
+                                        </center></div>
+      </div>-->
+    <div class="smalltext">
+                    Added by     <a href="/wiki/display/~9275">mmillar</a>, last edited by     <a href="/wiki/display/~9275">mmillar</a> on May 19, 2012
+                      &nbsp;(<a href="/wiki/pages/diffpages.action?pageId=35024&originalId=37662">view change</a>)
+              
+        
+ 
+<style type="text/css">
+div.auto_complete {
+    width: 350px;
+    background: #fff;
+}
+
+div.auto_complete ul {
+    border: 1px solid #888;
+    margin: 0;
+    padding: 0;
+    width: 100%;
+    list-style-type: none;
+}
+
+div.auto_complete ul li {
+    margin: 0;
+    padding: 3px;
+}
+
+div.auto_complete ul li.selected {
+    background-color: #ffb;
+}
+
+div.auto_complete ul strong.highlight {
+    color: #800;
+    margin: 0;
+    padding: 0;
+}
+</style>
+
+
+<!-- Delay the loading of the external javascript file needed for labels (as it takes too long to load and visibly holds loading of the page body) -->
+<!-- To do this without javascript errors over undefined functions, we need to declare stubs here (that are overrided later by the proper implementations) -->
+<script language="JavaScript" type="text/javascript">
+    function doAddLabel(hideTextfieldAfterAddParam)
+    {
+        // stub
+    }
+
+    function onAddLabel()
+    {
+        // stub
+    }
+
+    function showLabelsInput()
+    {
+        // stub
+    }
+</script>
+
+<!-- This is a hack to work around an apparent SiteMesh bug - http://jira.opensymphony.com/browse/SIM-198 -->
+
+
+<span class="error"><span class="errorMessage" id="errorSpan"></span></span>
+<form name="addLabelForm" method="" action="" onSubmit="doAddLabel(false); return false;" style="margin: 0px; padding: 0px">
+    <div style="float: left">Labels:&nbsp;</div>
+    <div id="labelsInfo" style="float: left; width: 90%">
+        <span id="labelsList">
+                              <a href="/wiki/label/EasyLanguage/events">events</a>                    </span>
+                    <span id="editLabelsLink" class="inline-control-link" style="display: none;">
+            <a href="" onclick="onAddLabel(); showLabelsInput(); return false;">EDIT</a>
+        </span>
+            </div>
+    <br clear="all"/><!-- Do not remove this line-break. You will make Safari cry. -->
+    <div id="labelInputSpan" style="display: none; clear: both;">
+        <br/>
+        <div style="border: 1px solid #cccccc; padding: 8px; align: center; background-color: #f0f0f0">
+
+        <div id="labelOperationErrorContainer" style="display: none"><span class="error"><span class="errorMessage" id="labelOperationErrorMessage"></span></span></div>
+
+        <table width="100%">
+            <tr>
+                <td>
+                    <div class="formtitle" style="padding-bottom: 3px; font-size: 13px;">Add Labels</div>
+                </td>
+                <td align="right"><div id="waitImageAndStatus" style="display: none; height: 16px;"><img alt="Wait Image" border=0 align="absmiddle" src="/wiki/images/icons/wait.gif">&nbsp;<span id="labelOperationStatus" class="smalltext" style="vertical-align: middle"></span></div></td>
+            </tr>
+            <tr><td width="50%">
+                    Enter labels to add to this page:<br/>
+        <input autocomplete="off" type="text" id="labelName" name="labelsString" value="" class="monospaceInput" size="40">
+        <input type="submit" onclick="doAddLabel(false); return false;" value="Add"><input type="button" onclick="doAddLabel(true); return false;" value="Done">
+        <div class="auto_complete" id="labelsAutocompleteList"></div>
+        <div class="smalltext">
+            <em>Tip:</em> Looking for a label? Just start typing.
+        </div>
+        </td>
+            <td width="50%" valign="top">
+                <div id="suggestedLabelsSpan"></div>
+            </td>
+        </tr></table>
+        </div>
+    </div>
+</form>
+    <script type="text/javascript">
+        // if there is javascript support, enable the [Edit] link that enables AJAX label adding/removing functionality
+        if (document.getElementById('editLabelsLink'))
+        {
+            document.getElementById('editLabelsLink').style.display = 'inline';
+        }
+    </script>
+    </div>
+</div>
+<br clear="all">
+
+
+<div class="wiki-content" style="margin-right:10px;">
+   <!-- wiki content -->
+            <p>An <font color="blue">Event</font> is a trigger that causes all or part of your code to run.</p>
+
+<p>Prior to TradeStation 9, only two events existed.  <br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;1. A new tick arriving from the market.  <br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;2. End of bar.</p>
+
+<p>These two events caused (and still cause) your code to be processed from top to bottom (with exceptions, see <a href="/wiki/display/EasyLanguage/Understanding+how+EasyLanguage+Code+is+Processed" title="Understanding how EasyLanguage Code is Processed">Understanding how EasyLanguage Code is Processed</a>).</p>
+
+
+<p>In TradeStation 9 a whole new set of Events were introduced.  Now an Event can be anything from '1 second has passed' to 'my order was filled' to 'the fifth level of the market depth window has changed'.  With these new Events, rather than your whole code being processed, only a specific section of EasyLanguage code, called a Method, is run.</p>
+
+
+<p>As an example, this piece of EasyLanguage code declares a timer and sets a Method to be processed whenever the Timer <font color="blue">Event</font> is triggered.</p>
+<div class="code"><div class="codeContent">
+<pre class="code-java">using elsystem;
+
+<span class="code-keyword">var</span>: Timer Timer1( NULL );
+
+
+method void Timer1_Elapsed( <span class="code-object">Object</span> sender, TimerElapsedEventArgs args ) 
+begin
+	<span class="code-comment">//Do something on the event
+</span>end;
+
+
+once 
+begin
+	Timer1 = <span class="code-keyword">new</span> elsystem.Timer;
+		Timer1.Interval = 1000;
+		Timer1.AutoReset = <span class="code-keyword">true</span>;
+		Timer1.Enable = <span class="code-keyword">true</span>;
+		Timer1.Name = <span class="code-quote">"Timer1"</span>;
+	
+	Timer1.elapsed += Timer1_Elapsed;
+end;</pre>
+</div></div>
+<p>In the above code the Timer is declared as <em>Timer1</em>.  There is an event called <em>elapsed</em> which is part of the Timer Class.  So the line </p>
+
+<p>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Timer1.elaped += Timer1_Elapsed </p>
+
+<p>says that if the <em>elapsed</em> Event is triggered then run the <em>Timer1_Elapsed</em> method.</p>
+
+<p>Earlier in the code the line</p>
+
+<p>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;method void Timer1_Elapsed( Object sender, TimerElapsedEventArgs args ) </p>
+
+<p>declares the method which will be called whenever the <em>elapsed</em> Event is triggered.</p>
+
+<p>Note the parameters used when calling an Event method.  In the above example we have 'Object sender' and 'TimerElapsedEventsArgs args'.  These are used to pass system information about the Event to the method.  Sometimes these parameters are useful, and other times not, but they are always required parameters.  Don't get hung up on these parameters.  Just be aware that they must be there, and if you don't know what they are just copy and paste them from the documentation.
+<br clear="all" /></p>
+
+<p><br clear="all" /></p>
+<h3><a name="Events-ProgrammingNotes%3A"></a>Programming Notes:</h3>
+<ol>
+	<li>The terminology for talking about Events is not exact.  A new tick arriving from the market or an end of bar signal may be termed an event (with a small e).  These cause your code to be run from top to bottom.  An Event (with a capital E, introduced in TradeStation 9) is caused by something else (i.e. not a new tick or end of bar) and only processes a specific section of EasyLanguage code.
+<br clear="all" />
+<br clear="all" /></li>
+	<li>Events should be setup only <em>after</em> the Object is fully declared.  In the above example, we create the Timer, set its properties, and then declare the Event.  It you declare the Event before the properties, then it's possible that the Event will fire before the object is fully setup, resulting in an error.
+<br clear="all" />
+<br clear="all" /></li>
+	<li>Events (with a capital E) do not happen during normal code processing.  If an order is filled, for example, then your normal code will run until the end and then the method associated with the Event will be run.  Events do not interrupt normal code processing, nor do Events interrupt methods or other Events.
+<br clear="all" />
+<br clear="all" /></li>
+	<li>There are at least two consequences of number 3.  First, the <a href="/wiki/display/EasyLanguage/BarStatus" title="BarStatus">BarStatus</a> reserved word will always return a -1 value if used within an Event.  This is because you are not processing intrabar or end-of-bar, but 'out of time'.  Second, any variables that are modified by Events must be declared as <a href="/wiki/display/EasyLanguage/IntrabarPersist" title="IntrabarPersist">IntrabarPersist</a>.
+<br clear="all" /></li>
+</ol>
+
+
+<p><br clear="all" /></p>
+<h3><a name="Events-RelatedPages%3A"></a>Related Pages:</h3>
+<ul>
+	<li><a href="/wiki/display/EasyLanguage/BarStatus" title="BarStatus">BarStatus</a> reserved word</li>
+	<li><a href="/wiki/display/EasyLanguage/IntrabarPersist" title="IntrabarPersist">IntrabarPersist</a> reserved word
+<br clear="all" />
+<br clear="all" /></li>
+	<li><a href="/wiki/display/EasyLanguage/Timer+Class" title="Timer Class">Timer Class</a>
+<br clear="all" />
+<br clear="all" /></li>
+	<li><a href="/wiki/display/EasyLanguage/Starting+TradeStation+9.0" title="Starting TradeStation 9.0">Starting TradeStation 9.0</a></li>
+	<li><a href="/wiki/display/EasyLanguage/Understanding+how+EasyLanguage+Code+is+Processed" title="Understanding how EasyLanguage Code is Processed">Understanding how EasyLanguage Code is Processed</a>
+<br clear="all" /></li>
+</ul>
+
+
+<p><br clear="all" /></p>
+</div>
+
+<!--
+<rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+         xmlns:dc="http://purl.org/dc/elements/1.1/"
+         xmlns:trackback="http://madskills.com/public/xml/rss/module/trackback/">
+<rdf:Description
+    rdf:about="https://clientcenter.tradestation.com/wiki/display/EasyLanguage/Events"
+    dc:identifier="https://clientcenter.tradestation.com/wiki/display/EasyLanguage/Events"
+    dc:title="Events"
+    trackback:ping="https://clientcenter.tradestation.com/wiki/rpc/trackback/35024"/>
+</rdf:RDF>
+-->
+
+                        <!--
+    Root decorator: all decisions about how a page is to be decorated via the
+                    inline decoration begins here.
+-->
+
+
+
+<!--
+    Switch based upon the context. However, for now, just delegate to a decorator
+    identified directly by the context.
+-->
+
+
+    
+    
+
+<div class="wiki-content" style="margin-right:10px;">
+    <p/>
+    <div class="greybox">
+        <img src="/wiki/images/icons/comment_16.gif" height="16" width="16" border="0" align="absmiddle"/>
+                    0 comments
+                        </div>
+</div>
+                            </div>
+                        </td>
+                            
+    
+        
+    
+                                                </tr>
+                </table>
+                <!-- End inner content table -->
+            </td>
+        </tr>
+    </table>
+</div>
+  	                                <div class="bottomshadow"></div>
+  	<div id="poweredby" class="smalltext">
+		Powered by <a href="http://www.atlassian.com/wiki/?clicked=footer" class="smalltext">Atlassian Confluence</a>, the <a href="http://www.atlassian.com/wiki/?clicked=footer" class="smalltext">Enterprise Wiki</a>. (Version: 2.2.9 Build:#527 Sep 07, 2006)
+		-
+		<a href="http://jira.atlassian.com/secure/BrowseProject.jspa?id=10470" class="smalltext">Bug/feature request</a>
+		-
+		<a href="/wiki/administrators.action">Contact Administrators</a>
+		<br/>
+	</div>
+
+<!-- delay the loading of large javascript files to the end so that they don't interfere with the loading of page content -->
+<span style="display: none">
+    <script type="text/javascript" language="JavaScript">var domainName = 'https://clientcenter.tradestation.com/wiki'; var entityId = '35024'; var spaceKey = 'EasyLanguage'</script>
+    <script type="text/javascript" language="JavaScript" src="/wiki/labels-javascript"></script>
+    <script>new Ajax.Autocompleter('labelName', 'labelsAutocompleteList', '35024', { tokens: new Array(',', ' '), dwrFunction: GenerateAutocompleteLabelsListForEntity.autocompleteLabels});</script>
+</span>
+
+<style type="text/css">
+            <!--
+            * { text-align: left; }
+            div { font-family: Arial, Helvetica, sans-serif; font-size: 11px; font-weight:normal; }
+            .community-footer {margin: 0px; padding: 0px; border:0px; background-color: #FFFFFF ; width: 100%;}
+            p { font-size: 100%; text-align: left;}
+            .footer { font-style:normal; font-family: Arial, Helvetica, sans-serif; font-size: 8pt; color:#000000; margin: 10px;}
+            .footer A {color: #055bb0; }
+            .footer A:link { text-decoration: none; }
+            .footer A:visited { text-decoration: none; }
+            .footer .organization { margin: 1em 0px 10px; font-size: 14px; font-weight: bold; color: #055bb0; }
+            .footer .organization .calling { font-weight: bold; color: #055bb0; font-family: Arial, Helvetica, sans-serif; font-size: 14px;}
+            .footer .organization .tel { color: #357510; }
+            .footer .nav-footer { overflow: hidden; }
+            .footer .nav-footer UL { padding: 0px; margin: 0px; }
+            .footer .nav-footer LI { padding-bottom: 0px; padding-left: 0px; padding-right: 12px; padding-top: 0px; list-style-type:none; float:left; list-style-image:none; }
+
+            .footer-row1 {border-bottom: #d8d8d8 1px solid; padding-bottom: 20px; padding-left: 0px; padding-right: 0px; overflow: hidden; padding-top: 20px;}
+            .footer-row1 .col1 { width: 65%; float: left; }
+            .footer-row1 .col2 { width: 31%; float:right; }
+
+            .footer-row2 {margin: 0px; padding-bottom: 10px; padding-left: 0px; padding-right: 0px; overflow: hidden; padding-top: 20px;}
+            .footer-row2 .col1 { width: 80%; float:left; }
+
+            .information { padding-bottom:10px;}
+
+            .button { cursor: pointer; }
+            .button A { test-align: center; line-height: 1; text-transform: uppercase; outline-style:none; outline-color:invert; outline-width:medium;
+            font-family:Arial, Helvetica, sans-serif; color: #fff !important; font-size: 11px; }
+            .button SPAN { padding-bottom: 0px; padding-left:6px; padding-right:16px; padding-top: 0px; display:block; white-space:nowrap; }
+            .grey26px.button { height: 26px; }
+            .grey26px.button A { background: url(https://community.tradestation.com/images/ui/widgets/button/button-sprite-left.png) no-repeat left 0px;
+            background-position: left -300px; }
+            .grey26px.button SPAN { line-height: 26px; height: 26px; background-position: -300px; }
+
+            -->
+
+            </style>
+            <div class='community-footer'>
+            <div class='footer'>
+            <div class='footer-row1 clearfix'>
+            <div class="col1">
+            <div class="organization vcard">
+            <p class='calling'>Call a <span class="fn org">TradeStation</span> Specialist <span class="tel">800.808.9336</span></p>
+            </div>
+            </div>
+            <div class="signup-news col2" style="display: none;">
+            <h3>Newsletter Signup</h3>
+            <div>
+            <fieldset><input type="text" class="text" value="Enter your e-mail address" />
+            <div class="button grey26px login">
+            <a href="#"><span>Sign Up</span> </a>
+            </div>
+            </fieldset>
+            </div>
+            </div>
+            </div>
+            <div class='footer-row2'>
+            <div class="nav-footer col1">
+            <ul>
+            <li><a href="https://www.tradestation.com/sitemap" target="_blank">Sitemap</a></li>
+            <li><a href="https://www.tradestation.com/contact-us" target="_blank">Contact Us</a></li>
+            <li><a href="https://www.tradestation.com/about-us" target="_blank">About Us</a></li>
+            <li><a href="https://www.tradestation.com/other-information#terms-of-use" target="_blank">Terms of Use</a></li>
+            <li><a href="https://www.tradestation.com/other-information#online-security" target="_blank">Online Security</a></li>
+            <li><a href="https://www.tradestation.com/other-information#online-security" target="_blank">Privacy Policy</a></li>
+            <li><a href="https://www.tradestation.com/other-information#customer-agreements" target="_blank">Customer Agreements</a></li>
+            <li><a href="https://www.tradestation.com/other-information" target="_blank">Other Information</a></li>
+            <li><a href="https://www.tradestation.com/careers" target="_blank">Careers</a></li>
+            </ul>
+            </div>
+            </div>
+            <div class="information">
+            <p><strong>IMPORTANT INFORMATION:</strong></p>
+            <p>No offer or solicitation to buy or sell securities, securities derivative, futures products or off-exchange foreign currency (forex) transactions of any kind, or any type of trading or investment advice, recommendation or strategy, is made, given or in any manner endorsed by any TradeStation affiliate and the information made available on this Web site is not an offer or solicitation of any kind in any jurisdiction where any TradeStation affiliate is not authorized to do business including, but not limited to Japan.</p>
+            <p>Past performance, whether actual or indicated by historical tests of strategies, is no guarantee of future performance or success. There is a possibility that you may sustain a loss equal to or greater than your entire investment regardless of which asset class you trade (equities, options futures or forex), therefore, you should not invest or risk money that you cannot afford to lose. Options trading is not suitable for all investors. Your account application to trade options will be considered and approved or disapproved based on all relevant factors, including your trading experience. Please click here to view the document titled <a href="http://www.optionsclearing.com/about/publications/character-risks.jsp" target="_blank">Characteristics and Risks of Standardized Options</a>. Before trading any asset class, customers must read the relevant risk disclosure statements on our&nbsp;<a href="https://www.tradestation.com/other-information" target="_blank">Other Information</a>&nbsp;page. System access and trade placement and execution may be delayed or fail due to market volatility and volume, quote delays, system and software errors, Internet traffic, outages and other factors.</p>
+            <p>TradeStation Group, Inc. Affiliates: All proprietary technology in TradeStation is owned by TradeStation Technologies, Inc. Equities, equities options, and commodity futures products and services are offered by TradeStation Securities, Inc. a member of <a href="http://www.nyse.com/" target="_blank">NYSE</a>, <a href="http://www.finra.org" target="_blank">FINRA</a>,&nbsp;<a href="http://www.nfa.futures.org" target="_blank">NFA</a> and <a href="http://www.sipc.org" target="_blank">SIPC</a>. TradeStation Securities, Inc.&rsquo;s SIPC coverage is available only for equities and equities options accounts. Forex products and services are offered by TradeStation Forex, a division of IBFX, Inc. (Member NFA)&nbsp; </p>
+            <!-- <p>Copyright &copy; 2001-2011 TradeStation Group, Inc.</p> -->
+            </div>
+        <!-- Discussions Google Analytics Tracking -->
+	<script type="text/javascript">
+
+		var _gaq = _gaq || [];
+		_gaq.push(['_setAccount', 'UA-2089198-22']);
+		_gaq.push(['_trackPageview']);
+
+		(function () {
+			var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+			ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+			var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+		})();
+
+	</script>
+    <!-- TSCOM Google Analytics Tracking -->
+    <script type="text/javascript">
+        var _gaq = _gaq || [];
+        _gaq.push(['_setAccount', 'UA-2089198-1']);
+        _gaq.push(['_trackPageview']);
+
+        (function () {
+            var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+            ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+            var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+        })();
+    </script>
+
+            </div>
+            </div>
+
+</body>
+</html>
