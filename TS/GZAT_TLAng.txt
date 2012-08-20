@@ -39,31 +39,33 @@ inputs:
 	 trading }
 	int TradeSize( 1 ), { the size of the position, in number of contracts or
 	 shares, that is to be entered and exited }
-	double EntryOffsetFromLastTrade( 0.5 ), { the amount to offset the two entry
+	int TradingMode( 0 ), {1=LongOnly, -1=ShortOnly, 0=LongShortBoth}
+	double EntryOffsetFromLastTrade( 0.0003 ), { the amount to offset the two entry
 	 orders from the price of the first trade that follows setting the Start input
 	 to true }
-	double ProfitTargetOffset( 1 ), { the amount by which to offset the profit
+	double ProfitTargetOffset( 0.0003 ), { the amount by which to offset the profit
 	 target order from the average entry price }
-	double StopLossOffset( 0.5 ), { the amount by which to offset the stop-loss
+	double StopLossOffset( 0.0025 ), { the amount by which to offset the stop-loss
 	 order from the average entry price }
 	Price( Close ),
 	double ResistanceP(HighD(3)),
 	double SupportP(LowD(3)),
-	NormRatio(100),
+	NormRatio(30000),
 	int FastLength( 4 ),
-	int SlowLength( 9 ),
+	int SlowLength( 30 ),
 	int TLLength( 4 ),
-	double ExtremeBullTLAng(45),
-	double ExtremeBearTLAng(-45),
+	double ExtremeBullTLAng(40),
+	double ExtremeBearTLAng(-40),
 	int MaxBarsSinceEntry(5), {Bar count since last entry, this is the point to decide liquidate or not}
 	
+	string LogFileName("C:\Users\Gerry\Documents\ts_log\TS_Log_" + NumtoStr(Date,0) + ".log"),
 	bool CancelOpenOrdersOnUninitializeEvent( true ) ; { set this input to true if
 	 it is desired to cancel any open orders when the indicator is uninitialized - 
 	 when its status is turned off or it is removed from the Chart, RadarScreen, or
 	 OptionStation window;  set this input to false if it is desired to leave open
 	 orders active }
 
-consts:
+consts:	
 	{Position and Order status}
 	int PosFlatNoOrder(1),
 	int PosFlatEnOrder(2),
@@ -83,8 +85,12 @@ consts:
 	int NoBullNoBear(-1),
 	{Buy Sell Signal}
 	int BuySignal(1),
-	int SellSignal(2),
-	int NoBuySellSignal(-1);	 
+	int SellSignal(-1),
+	int NoBuySellSignal(0),
+	{Trading Mode}
+	int LongOnly(1),
+	int ShortOnly(-1),
+	int BothLongShort(0);
 
 variables:
 	OrderTicket EntryBuyStopTicket( NULL ),
@@ -224,14 +230,18 @@ Method void InitLastBarOnChart()
 					print("--Flat--");
 			End;}
 		BullBearStatus = CheckBullBearStatus() ;
-		if CheckTradingStatus () = PosOrderConflict then 
-			begin
-				CancelAllOrders();
-				LiquidateAll();
-				RaiseRunTimeError("PosOrderConflict Error Detected.") ;
-			end;
+		TradingStatus = CheckTradingStatus() ;		
 	end;
-
+	
+Method void To_Log(string message, bool to_console)
+	Begin
+		If to_console then
+			Print(message) ;
+		FileAppend(LogFileName, message + Newline);
+	End ;
+	
+	
+{-----------------------Trade-------------------------------------------}
 Method int CheckTradingStatus ()
 Variables: int cur_pos;
 	begin
@@ -261,6 +271,96 @@ Variables: int cur_pos;
 		return PosOrderConflict ;
 	end;
 
+Method void TradeOnPosFlatNoOrder()
+variables: int buy_sell_signal;
+	begin
+		buy_sell_signal = CheckBuySellSignal();
+		switch(buy_sell_signal)
+			Begin
+				Case BuySignal :
+					if TradingMode = LongOnly or TradingMode = BothLongShort then
+						IssueEntryLongLimit(Last - EntryOffsetFromLastTrade) ;
+					Break ;
+				Case SellSignal :
+					if TradingMode = ShortOnly or TradingMode = BothLongShort then
+						IssueEntryShortLimit(Last + EntryOffsetFromLastTrade) ;
+					Break ;
+			End ;
+	end;
+
+Method void TradeOnPosFlatEnOrder()
+variables: int buy_sell_signal;
+	begin
+		buy_sell_signal = CheckBuySellSignal();
+		switch(buy_sell_signal)
+			Begin
+				Case BuySignal :
+					if TradingMode = LongOnly or TradingMode = BothLongShort then
+						ReplaceEntryLongWithMarket() ;
+					Break ;
+				Case SellSignal :
+					if TradingMode = ShortOnly or TradingMode = BothLongShort then
+						ReplaceEntryShortWithMarket() ;
+					Break ;
+			End ;
+	end;
+	
+Method void TradeOnPosLongNoOrder()
+	begin
+		CancelAllOrders();
+		LiquidateAll();
+		RaiseRunTimeError("TradeOnPosLongNoOrder Error Detected.") ;
+	end;
+	
+Method void TradeOnPosLongExOrder()
+variables: int buy_sell_signal;
+	begin
+		buy_sell_signal = CheckBuySellSignal();
+		switch(buy_sell_signal)
+			Begin
+				Case BuySignal :					
+					Break ;
+				Case SellSignal :
+					ReplaceExitSellWithMarket() ;
+					Break ;
+			End ;		
+	end;
+	
+Method void TradeOnPosShortNoOrder()
+	begin
+		CancelAllOrders();
+		LiquidateAll();
+		RaiseRunTimeError("TradeOnPosShortNoOrder Error Detected.") ;
+	end;
+	
+Method void TradeOnPosShortExOrder()
+variables: int buy_sell_signal;
+	begin
+		buy_sell_signal = CheckBuySellSignal();
+		switch(buy_sell_signal)
+			Begin
+				Case BuySignal :
+					ReplaceExitBuyWithMarket() ;				
+					Break ;
+				Case SellSignal :
+					Break ;
+			End ;
+	end;
+	
+Method void TradeOnPosOrderConflict()
+	begin
+		CancelAllOrders();
+		LiquidateAll();
+		RaiseRunTimeError("PosOrderConflict Error Detected.") ;
+	end;
+	
+Method void TradeOnPosOrderUnknown()
+	begin
+		CancelAllOrders();
+		LiquidateAll();
+		RaiseRunTimeError("TradeOnPosOrderUnknown Error Detected.") ;
+	end;
+	
 
 {-----------------------Indicators and signals---------------------------}
 Method int CheckBullBearStatus()
@@ -296,7 +396,21 @@ Method int CheckBullBearStatus()
 			
 		Return NoBullNoBear ;
 	end;
-	
+
+{
+{Bull Bear status}
+	int ExtremeBullish(1),
+	int Bullish(2),
+	int Bull2Bear(3),
+	int Bear2Bull(4),
+	int Bearish(5),
+	int ExtremeBearish(6),
+	int NoBullNoBear(-1),
+	{Buy Sell Signal}
+	int BuySignal(1),
+	int SellSignal(2),
+	int NoBuySellSignal(-1),
+}
 Method int CheckBuySellSignal()
 	begin
 		if BullBearStatus[1] = ExtremeBullish and CurFastTLAngMA < MaxFastTLAngMA[1] then
@@ -352,7 +466,34 @@ Method void IssueEntryShortLimit(double prc)
 		ShortEntryOrder = EntryShortLmtTicket.Send();
 		ShortEntryOrder.Updated += ShortEntryUpdated ;
 	end;
+
+Method void ReplaceEntryLongWithMarket()
+	begin
+		ReplaceMktTicket = ReplaceTicket.Create() ;
 		
+		ReplaceMktTicket.Quantity = TradeSize ;
+		ReplaceMktTicket.Type = OrderType.market ;
+		
+		if LongEntryOrder <> NULL and LongEntryOrder.State = OrderState.received
+			then
+			LongEntryOrder.Replace(ReplaceMktTicket);
+		
+		PlotOutputs("ReplaceEntryLongWithMarket") ;	
+	end;
+
+Method void ReplaceEntryShortWithMarket()
+	begin
+		ReplaceMktTicket = ReplaceTicket.Create() ;
+		
+		ReplaceMktTicket.Quantity = TradeSize ;
+		ReplaceMktTicket.Type = OrderType.market ;
+		
+		if ShortEntryOrder <> NULL and ShortEntryOrder.State = OrderState.received
+			then
+			ShortEntryOrder.Replace(ReplaceMktTicket);
+		
+		PlotOutputs("ReplaceEntryShortWithMarket") ;	
+	end;		
 
 { method void replaceExitBuyWithLimit: replace buy order for exit with limit price }
 method void ReplaceExitBuyWithLimit(double prc)
@@ -392,6 +533,42 @@ method void ReplaceExitSellWithLimit(double prc)
 			LongExitOrderSide2.Replace(ReplaceLmtTicket);
 		
 		PlotOutputs("replaceExitSellWithLimit") ;	
+	end ;
+
+method void ReplaceExitBuyWithMarket()
+	begin
+		ReplaceMktTicket = ReplaceTicket.Create() ;
+		
+		ReplaceMktTicket.Quantity = TradeSize ;
+		ReplaceMktTicket.Type = OrderType.market ;
+		
+		if ShortExitOrderSide1 <> NULL and ShortExitOrderSide1.State = OrderState.received
+			and ShortExitOrderSide1.Type = OrderType.limit then
+			ShortExitOrderSide1.Replace(ReplaceMktTicket);
+		
+		if ShortExitOrderSide2 <> NULL and ShortExitOrderSide2.State = OrderState.received
+			and ShortExitOrderSide2.Type = OrderType.limit then
+			ShortExitOrderSide2.Replace(ReplaceMktTicket);
+		
+		PlotOutputs("ReplaceExitBuyWithMarket") ;	
+	end ;
+		
+method void ReplaceExitSellWithMarket()
+	begin
+		ReplaceMktTicket = ReplaceTicket.Create() ;
+		
+		ReplaceMktTicket.Quantity = TradeSize ;
+		ReplaceMktTicket.Type = OrderType.market ;
+		
+		if LongExitOrderSide1 <> NULL and LongExitOrderSide1.State = OrderState.received
+			and LongExitOrderSide1.Type = OrderType.limit then
+			LongExitOrderSide1.Replace(ReplaceMktTicket);
+		
+		if LongExitOrderSide2 <> NULL and LongExitOrderSide2.State = OrderState.received
+			and LongExitOrderSide2.Type = OrderType.limit then
+			LongExitOrderSide2.Replace(ReplaceMktTicket);
+		
+		PlotOutputs("ReplaceExitSellWithMarket") ;	
 	end ;
 
 { Canceled 9 
@@ -450,7 +627,11 @@ method void CancelAllOrders( )
 {-----------------------Positions---------------------------}
 Method int CheckPosition() 
 	begin
-		Return PositionInfo[0].Quantity ;
+		
+		If PositionInfo <> Null and PositionInfo.Count > 0 then
+			Return PositionInfo[0].Quantity 
+		Else
+			Return 0 ;
 	end;
 	
 Method void LiquidateAll()
@@ -669,11 +850,11 @@ method void PlotOutputs(string message)
 
 { -----------------------------Main Application-------------------------- }
 
-{Once( GetAppInfo( aiRealtimeCalc ) = 1 and Start ) }
+{Once( GetAppInfo( aiRealtimeCalc ) = 1 and Start ) + Numtostr(Currenttime)}
 Once(Currentbar = 1)
-	Begin
-	Print("Time init:", Currenttime);
-	Init();
+	Begin	
+		To_Log("Time init:"+Numtostr(Currenttime,0), true) ;
+		Init();
 	End;
 
 if LastBarOnChart then
@@ -682,16 +863,15 @@ if LastBarOnChart then
 		InitLastBarOnChart();
 		switch(TradingStatus)
 			Begin
-				case PosFlatNoOrder : break ;
-				case PosFlatEnOrder : break ;
-				case PosLongNoOrder : break ;
-				case PosLongExOrder : break ;
-				case PosShortNoOrder : break ;
-				case PosShortExOrder : break ;
-				case PosOrderConflict : break ;
-				Default : Break ;
-			end;
-			
+				case PosFlatNoOrder : TradeOnPosFlatNoOrder(); break ;
+				case PosFlatEnOrder : TradeOnPosFlatEnOrder(); break ;
+				case PosLongNoOrder : TradeOnPosLongNoOrder(); break ;
+				case PosLongExOrder : TradeOnPosLongExOrder(); break ;
+				case PosShortNoOrder : TradeOnPosShortNoOrder(); break ;
+				case PosShortExOrder : TradeOnPosShortExOrder(); break ;
+				case PosOrderConflict : TradeOnPosOrderConflict();	break ;
+				Default : TradeOnPosOrderUnknown(); Break ;
+			End;
 		{IssueEntryOCOBracket() ;}
 	End;
 		
