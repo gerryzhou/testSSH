@@ -1,0 +1,15 @@
+Inputs:	
+	YYYMMDD_Start( numericsimple ) ,
+	YYYMMDD_End( numericsimple ),
+	Weekday_Start( numericsimple ) ,
+	Weekday_End( numericsimple ),
+	Timespan_Start( numericsimple ) ,
+	Timespan_End( numericsimple ) ;
+
+
+if Date < YYYMMDD_End and Date > YYYMMDD_Start 
+	And Dayofweek(Date) > Weekday_Start and Dayofweek(Date) < Weekday_End 
+	And Currenttime < Timespan_End and Currenttime > Timespan_Start then
+	GZF_CheckTradeTime = True 
+Else	
+	GZF_CheckTradeTime = False ;
