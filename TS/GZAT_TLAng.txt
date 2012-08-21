@@ -1,3 +1,4 @@
+
 {  
 This indicator is intended to illustrate how bracket orders can be placed using
 objects in EasyLanguage.
@@ -269,8 +270,8 @@ variables:  string SymbolToTrade ;
 
 Method void PlotTLAngMA()
 	begin 
-		CurFastTLAngMA = GZ_TLAngMA(Price, NormRatio, FastLength, TLLength);
-		CurSlowTLAngMA = GZ_TLAngMA(Price, NormRatio, SlowLength, TLLength);
+		CurFastTLAngMA = GZF_TLAngMA(Price, NormRatio, FastLength, TLLength);
+		CurSlowTLAngMA = GZF_TLAngMA(Price, NormRatio, SlowLength, TLLength);
 		
 		Plot1( 90, "TLAngMAUp" ) ;
 		Plot2( 0, "TLAngMAFlat" ) ;
