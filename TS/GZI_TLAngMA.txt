@@ -25,8 +25,8 @@ variables:
 
 Value1 = LinearRegAngleFC( NormRatio*Price, TLLength ) ;
 
-FastAvg = GZ_TLAngMA(Price, NormRatio, FastLength, TLLength); {AverageFC( Value1, FastLength ) ;}
-SlowAvg = GZ_TLAngMA(Price, NormRatio, SlowLength, TLLength); {AverageFC( Value1, SlowLength ) ;}
+FastAvg = GZF_TLAngMA(Price, NormRatio, FastLength, TLLength); {AverageFC( Value1, FastLength ) ;}
+SlowAvg = GZF_TLAngMA(Price, NormRatio, SlowLength, TLLength); {AverageFC( Value1, SlowLength ) ;}
 
 Plot1( 90, "TLAngMAUp" ) ;
 Plot2( 0, "TLAngMAFlat" ) ;
