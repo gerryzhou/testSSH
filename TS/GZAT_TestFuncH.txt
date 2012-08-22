@@ -1,0 +1,109 @@
+{}
+[IntrabarOrderGeneration = FALSE]
+
+inputs:
+	string AccountNum( "SIM666850F" ), { the account number to be used for
+	 trading }
+	int TradeSize( 1 ), { the size of the position, in number of contracts or
+	 shares, that is to be entered and exited }
+	int TradingMode( 0 ), {1=LongOnly, -1=ShortOnly, 0=LongShortBoth}
+	double EntryOffsetFromLastTrade( 0.003 ), { the amount to offset the two entry
+	 orders from the price of the first trade that follows setting the Start input
+	 to true }
+	double ProfitTargetOffset( 0.5 ), { the amount by which to offset the profit
+	 target order from the average entry price }
+	double StopLossOffset( 10.6 ), { the amount by which to offset the stop-loss
+	 order from the average entry price }
+	double FloorAmt( 0.2 ),
+	Price( Close ),
+	double ResistanceP(HighD(1)),
+	double SupportP(LowD(1)),
+	NormRatio(2),
+	int FastLength( 4 ),
+	int SlowLength( 30 ),
+	int TLLength( 4 ),
+	double ExtremeBullTLAng(45),
+	double ExtremeBearTLAng(-45),
+	int MaxBarsSinceEntry(5),
+	int YYYMMDD_Start(1120420) ,
+	int YYYMMDD_End( 1121230 ),
+	int Weekday_Start( 2 ) ,
+	int Weekday_End( 4 ),
+	int Timespan_Start( 825 ) ,
+	int Timespan_End( 1355 ) ,
+	bool LiquidateAtSessionClose( true ) ; 
+
+consts:	
+	{Position and Order status}
+	int PosFlatNoOrder(1),
+	int PosFlatEnOrder(2),
+	int PosLongNoOrder(3),
+	int PosLongExOrder(4),
+	int PosShortNoOrder(5),
+	int PosShortExOrder(6),
+	int PosOrderConflict(7),
+	int PosOrderUnknown(-1),
+	{Bull Bear status}
+	int ExtremeBullish(1),
+	int Bullish(2),
+	int Bull2Bear(3),
+	int Bear2Bull(4),
+	int Bearish(5),
+	int ExtremeBearish(6),
+	int NoBullNoBear(-1),
+	{Buy Sell Signal}
+	int BuySignal(1),
+	int SellSignal(-1),
+	int NoBuySellSignal(0),
+	{Trading Mode}
+	int LongOnly(1),
+	int ShortOnly(-1),
+	int BothLongShort(0);
+
+variables:	
+	int BarSinceEntryCounter(MaxBarsSinceEntry),
+	double CurFastTLAngMA( 0 ),
+	double CurSlowTLAngMA( 0 ),
+	double MinFastTLAngMA( 0 ),
+	double MaxFastTLAngMA( 0 ), 
+	double MinSlowTLAngMA( 0 ),
+	double MaxSlowTLAngMA( 0 ), 
+	int BullBearStatus(NoBullNoBear),
+	int TradingStatus(PosOrderUnknown) ;
+
+
+{-----------------------------------------}		
+	Once(Currentbar = 1)
+		Begin
+			Print("Time init:", Currenttime);		
+		End;
+{Print("checktime: date=" , date, ", weekday=", Dayofweek(date), ", time=", time );}
+	if GZF_CheckTradeTime(YYYMMDD_Start, YYYMMDD_End, Weekday_Start , Weekday_End, Timespan_Start ,Timespan_End, time) then {LastBarOnChart then}
+		Begin
+			CurFastTLAngMA = GZF_TLAngMA(Price, NormRatio, FastLength, TLLength);
+			{Print("CurFastTLAngMA=", CurFastTLAngMA) ;}
+			If CurFastTLAngMA < ExtremeBearTLAng
+				And Price < SupportP then
+				Begin
+					if MarketPosition = 0 then
+						Buy ( "LongEntryName" ) next bar at AvgPrice limit 
+					Else Begin 						
+							SetStopContract;
+							SetStopLoss( ProfitTargetOffset ) ;
+							SetProfitTarget( ProfitTargetOffset ) ;
+							SetBreakeven( FloorAmt ) ;
+						End ;
+				End
+			else If CurFastTLAngMA > ExtremeBullTLAng 
+				And Price > ResistanceP then
+				Begin
+					if MarketPosition = 0 then
+						Sell Short ( "ShortEntryName" ) next bar at AvgPrice limit 
+					Else Begin
+							SetStopContract;
+							SetStopLoss( ProfitTargetOffset ) ;
+							SetProfitTarget( ProfitTargetOffset ) ;
+							SetBreakeven( FloorAmt ) ;
+						End ;
+				End;
+		End ;
