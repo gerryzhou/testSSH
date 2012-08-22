@@ -1,4 +1,8 @@
 {}
+using elsystem ;
+using tsdata.common ;
+using tsdata.trading ;
+
 [IntrabarOrderGeneration = FALSE]
 
 inputs:
@@ -10,27 +14,27 @@ inputs:
 	double EntryOffsetFromLastTrade( 0.003 ), { the amount to offset the two entry
 	 orders from the price of the first trade that follows setting the Start input
 	 to true }
-	double ProfitTargetOffset( 3.5 ), { the amount by which to offset the profit
+	double ProfitTargetOffset( 0.5 ), { the amount by which to offset the profit
 	 target order from the average entry price }
-	double StopLossOffset( 8.6 ), { the amount by which to offset the stop-loss
+	double StopLossOffset( 10.6 ), { the amount by which to offset the stop-loss
 	 order from the average entry price }
-	double FloorAmt( 0.8 ),
+	double FloorAmt( 0.2 ),
 	Price( Close ),
-	double ResistanceP(HighD(2)),
-	double SupportP(LowD(2)),
+	double ResistanceP(HighD(1)),
+	double SupportP(LowD(1)),
 	NormRatio(2),
 	int FastLength( 4 ),
 	int SlowLength( 30 ),
 	int TLLength( 4 ),
-	double ExtremeBullTLAng(40),
-	double ExtremeBearTLAng(-40),
+	double ExtremeBullTLAng(45),
+	double ExtremeBearTLAng(-45),
 	int MaxBarsSinceEntry(5),
 	int YYYMMDD_Start(1120420) ,
 	int YYYMMDD_End( 1121230 ),
 	int Weekday_Start( 2 ) ,
 	int Weekday_End( 4 ),
-	int Timespan_Start( 925 ) ,
-	int Timespan_End( 1330 ) ,
+	int Timespan_Start( 825 ) ,
+	int Timespan_End( 1355 ) ,
 	bool LiquidateAtSessionClose( true ) ; 
 
 consts:	
@@ -60,7 +64,7 @@ consts:
 	int ShortOnly(-1),
 	int BothLongShort(0);
 
-variables:	
+variables:		
 	int BarSinceEntryCounter(MaxBarsSinceEntry),
 	double CurFastTLAngMA( 0 ),
 	double CurSlowTLAngMA( 0 ),
@@ -71,40 +75,53 @@ variables:
 	int BullBearStatus(NoBullNoBear),
 	int TradingStatus(PosOrderUnknown) ;
 
+method void Init( ) 
+	begin
+	
+	Print("Init.....") ;
+	
+	End ;
 
+{--------------------------Trade------------------------------------}	
+Method void IssueEntryLongLimit(double prc)
+	Begin
+		if MarketPosition = 0 then
+			Buy ( "LongEntryName" ) next bar at prc limit 
+		Else Begin 						
+			SetStopContract;
+			SetStopLoss( StopLossOffset ) ;
+			SetProfitTarget( ProfitTargetOffset ) ;
+			SetBreakeven( FloorAmt ) ;
+		End ;
+	End;
+
+Method void IssueEntryShortLimit(double prc)
+	Begin
+		if MarketPosition = 0 then
+			Sell Short ( "ShortEntryName" ) next bar at prc limit 
+		Else Begin 						
+			SetStopContract;
+			SetStopLoss( StopLossOffset ) ;
+			SetProfitTarget( ProfitTargetOffset ) ;
+			SetBreakeven( FloorAmt ) ;
+		End ;
+	End;
+					
 {-----------------------------------------}		
 	Once(Currentbar = 1)
 		Begin
-			Print("Time init:", Currenttime);		
+			Print("Time init:", Currenttime);	
+			Init( ) ;
 		End;
-
-{	if LastBarOnChart then
-		Begin}
+{Print("checktime: date=" , date, ", weekday=", Dayofweek(date), ", time=", time );}
+	if GZF_CheckTradeTime(YYYMMDD_Start, YYYMMDD_End, Weekday_Start , Weekday_End, Timespan_Start ,Timespan_End, time) then {LastBarOnChart then}
+		Begin
 			CurFastTLAngMA = GZF_TLAngMA(Price, NormRatio, FastLength, TLLength);
-			Print("CurFastTLAngMA=", CurFastTLAngMA) ;
-			If CurFastTLAngMA > ExtremeBullTLAng 
-				And Price > ResistanceP then
-				Begin
-					if MarketPosition = 0 then
-						Buy ( "LongEntryName" ) next bar at AvgPrice limit 
-					Else Begin 						
-							SetStopContract;
-							SetStopLoss( StopLossOffset) ;
-							SetProfitTarget( ProfitTargetOffset ) ;
-							SetBreakeven( FloorAmt ) ;
-						End ;
-				End
-			else if CurFastTLAngMA < ExtremeBearTLAng
+			{Print("CurFastTLAngMA=", CurFastTLAngMA) ;}
+			If CurFastTLAngMA < ExtremeBearTLAng
 				And Price < SupportP then
-				Begin
-					if MarketPosition = 0 then
-						Sell Short ( "ShortEntryName" ) next bar at AvgPrice limit 
-					Else Begin
-							SetStopContract;
-							SetStopLoss( StopLossOffset) ;
-							SetProfitTarget( ProfitTargetOffset ) ;
-							SetBreakeven( FloorAmt ) ;
-						End ;
-				End;
-		{End;}
-
+					IssueEntryLongLimit(AvgPrice)
+			else If CurFastTLAngMA > ExtremeBullTLAng 
+				And Price > ResistanceP then
+					IssueEntryShortLimit(AvgPrice) ;
+		End ;
