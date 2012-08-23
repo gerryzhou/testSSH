@@ -9,7 +9,7 @@ Inputs:
 
 
 if Date < YYYMMDD_End and Date > YYYMMDD_Start 
-	And Dayofweek(Date) > Weekday_Start and Dayofweek(Date) < Weekday_End 
+	And Dayofweek(Date) >= Weekday_Start and Dayofweek(Date) <= Weekday_End 
 	And TimePoint < Timespan_End and TimePoint > Timespan_Start then
 	GZF_CheckTradeTime = True 
 Else	
