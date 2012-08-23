@@ -11,12 +11,12 @@ inputs:
 	int TradeSize( 1 ), { the size of the position, in number of contracts or
 	 shares, that is to be entered and exited }
 	int TradingMode( 0 ), {1=LongOnly, -1=ShortOnly, 0=LongShortBoth}
-	double EntryOffsetFromLastTrade( 0.003 ), { the amount to offset the two entry
+	double EntryOffsetFromLastTrade( 0.3 ), { the amount to offset the two entry
 	 orders from the price of the first trade that follows setting the Start input
 	 to true }
-	double ProfitTargetOffset( 0.5 ), { the amount by which to offset the profit
+	double ProfitTargetOffset( 0.3 ), { the amount by which to offset the profit
 	 target order from the average entry price }
-	double StopLossOffset( 10.6 ), { the amount by which to offset the stop-loss
+	double StopLossOffset( 5 ), { the amount by which to offset the stop-loss
 	 order from the average entry price }
 	double FloorAmt( 0.2 ),
 	Price( Close ),
@@ -26,15 +26,16 @@ inputs:
 	int FastLength( 4 ),
 	int SlowLength( 30 ),
 	int TLLength( 4 ),
-	double ExtremeBullTLAng(45),
-	double ExtremeBearTLAng(-45),
+	double ExtremeBullTLAng(40),
+	double ExtremeBearTLAng(-40),
 	int MaxBarsSinceEntry(5),
 	int YYYMMDD_Start(1120420) ,
 	int YYYMMDD_End( 1121230 ),
 	int Weekday_Start( 2 ) ,
 	int Weekday_End( 4 ),
-	int Timespan_Start( 825 ) ,
-	int Timespan_End( 1355 ) ,
+	int Timespan_Start( 0 ) ,
+	int Timespan_End( 2359 ) ,
+	int Entry_Strategy( -1 ),
 	bool LiquidateAtSessionClose( true ) ; 
 
 consts:	
@@ -62,9 +63,34 @@ consts:
 	{Trading Mode}
 	int LongOnly(1),
 	int ShortOnly(-1),
-	int BothLongShort(0);
+	int BothLongShort(0),
+	{Entry strategy}
+	int BuyReversal(1),
+	int BuyCorrection(2),
+	int BuyBreakout(3),
+	int ShortReversal(-1),
+	int ShortCorrection(-2),
+	int ShortBreakout(-3),
+	int LongShortBySignal(0);
 
-variables:		
+variables:	
+	OrderTicket EntryBuyStopTicket( NULL ),
+	OrderTicket EntryShortStopTicket( NULL ),
+	OrderTicket EntryBuyLmtTicket( NULL ),
+	OrderTicket EntryShortLmtTicket( NULL ),
+	BracketOrderTicket LongExitBracket( NULL ),
+	BracketOrderTicket ShortExitBracket( NULL ),
+	OCOOrderTicket EntryOCOTicket( NULL ),
+	ReplaceTicket ReplaceLmtTicket (NULL),
+	ReplaceTicket ReplaceMktTicket (NULL),
+	Order LongEntryOrder( NULL ),
+	Order ShortEntryOrder( NULL ),
+	Order LongExitOrderSide1( NULL ),
+	Order LongExitOrderSide2( NULL ),
+	Order ShortExitOrderSide1( NULL ),
+	Order ShortExitOrderSide2( NULL ),
+	PositionsProvider PositionInfo( NULL ),
+	OrdersProvider OrdersInfo( NULL ),
 	int BarSinceEntryCounter(MaxBarsSinceEntry),
 	double CurFastTLAngMA( 0 ),
 	double CurSlowTLAngMA( 0 ),
@@ -76,52 +102,443 @@ variables:
 	int TradingStatus(PosOrderUnknown) ;
 
 method void Init( ) 
+variables:  string SymbolToTrade ;
 	begin
 	
-	Print("Init.....") ;
+	SymbolToTrade = Symbol ;
+	{BarSinceEntryCounter = MaxBarsSinceEntry ;}
+	
+	// Long Entry Stop OrderTicket - EntryBuyStopTicket
+	If EntryBuyStopTicket = NULL then
+		Begin 
+			EntryBuyStopTicket = OrderTicket.Create() ;
+			EntryBuyStopTicket.Symbol = SymbolToTrade ;
+			EntryBuyStopTicket.SymbolType = Category ;
+			EntryBuyStopTicket.Account = AccountNum ;
+			EntryBuyStopTicket.Quantity = TradeSize ;
+			EntryBuyStopTicket.Action = OrderAction.buy ;
+			EntryBuyStopTicket.Type = OrderType.stopmarket ;
+			EntryBuyStopTicket.StopPrice = Close + EntryOffsetFromLastTrade ;
+		End ;
+	
+	// Short Entry Stop OrderTicket - EntryShortStopTicket
+	If EntryShortStopTicket = NULL then
+		Begin 
+			EntryShortStopTicket = OrderTicket.Create() ;
+			EntryShortStopTicket.Symbol = SymbolToTrade ;
+			EntryShortStopTicket.SymbolType = Category ;
+			EntryShortStopTicket.Account = AccountNum ;
+			EntryShortStopTicket.Quantity = TradeSize ;
+			EntryShortStopTicket.Action = OrderAction.sellshort ;
+			EntryShortStopTicket.Type = OrderType.stopmarket ;
+			EntryShortStopTicket.StopPrice = Close - EntryOffsetFromLastTrade ;
+		End ;
+
+
+	// Long Entry Limit OrderTicket
+	If EntryBuyLmtTicket = NULL then
+		Begin 
+			EntryBuyLmtTicket = OrderTicket.Create() ;
+			EntryBuyLmtTicket.Symbol = SymbolToTrade ;
+			EntryBuyLmtTicket.SymbolType = Category ;
+			EntryBuyLmtTicket.Account = AccountNum ;
+			EntryBuyLmtTicket.Quantity = TradeSize ;
+			EntryBuyLmtTicket.Action = OrderAction.buy ;
+			EntryBuyLmtTicket.Type = OrderType.limit ;
+			EntryBuyLmtTicket.StopPrice = Close + EntryOffsetFromLastTrade ;
+		End ;
+
+	
+	// Short Entry Limit OrderTicket 
+	If EntryShortLmtTicket = NULL then
+		Begin 
+			EntryShortLmtTicket = OrderTicket.Create() ;
+			EntryShortLmtTicket.Symbol = SymbolToTrade ;
+			EntryShortLmtTicket.SymbolType = Category ;
+			EntryShortLmtTicket.Account = AccountNum ;
+			EntryShortLmtTicket.Quantity = TradeSize ;
+			EntryShortLmtTicket.Action = OrderAction.sellshort ;
+			EntryShortLmtTicket.Type = OrderType.limit ;
+			EntryShortLmtTicket.StopPrice = Close - EntryOffsetFromLastTrade ;			
+		End ;
+
+	
+	// LongExitBracket - Profit Target and Stop Loss
+	If LongExitBracket = NULL then
+		Begin 
+			LongExitBracket = BracketOrderTicket.Create() ;
+			LongExitBracket.Symbol = SymbolToTrade ;
+			LongExitBracket.SymbolType = Category ;
+			LongExitBracket.Account = AccountNum ;
+			LongExitBracket.Quantity = TradeSize ;
+			LongExitBracket.Action = OrderAction.sell ;
+			LongExitBracket.TargetType = OrderType.limit ;
+			LongExitBracket.ProtectionType = OrderType.stopmarket ;			
+		End ;
+
+
+	// ShortExitBracket - Profit Target and Stop Loss
+	If ShortExitBracket = NULL then
+		Begin 
+			ShortExitBracket = BracketOrderTicket.Create() ;
+			ShortExitBracket.Symbol = SymbolToTrade ;
+			ShortExitBracket.SymbolType = Category ;
+			ShortExitBracket.Account = AccountNum ;
+			ShortExitBracket.Quantity = TradeSize ;
+			ShortExitBracket.Action = OrderAction.BuyToCover ;
+			ShortExitBracket.TargetType = OrderType.Limit ;
+			ShortExitBracket.ProtectionType = OrderType.StopMarket ;			
+		End ;
+
+
+	// Entry OCO ticket - Short Entry and Long Entry
+	If EntryOCOTicket = NULL then
+		Begin 
+			EntryOCOTicket = OCOOrderTicket.Create() ;
+			EntryOCOTicket.Siblings.Add( EntryBuyStopTicket ) ;
+			EntryOCOTicket.Siblings.Add( EntryShortStopTicket ) ;			
+		End ;
+	
+	// Positions Provider
+	If PositionInfo = NULL then
+		Begin 
+			PositionInfo = PositionsProvider.Create() ;
+			PositionInfo.Accounts += AccountNum ;
+			PositionInfo.Symbols += SymbolToTrade ;
+			PositionInfo.Realtime = true ;
+			PositionInfo.Updated += PositionUpdate ;
+			PositionInfo.Load = true ;			
+		End ;
+		
+	// Orders Provider
+	If OrdersInfo = NULL then
+		Begin 
+			OrdersInfo = OrdersProvider.Create() ;
+			OrdersInfo.Accounts += AccountNum ;
+			OrdersInfo.Symbols += SymbolToTrade ;
+			OrdersInfo.States += "cancelpending, partiallyfilled, received, sending, sent" ;
+			OrdersInfo.Realtime = true ;
+			OrdersInfo.Updated += OrderUpdate ;
+			OrdersInfo.Load = true ;			
+		End ;
+	
+	Print("Init.....----Time update:", Currenttime, "---------") ;
 	
 	End ;
 
+	
+Method void InitLastBarOnChart()
+	begin
+		BarSinceEntryCounter -= 1 ;
+		Print("Init LastBar on Chart, CurFastTLAngMA=", CurFastTLAngMA, "----Time update:", Currenttime, "---------") ;
+		{if(BarCounter > 0) then
+			BarCounter -= 1
+		else
+			Begin
+				if(PositionInfo[0].Quantity > 0) then
+					ReplaceExitSellWithLimit(Close+ProfitTargetOffset)
+				Else if(PositionInfo[0].Quantity < 0) then
+					ReplaceExitBuyWithLimit(Close-ProfitTargetOffset)
+				Else
+					print("--Flat--");
+			End;}
+		BullBearStatus = CheckBullBearStatus() ;
+		TradingStatus = CheckTradingStatus() ;
+	end;
+	
+{-----------------------Event Handlers---------------------------}
+	
+{ method void LongEntryUpdated: event handler for long entry order update events }
+method void LongEntryUpdated( Object EntryOCOOrder, OrderUpdatedEventArgs
+ EntryOCOUpdateArgs ) 
+	begin
+		{ set properties of long exit bracket and issue it }
+		if LongEntryOrder.State = OrderState.Filled then
+			begin
+				LongExitBracket.LimitPrice = LongEntryOrder.AvgFilledPrice +
+		 		ProfitTargetOffset ;
+				LongExitBracket.StopPrice = LongEntryOrder.AvgFilledPrice - StopLossOffset ;
+				LongExitOrderSide1 = LongExitBracket.Send() ;
+				LongExitOrderSide2 = LongExitOrderSide1.NextSibling ;
+				LongExitOrderSide1.Updated += ExitOrderUpdate ;
+				LongExitOrderSide2.Updated += ExitOrderUpdate ;
+				BarSinceEntryCounter = MaxBarsSinceEntry ;
+				Print("LongEntryUpdated--Order filled, LongExitBracket Input.");
+			end ;	
+			
+		{Print("LongEntryUpdated--Order not filled") ;}
+	end ;
+
+{ method void ShortEntryUpdated: event handler for short entry order update events }
+method void ShortEntryUpdated( Object EntryOCOOrder, OrderUpdatedEventArgs
+ EntryOCOUpdateArgs ) 
+	begin
+		{ Set properties of short exit bracket and issue it }
+		if ShortEntryOrder.State = OrderState.Filled then
+			begin
+				ShortExitBracket.LimitPrice = ShortEntryOrder.AvgFilledPrice -
+		 		ProfitTargetOffset ;
+				ShortExitBracket.StopPrice = ShortEntryOrder.AvgFilledPrice + StopLossOffset ;
+				ShortExitOrderSide1 = ShortExitBracket.Send() ;
+				ShortExitOrderSide2 = ShortExitOrderSide1.NextSibling ;
+				ShortExitOrderSide1.Updated += ExitOrderUpdate ;
+				ShortExitOrderSide2.Updated += ExitOrderUpdate ;
+				BarSinceEntryCounter = MaxBarsSinceEntry ;
+				Print("ShortEntryUpdated--Order filled, ShortExitBracket Input.");
+			end ;	
+			
+		{Print("ShortEntryUpdated--Order not filled") ;}
+	end ;
+
+{ method void ExitOrderUpdate: when an exit order update event occurs, update plots }
+method void ExitOrderUpdate( Object ExitOrder, OrderUpdatedEventArgs
+ ExitUpdateArgs )
+	begin
+		{Print("ExitOrderUpdate") ;}
+	end ;
+
+{ method void PositionUpdate: when a position update occurs, update plots }
+method void PositionUpdate( Object PosProvide, PositionUpdatedEventArgs
+ PosUpdateArgs )
+	begin
+		If LastBarOnChart then
+			Print("PositionUpdate, Position.Quantity=", CheckPosition()) ;
+	end ;
+
+{ method void OrderUpdate: when an order update occurs, update plots }
+method void OrderUpdate( Object OrdProvide, OrderUpdatedEventArgs
+ OrdUpdateArgs )
+	begin
+		{Print("OrderUpdate") ;}
+	end ;
+
+
+{-----------------------Indicators and signals---------------------------}
+{
+{Bull Bear status}
+	int ExtremeBullish(1),
+	int Bullish(2),
+	int Bull2Bear(3),
+	int Bear2Bull(4),
+	int Bearish(5),
+	int ExtremeBearish(6),
+	int NoBullNoBear(-1),
+}
+Method int CheckBullBearStatus()
+	begin		
+		if CurFastTLAngMA > 0 and CurFastTLAngMA > MaxFastTLAngMA then
+			MaxFastTLAngMA = CurFastTLAngMA 
+		else if CurFastTLAngMA < 0 and CurFastTLAngMA < MinFastTLAngMA then
+			MinFastTLAngMA = CurFastTLAngMA ;
+			
+		If CurFastTLAngMA > 0 then
+			Begin
+				If CurFastTLAngMA > ExtremeBullTLAng then
+					Begin
+						If High > ResistanceP then
+							Return ExtremeBullish 
+						Else Return Bullish ;
+					End
+				Else if CurFastTLAngMA cross above CurFastTLAngMA[1] then
+					Return Bear2Bull ;				
+			End
+		else if CurFastTLAngMA < 0 then
+			Begin
+				If CurFastTLAngMA < ExtremeBearTLAng then
+					Begin
+						If Low < SupportP then
+							Return ExtremeBearish 
+						Else Return Bearish ;
+					End
+				Else if CurFastTLAngMA cross below CurFastTLAngMA[1] then
+					Return Bull2Bear ;		
+			End;
+			
+		Return NoBullNoBear ;
+	end;
+
+{
+{Bull Bear status}
+	int ExtremeBullish(1),
+	int Bullish(2),
+	int Bull2Bear(3),
+	int Bear2Bull(4),
+	int Bearish(5),
+	int ExtremeBearish(6),
+	int NoBullNoBear(-1),
+	{Buy Sell Signal}
+	int BuySignal(1),
+	int SellSignal(2),
+	int NoBuySellSignal(-1),
+}
+Method int CheckBuySellSignal()
+Variables: int Long_Entry_Strategy, int Short_Entry_Strategy;
+	begin
+		switch(Entry_Strategy)
+			Begin
+				Case BuyReversal, BuyCorrection, BuyBreakout :
+					if BullBearStatus[1] = ExtremeBearish and CurFastTLAngMA > MinFastTLAngMA[1] then
+						Return BuySignal ;				
+				Case ShortReversal, ShortCorrection, ShortBreakout : 
+					if BullBearStatus[1] = ExtremeBullish and CurFastTLAngMA < MaxFastTLAngMA[1] then
+						Return SellSignal ;				
+				Default : {LongShortBySignal}
+					if BullBearStatus[1] = ExtremeBullish and CurFastTLAngMA < MaxFastTLAngMA[1] then
+						Return SellSignal 
+					Else if BullBearStatus[1] = ExtremeBearish and CurFastTLAngMA > MinFastTLAngMA[1] then
+						Return BuySignal ;
+			End ;
+		
+		Return NoBuySellSignal ;
+	end;
+			
+Method bool CheckLiquidateSignal()
+	begin
+		if CheckPosition() > 0 then
+			Begin
+				if CurFastTLAngMA < 0 and BarSinceEntryCounter < 0 then
+					Return true;
+			End
+		Else if CheckPosition() < 0 then
+			Begin
+				if CurFastTLAngMA > 0 and BarSinceEntryCounter < 0 then
+					Return true;
+			end;
+			
+		Return false ;
+	end;
+
+{-----------------------Positions---------------------------}
+Method int CheckPosition() 
+	begin
+		
+		If PositionInfo <> Null and PositionInfo.Count > 0 then
+			Return PositionInfo[0].Quantity 
+		Else
+			Return 0 ;
+	end;
+	
+Method void LiquidateAll()
+Variables: int iCount;
+	begin		
+		For iCount = 0 to PositionInfo.Count 
+			Begin 
+				if PositionInfo[iCount] <> NULL then
+					PositionInfo[iCount].Close();
+			End ;
+	End ;
+	
 {--------------------------Trade------------------------------------}	
+{ Canceled 9 
+  Cancelpending 10 
+  Expired 12 
+  Filled 8 
+  Partiallyfilled 6 
+  Partiallyfilledurout 7 
+  Queued 5 
+  Received 4 
+  Rejected 11 
+  Sendfailed 3 
+  Sending 1 
+  Sent 2 
+  unsent 0 }
+Method bool IsOrderWorking(Order ord)
+	begin
+		if ord <> Null then
+			if ord.State = OrderState.queued or ord.State = OrderState.received then
+				Return True ;	
+
+		Return false ;
+	end;
+	
+Method int CheckTradingStatus ()
+Variables: int cur_pos;
+	begin
+		cur_pos = CheckPosition() ;
+		switch(cur_pos) 
+			Begin
+				Case 0: 
+					if IsOrderWorking(LongEntryOrder) or IsOrderWorking(ShortEntryOrder) then 
+						return PosFlatEnOrder 
+					Else 
+						Return PosFlatNoOrder ;
+				Case > 0 : 
+					If cur_pos > Pos(TradeSize) then
+						Return PosOrderConflict
+					else If IsOrderWorking(LongExitOrderSide1) and IsOrderWorking(LongExitOrderSide2) then
+						Return PosLongExOrder 
+					Else 
+						Return PosLongNoOrder ;
+				Case < 0 : 
+					If cur_pos < Neg(TradeSize) then
+						Return PosOrderConflict
+					else If IsOrderWorking(ShortExitOrderSide1) and IsOrderWorking(ShortExitOrderSide2) then
+						Return PosShortExOrder 
+					Else 
+						Return PosShortNoOrder ;
+			End;
+		return PosOrderConflict ;
+	end;
+
+Method void TradeOnPosFlatNoOrder()
+variables: int buy_sell_signal;
+	begin
+		buy_sell_signal = CheckBuySellSignal();
+		print("TradeOnPosFlatNoOrder, buy_sell_signal = ", buy_sell_signal) ;
+		switch(buy_sell_signal)
+			Begin
+				Case BuySignal :
+					if TradingMode = LongOnly or TradingMode = BothLongShort then
+						IssueEntryLongLimit(Last - EntryOffsetFromLastTrade) ;
+					Break ;
+				Case SellSignal :
+					if TradingMode = ShortOnly or TradingMode = BothLongShort then
+						IssueEntryShortLimit(Last + EntryOffsetFromLastTrade) ;
+					Break ;
+			End ;
+	end;
+	
 Method void IssueEntryLongLimit(double prc)
-	Begin
-		if MarketPosition = 0 then
-			Buy ( "LongEntryName" ) next bar at prc limit 
-		Else Begin 						
-			SetStopContract;
-			SetStopLoss( StopLossOffset ) ;
-			SetProfitTarget( ProfitTargetOffset ) ;
-			SetBreakeven( FloorAmt ) ;
-		End ;
-	End;
+	begin
+		Print("IssueEntryLongLimit, price = ", prc) ;
+		EntryBuyLmtTicket.LimitPrice = prc ;
+		LongEntryOrder = EntryBuyLmtTicket.Send();
+		LongEntryOrder.Updated += LongEntryUpdated ;
+	end;
 
 Method void IssueEntryShortLimit(double prc)
+	begin
+		Print("IssueEntryShortLimit, price = ", prc) ;
+		EntryShortLmtTicket.LimitPrice = prc ;
+		ShortEntryOrder = EntryShortLmtTicket.Send();
+		ShortEntryOrder.Updated += ShortEntryUpdated ;
+	end;
+
+Method void TradeOnLastBar()
 	Begin
-		if MarketPosition = 0 then
-			Sell Short ( "ShortEntryName" ) next bar at prc limit 
-		Else Begin 						
-			SetStopContract;
-			SetStopLoss( StopLossOffset ) ;
-			SetProfitTarget( ProfitTargetOffset ) ;
-			SetBreakeven( FloorAmt ) ;
-		End ;
-	End;
-					
+		If TradingStatus = PosFlatNoOrder then
+			TradeOnPosFlatNoOrder() ;
+	End ;
+			
 {-----------------------------------------}		
 	Once(Currentbar = 1)
 		Begin
-			Print("Time init:", Currenttime);	
+			Print("Time init GZAT_TestFuncH:", Currenttime);	
 			Init( ) ;
 		End;
 {Print("checktime: date=" , date, ", weekday=", Dayofweek(date), ", time=", time );}
-	if GZF_CheckTradeTime(YYYMMDD_Start, YYYMMDD_End, Weekday_Start , Weekday_End, Timespan_Start ,Timespan_End, time) then {LastBarOnChart then}
+	if GZF_CheckTradeTime(YYYMMDD_Start, YYYMMDD_End, Weekday_Start , Weekday_End, Timespan_Start ,Timespan_End, currenttime) then {LastBarOnChart then}
 		Begin
-			CurFastTLAngMA = GZF_TLAngMA(Price, NormRatio, FastLength, TLLength);
-			{Print("CurFastTLAngMA=", CurFastTLAngMA) ;}
-			If CurFastTLAngMA < ExtremeBearTLAng
-				And Price < SupportP then
-					IssueEntryLongLimit(AvgPrice)
-			else If CurFastTLAngMA > ExtremeBullTLAng 
-				And Price > ResistanceP then
-					IssueEntryShortLimit(AvgPrice) ;
+			CurFastTLAngMA = GZF_TLAngMA(Price, NormRatio, FastLength, TLLength);			
+			if LastBarOnChart then begin 
+				InitLastBarOnChart() ;
+				TradeOnLastBar() ;
+				{If CurFastTLAngMA < ExtremeBearTLAng
+					And Price < SupportP then
+						IssueEntryLongLimit(AvgPrice)
+				else If CurFastTLAngMA > ExtremeBullTLAng 
+					And Price > ResistanceP then
+						IssueEntryShortLimit(AvgPrice) ; }
+			End ;
 		End ;
+		
