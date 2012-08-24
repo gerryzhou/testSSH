@@ -1,0 +1,52 @@
+{ Helpful instructions on the use of EasyLanguage, such as this, appear below and are 
+  contained within French curly braces {}.  There is no need to erase these 
+  instructions when using EasyLanguage in order for it to function properly, because 
+  this text will be ignored. }
+
+{ STEP 1: Replace <CRITERIA> with the logical criteria that will trigger the placement 
+  of a ShowMe marker on the chart, such as Close > Close[1].  Note that Condition1 is a 
+  logical variable, a temporary holding place for the true-false result of your 
+  criteria. }
+
+inputs: int Length( 100 ) ;
+variables:
+bool is_highest(false),
+double highest_len(Highd(1)),
+int x(0) ;
+
+If LastBarOnChart then
+	Begin 
+		if Length >= BarNumber then 
+			Raiseruntimeerror("Length is larger than barnumber....")
+		Else begin
+			highest_len = Highest(High, Length) ;
+			print("highest_len=", highest_len);
+			For x=Length downto 1 begin
+				print("x=", x, ", high=", high[x]) ;
+				If High[x] >= highest_len then
+					Begin
+					 	Plot1[x]( High+2,  "Resistance") ;
+						Alert ;
+					End
+				Else 
+					NoPlot( 1) ;
+			End ;
+		End ;
+	End ;
+{	
+if High >= Highest( High, Length ) then 
+	begin	
+		is_highest = true ;
+		NoPlot( 1 ) ; { remove the marker }
+	end
+else
+	begin
+		is_highest = false ;
+		if is_highest[1] = True then 
+			begin
+				Plot1[1]( High+2,  "Resistance") ;
+				Alert ;
+			End ;
+		{NoPlot( 1 ) ; { remove the marker }}
+	End ;
+}
