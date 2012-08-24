@@ -301,7 +301,7 @@ method void ExitOrderUpdate( Object ExitOrder, OrderUpdatedEventArgs
 method void PositionUpdate( Object PosProvide, PositionUpdatedEventArgs
  PosUpdateArgs )
 	begin
-		If Currentbar > 1 then
+		If LastBarOnChart then
 			Print("PositionUpdate, Position.Quantity=", CheckPosition()) ;
 	end ;
 
@@ -523,7 +523,7 @@ Method void TradeOnLastBar()
 {-----------------------------------------}		
 	Once(Currentbar = 1)
 		Begin
-			Print("Time init:", Currenttime);	
+			Print("Time init GZAT_TestFuncW:", Currenttime);	
 			Init( ) ;
 		End;
 {Print("checktime: date=" , date, ", weekday=", Dayofweek(date), ", time=", time );}
