@@ -8,29 +8,132 @@
   logical variable, a temporary holding place for the true-false result of your 
   criteria. }
 
-inputs: int Length( 100 ) ;
+inputs: 
+int LengthW( 1 ),
+int LengthD( 1 ),
+int Length1( 100 ),
+int Length2( 200 ),
+int Length3( 400 ),
+ColorH_W(Darkgray),
+ColorH_D(Darkcyan),
+ColorL_W(Darkgray),
+ColorL_D(Darkcyan),
+ColorH_len1(Yellow),
+ColorH_len2(Yellow),
+ColorH_len3(Yellow),
+ColorL_len1(Green),
+ColorL_len2(Green),
+ColorL_len3(Green) ;
+
 variables:
-bool is_highest(false),
-double highest_len(Highd(1)),
+double highest_weekly(Highw(LengthW)),
+double highest_daily(Highd(LengthD)),
+double highest_len1(Length1),
+double highest_len2(Length2),
+double highest_len3(Length3),
+double lowest_weekly(Highw(LengthW)),
+double lowest_daily(Lowd(LengthD)),
+double lowest_len1(Length1),
+double lowest_len2(Length2),
+double lowest_len3(Length3),
+
 int x(0) ;
 
 If LastBarOnChart then
 	Begin 
-		if Length >= BarNumber then 
+		if Length3 >= BarNumber then 
 			Raiseruntimeerror("Length is larger than barnumber....")
 		Else begin
-			highest_len = Highest(High, Length) ;
-			print("highest_len=", highest_len);
-			For x=Length downto 1 begin
+		
+		{----------------Highest-----------------------}
+			highest_len1 = Highest(High, Length1) + 0.5 ;			
+			print("highest_len1=", highest_len1);
+			Value1 = TL_New(Date[Length1], Time[Length1], highest_len1, Date, Time, highest_len1);
+   			TL_SetColor(Value1, ColorH_len1);
+   			TL_SetExtRight(Value1, TRUE);
+			TL_SetExtLeft(Value1, TRUE);
+			
+			highest_len2 = Highest(High, Length2) + 1 ;			
+			print("highest_len2=", highest_len2);
+			Value2 = TL_New(Date[Length2], Time[Length2], highest_len2, Date, Time, highest_len2);
+   			TL_SetColor(Value2, ColorH_len2);
+   			TL_SetExtRight(Value2, TRUE);
+			TL_SetExtLeft(Value2, TRUE);
+			
+			highest_len3 = Highest(High, Length3) + 1.5 ;			
+			print("highest_len3=", highest_len3);
+			Value3 = TL_New(Date[Length3], Time[Length3], highest_len3, Date, Time, highest_len3);
+   			TL_SetColor(Value3, ColorH_len3);
+   			TL_SetExtRight(Value3, TRUE);
+			TL_SetExtLeft(Value3, TRUE);
+			
+			
+			{Weekly highlow}
+			highest_weekly = HighW(LengthW) ;			
+			print("highest_weekly=", highest_weekly);
+			Value4 = TL_New(Date[Length3], Time[Length3], highest_weekly, Date, Time, highest_weekly);
+   			TL_SetColor(Value4, ColorH_W);
+   			TL_SetExtRight(Value4, TRUE);
+			TL_SetExtLeft(Value4, TRUE);
+			
+   			{Daily highlow}
+			highest_daily = HighD(LengthD) ;			
+			print("highest_daily=", highest_daily);
+			Value5 = TL_New(Date[Length3], Time[Length3], highest_daily, Date, Time, highest_daily);
+   			TL_SetColor(Value5, ColorH_D);
+   			TL_SetExtRight(Value5, TRUE);
+			TL_SetExtLeft(Value5, TRUE);
+   			
+   			{----------------Lowest-----------------------}
+
+			lowest_len1 = Lowest(High, Length1) - 0.5;			
+			print("lowest_len1=", lowest_len1);
+			Value6 = TL_New(Date[Length1], Time[Length1], lowest_len1, Date, Time, lowest_len1);
+   			TL_SetColor(Value6, ColorL_len1);
+   			TL_SetExtRight(Value6, TRUE);
+			TL_SetExtLeft(Value6, TRUE);
+			
+			lowest_len2 = Lowest(High, Length2) - 1 ;			
+			print("lowest_len2=", lowest_len2);
+			Value7 = TL_New(Date[Length2], Time[Length2], lowest_len2, Date, Time, lowest_len2);
+   			TL_SetColor(Value7, ColorL_len2);
+   			TL_SetExtRight(Value7, TRUE);
+			TL_SetExtLeft(Value7, TRUE);
+			
+			lowest_len3 = Lowest(High, Length3) - 1.5;			
+			print("lowest_len3=", lowest_len3);
+			Value8 = TL_New(Date[Length3], Time[Length3], lowest_len3, Date, Time, lowest_len3);
+   			TL_SetColor(Value8, ColorL_len3);
+   			TL_SetExtRight(Value8, TRUE);
+			TL_SetExtLeft(Value8, TRUE);
+			
+			
+			{Weekly highlow}
+			lowest_weekly = LowW(LengthW) ;			
+			print("lowest_weekly=", lowest_weekly);
+			Value9 = TL_New(Date[Length3], Time[Length3], lowest_weekly, Date, Time, lowest_weekly);
+   			TL_SetColor(Value9, ColorL_W);
+   			TL_SetExtRight(Value9, TRUE);
+			TL_SetExtLeft(Value9, TRUE);
+			
+   			{Daily highlow}
+			lowest_daily = LowD(LengthD) ;			
+			print("lowest_daily=", lowest_daily);
+			Value10 = TL_New(Date[Length3], Time[Length3], lowest_daily, Date, Time, lowest_daily);
+   			TL_SetColor(Value10, ColorL_D);
+   			TL_SetExtRight(Value10, TRUE);
+			TL_SetExtLeft(Value10, TRUE);
+
+			{For x=Length1 downto 1 begin
 				print("x=", x, ", high=", high[x]) ;
-				If High[x] >= highest_len then
+				If High[x] >= highest_len1 then
 					Begin
 					 	Plot1[x]( High+2,  "Resistance") ;
 						Alert ;
 					End
 				Else 
 					NoPlot( 1) ;
-			End ;
+			End ;}
 		End ;
 	End ;
 {	
