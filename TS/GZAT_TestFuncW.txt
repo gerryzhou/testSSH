@@ -1,4 +1,16 @@
-{}
+{Trade Strategy:
+[Entry at reversal]
+[Trade range]
+[Trend follow]
+if slow TLAngMA > 10 or < -10, trend follow entry at correction
+tracking fast TLAngMA if cross 0 or less than 5, then entry at the turning point;
+track the bar number since entry, if > 10 bars no profits, exit;
+track the fast TLAngMA if > 45 or <-45 which means speed up, exit at the turning point;
+else wait for the target hit
+
+
+[Entry at breakout]
+}
 using elsystem ;
 using tsdata.common ;
 using tsdata.trading ;
@@ -11,31 +23,31 @@ inputs:
 	int TradeSize( 1 ), { the size of the position, in number of contracts or
 	 shares, that is to be entered and exited }
 	int TradingMode( 0 ), {1=LongOnly, -1=ShortOnly, 0=LongShortBoth}
-	double EntryOffsetFromLastTrade( 0.003 ), { the amount to offset the two entry
+	double EntryOffsetFromLastTrade( 0.3 ), { the amount to offset the two entry
 	 orders from the price of the first trade that follows setting the Start input
 	 to true }
-	double ProfitTargetOffset( 0.003 ), { the amount by which to offset the profit
+	double ProfitTargetOffset( 0.3 ), { the amount by which to offset the profit
 	 target order from the average entry price }
-	double StopLossOffset( 0.05 ), { the amount by which to offset the stop-loss
+	double StopLossOffset( 5 ), { the amount by which to offset the stop-loss
 	 order from the average entry price }
 	double FloorAmt( 0.2 ),
 	Price( Close ),
 	double ResistanceP(HighD(1)),
 	double SupportP(LowD(1)),
-	NormRatio(1000),
+	NormRatio(2),
 	int FastLength( 4 ),
 	int SlowLength( 30 ),
 	int TLLength( 4 ),
-	double ExtremeBullTLAng(35),
-	double ExtremeBearTLAng(-35),
+	double ExtremeBullTLAng(40),
+	double ExtremeBearTLAng(-40),
 	int MaxBarsSinceEntry(5),
 	int YYYMMDD_Start(1120420) ,
 	int YYYMMDD_End( 1121230 ),
 	int Weekday_Start( 2 ) ,
 	int Weekday_End( 4 ),
-	int Timespan_Start( 825 ) ,
-	int Timespan_End( 1855 ) ,
-	int Entry_Strategy( 0 ),
+	int Timespan_Start( 0 ) ,
+	int Timespan_End( 2359 ) ,
+	int Entry_Strategy( -1 ),
 	bool LiquidateAtSessionClose( true ) ; 
 
 consts:	
@@ -71,7 +83,7 @@ consts:
 	int ShortReversal(-1),
 	int ShortCorrection(-2),
 	int ShortBreakout(-3),
-	int LongShortBySignal(0);
+	int LongShortBySignal(0); {Range trading}
 
 variables:	
 	OrderTicket EntryBuyStopTicket( NULL ),
