@@ -14,11 +14,12 @@ else wait for the target hit
 using elsystem ;
 using tsdata.common ;
 using tsdata.trading ;
+using tsdata.marketdata ;
 
 [IntrabarOrderGeneration = FALSE]
 
 inputs:
-	string AccountNum( "SIM666850F" ), { the account number to be used for
+	{string AccountNum( "21055300" ),  the account number to be used for
 	 trading }
 	int TradeSize( 1 ), { the size of the position, in number of contracts or
 	 shares, that is to be entered and exited }
@@ -43,10 +44,10 @@ inputs:
 	int MaxBarsSinceEntry(5),
 	int YYYMMDD_Start(1120420) ,
 	int YYYMMDD_End( 1121230 ),
-	int Weekday_Start( 2 ) ,
-	int Weekday_End( 4 ),
-	int Timespan_Start( 0 ) ,
-	int Timespan_End( 2359 ) ,
+	int Weekday_Start( 1 ) ,
+	int Weekday_End( 5 ),
+	int Timespan_Start( 600 ) ,
+	int Timespan_End( 1859 ) ,
 	int Entry_Strategy( -1 ),
 	bool LiquidateAtSessionClose( true ) ; 
 
@@ -101,7 +102,11 @@ variables:
 	Order LongExitOrderSide2( NULL ),
 	Order ShortExitOrderSide1( NULL ),
 	Order ShortExitOrderSide2( NULL ),
+	AccountsProvider AccountInfo( Null ),
+	QuotesProvider QuoteInfo( Null ),
 	PositionsProvider PositionInfo( NULL ),
+	Account myAccount ( NUll ),	
+	string AccountToTrade ( "" ),
 	OrdersProvider OrdersInfo( NULL ),
 	int BarSinceEntryCounter(MaxBarsSinceEntry),
 	double CurFastTLAngMA( 0 ),
@@ -114,19 +119,60 @@ variables:
 	int TradingStatus(PosOrderUnknown) ;
 
 method void Init( ) 
-variables:  string SymbolToTrade ;
+variables:  
+	string SymbolToTrade,	
+	double AcctValue,
+	int Counter ;
 	begin
-	
+	If AccountInfo = Null then
+		Begin
+			AccountInfo  = AccountsProvider.Create() ; 
+			AccountInfo.Realtime = True ;
+			AccountInfo.Load = True ;
+			if (AccountInfo.Count > 0) then
+				begin
+					print(AccountInfo.Count, " accounts detected....");
+					AcctValue = 0;
+					For Counter=0 to AccountInfo.Count-1 
+					{ reads each Account object and adds the real-time value to the total }
+					begin
+						myAccount = AccountInfo[Counter] ;
+						AcctValue = AcctValue + myAccount.RTAccountNetWorth;
+						if myAccount.Type = AccountType.futures then
+							Begin 
+								AccountToTrade = myAccount.AccountID.ToString() ;
+								Print(myAccount.Type.ToString()," Accts"); 
+								Print(myAccount.RTAccountNetWorth,"=TotalValue");
+							End ;
+					end;
+					{ displays the number of accounts and their total value }
+					Print(AcctValue,"=TotalValue");
+				end
+			else
+				begin
+					print("No accounts detected....");
+				{ display an error message if no accounts are found }
+					throw elsystem.Exception.Create("No accounts available");
+				end;			
+		End ;
 	SymbolToTrade = Symbol ;
 	{BarSinceEntryCounter = MaxBarsSinceEntry ;}
-	
+	If QuoteInfo = Null then
+		Begin
+			QuoteInfo = QuotesProvider.Create() ;
+			QuoteInfo.Symbol = Symbol ;
+			QuoteInfo.Fields += "MinMove" ;
+			QuoteInfo.Realtime = True ;
+			QuoteInfo.Load = True ;			
+		End ;
+	Print("MinMove=", Numtostr(QuoteInfo.Quote["MinMove"].DoubleValue, 5)) ;
 	// Long Entry Stop OrderTicket - EntryBuyStopTicket
 	If EntryBuyStopTicket = NULL then
 		Begin 
 			EntryBuyStopTicket = OrderTicket.Create() ;
 			EntryBuyStopTicket.Symbol = SymbolToTrade ;
 			EntryBuyStopTicket.SymbolType = Category ;
-			EntryBuyStopTicket.Account = AccountNum ;
+			EntryBuyStopTicket.Account = AccountToTrade ;
 			EntryBuyStopTicket.Quantity = TradeSize ;
 			EntryBuyStopTicket.Action = OrderAction.buy ;
 			EntryBuyStopTicket.Type = OrderType.stopmarket ;
@@ -139,7 +185,7 @@ variables:  string SymbolToTrade ;
 			EntryShortStopTicket = OrderTicket.Create() ;
 			EntryShortStopTicket.Symbol = SymbolToTrade ;
 			EntryShortStopTicket.SymbolType = Category ;
-			EntryShortStopTicket.Account = AccountNum ;
+			EntryShortStopTicket.Account = AccountToTrade ;
 			EntryShortStopTicket.Quantity = TradeSize ;
 			EntryShortStopTicket.Action = OrderAction.sellshort ;
 			EntryShortStopTicket.Type = OrderType.stopmarket ;
@@ -153,7 +199,7 @@ variables:  string SymbolToTrade ;
 			EntryBuyLmtTicket = OrderTicket.Create() ;
 			EntryBuyLmtTicket.Symbol = SymbolToTrade ;
 			EntryBuyLmtTicket.SymbolType = Category ;
-			EntryBuyLmtTicket.Account = AccountNum ;
+			EntryBuyLmtTicket.Account = AccountToTrade ;
 			EntryBuyLmtTicket.Quantity = TradeSize ;
 			EntryBuyLmtTicket.Action = OrderAction.buy ;
 			EntryBuyLmtTicket.Type = OrderType.limit ;
@@ -167,7 +213,7 @@ variables:  string SymbolToTrade ;
 			EntryShortLmtTicket = OrderTicket.Create() ;
 			EntryShortLmtTicket.Symbol = SymbolToTrade ;
 			EntryShortLmtTicket.SymbolType = Category ;
-			EntryShortLmtTicket.Account = AccountNum ;
+			EntryShortLmtTicket.Account = AccountToTrade ;
 			EntryShortLmtTicket.Quantity = TradeSize ;
 			EntryShortLmtTicket.Action = OrderAction.sellshort ;
 			EntryShortLmtTicket.Type = OrderType.limit ;
@@ -181,7 +227,7 @@ variables:  string SymbolToTrade ;
 			LongExitBracket = BracketOrderTicket.Create() ;
 			LongExitBracket.Symbol = SymbolToTrade ;
 			LongExitBracket.SymbolType = Category ;
-			LongExitBracket.Account = AccountNum ;
+			LongExitBracket.Account = AccountToTrade ;
 			LongExitBracket.Quantity = TradeSize ;
 			LongExitBracket.Action = OrderAction.sell ;
 			LongExitBracket.TargetType = OrderType.limit ;
@@ -195,7 +241,7 @@ variables:  string SymbolToTrade ;
 			ShortExitBracket = BracketOrderTicket.Create() ;
 			ShortExitBracket.Symbol = SymbolToTrade ;
 			ShortExitBracket.SymbolType = Category ;
-			ShortExitBracket.Account = AccountNum ;
+			ShortExitBracket.Account = AccountToTrade ;
 			ShortExitBracket.Quantity = TradeSize ;
 			ShortExitBracket.Action = OrderAction.BuyToCover ;
 			ShortExitBracket.TargetType = OrderType.Limit ;
@@ -215,7 +261,7 @@ variables:  string SymbolToTrade ;
 	If PositionInfo = NULL then
 		Begin 
 			PositionInfo = PositionsProvider.Create() ;
-			PositionInfo.Accounts += AccountNum ;
+			PositionInfo.Accounts += AccountToTrade ;
 			PositionInfo.Symbols += SymbolToTrade ;
 			PositionInfo.Realtime = true ;
 			PositionInfo.Updated += PositionUpdate ;
@@ -226,7 +272,7 @@ variables:  string SymbolToTrade ;
 	If OrdersInfo = NULL then
 		Begin 
 			OrdersInfo = OrdersProvider.Create() ;
-			OrdersInfo.Accounts += AccountNum ;
+			OrdersInfo.Accounts += AccountToTrade ;
 			OrdersInfo.Symbols += SymbolToTrade ;
 			OrdersInfo.States += "cancelpending, partiallyfilled, received, sending, sent" ;
 			OrdersInfo.Realtime = true ;
@@ -424,8 +470,8 @@ Method bool CheckLiquidateSignal()
 Method int CheckPosition() 
 	begin
 		
-		If PositionInfo <> Null and PositionInfo.Count > 0 then
-			Return PositionInfo[0].Quantity 
+		If PositionInfo <> Null and PositionInfo.Count > 0 and PositionInfo.Position[Symbol,AccountToTrade] <> Null then
+			Return PositionInfo.Position[Symbol,AccountToTrade].Quantity {PositionInfo[0].Quantity }
 		Else
 			Return 0 ;
 	end;
