@@ -115,6 +115,7 @@ variables:
 	double MaxFastTLAngMA( 0 ), 
 	double MinSlowTLAngMA( 0 ),
 	double MaxSlowTLAngMA( 0 ), 
+OneTick(MinMove / PriceScale), {OneTickValue(iff(GetExchangeName="FOREX", MinMove/PriceScale*BigPointValue*100000, MinMove/PriceScale*BigPointValue))}
 	int BullBearStatus(NoBullNoBear),
 	int TradingStatus(PosOrderUnknown) ;
 
