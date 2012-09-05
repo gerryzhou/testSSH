@@ -24,12 +24,12 @@ inputs:
 	int TradeSize( 1 ), { the size of the position, in number of contracts or
 	 shares, that is to be entered and exited }
 	int TradingMode( 0 ), {1=LongOnly, -1=ShortOnly, 0=LongShortBoth}
-	double EntryOffsetFromLastTrade( 0.3 ), { the amount to offset the two entry
+	double EntryOffsetTicksFromLastTrade( 3 ), { the amount to offset the two entry
 	 orders from the price of the first trade that follows setting the Start input
 	 to true }
-	double ProfitTargetOffset( 0.3 ), { the amount by which to offset the profit
+	double ProfitTargetOffsetTicks( 5 ), { the amount by which to offset the profit
 	 target order from the average entry price }
-	double StopLossOffset( 5 ), { the amount by which to offset the stop-loss
+	double StopLossOffsetTicks( 20 ), { the amount by which to offset the stop-loss
 	 order from the average entry price }
 	double FloorAmt( 0.2 ),
 	Price( Close ),
@@ -115,7 +115,7 @@ variables:
 	double MaxFastTLAngMA( 0 ), 
 	double MinSlowTLAngMA( 0 ),
 	double MaxSlowTLAngMA( 0 ), 
-OneTick(MinMove / PriceScale), {OneTickValue(iff(GetExchangeName="FOREX", MinMove/PriceScale*BigPointValue*100000, MinMove/PriceScale*BigPointValue))}
+	OneTick(MinMove / PriceScale), {OneTickValue(iff(GetExchangeName="FOREX", MinMove/PriceScale*BigPointValue*100000, MinMove/PriceScale*BigPointValue))}
 	int BullBearStatus(NoBullNoBear),
 	int TradingStatus(PosOrderUnknown) ;
 
@@ -144,6 +144,7 @@ variables:
 								AccountToTrade = myAccount.AccountID.ToString() ;
 								Print(myAccount.Type.ToString()," Accts"); 
 								Print(myAccount.RTAccountNetWorth,"=TotalValue");
+								Print(myAccount.RTPurchasingPower.ToString()," =RTPurchasingPower "); 
 							End ;
 					end;
 					{ displays the number of accounts and their total value }
@@ -157,16 +158,22 @@ variables:
 				end;			
 		End ;
 	SymbolToTrade = Symbol ;
+	{Print("Point=", Numtostr(Point, 5));}
+	Print("MinMove=", MinMove, ", PriceScale=", Pricescale, ", PointValue=", PointValue, ", BigPointValue=", Bigpointvalue, ", Tick=", OneTick );
+	Print("AccountID=", GetAccountID, ", GetRTPurchingPower=", Getrtpurchasingpower(GetAccountID), ", Getrtinitialmargin=", Getrtinitialmargin(GetAccountID), ", Getrtmarginrequirement=", Getrtmarginrequirement(GetAccountID));
+	
 	{BarSinceEntryCounter = MaxBarsSinceEntry ;}
 	If QuoteInfo = Null then
 		Begin
 			QuoteInfo = QuotesProvider.Create() ;
 			QuoteInfo.Symbol = Symbol ;
 			QuoteInfo.Fields += "MinMove" ;
+			QuoteInfo.Fields += "Margin" ;
 			QuoteInfo.Realtime = True ;
 			QuoteInfo.Load = True ;			
 		End ;
-	Print("MinMove=", Numtostr(QuoteInfo.Quote["MinMove"].DoubleValue, 5)) ;
+	Print("Quote Margin=", Numtostr(QuoteInfo.Quote["Margin"].DoubleValue, 4), "MinMove=", Numtostr(QuoteInfo.Quote["MinMove"].DoubleValue, 5)) ;
+			
 	// Long Entry Stop OrderTicket - EntryBuyStopTicket
 	If EntryBuyStopTicket = NULL then
 		Begin 
@@ -177,7 +184,7 @@ variables:
 			EntryBuyStopTicket.Quantity = TradeSize ;
 			EntryBuyStopTicket.Action = OrderAction.buy ;
 			EntryBuyStopTicket.Type = OrderType.stopmarket ;
-			EntryBuyStopTicket.StopPrice = Close + EntryOffsetFromLastTrade ;
+			EntryBuyStopTicket.StopPrice = Close + OneTick*EntryOffsetTicksFromLastTrade ;
 		End ;
 	
 	// Short Entry Stop OrderTicket - EntryShortStopTicket
@@ -190,7 +197,7 @@ variables:
 			EntryShortStopTicket.Quantity = TradeSize ;
 			EntryShortStopTicket.Action = OrderAction.sellshort ;
 			EntryShortStopTicket.Type = OrderType.stopmarket ;
-			EntryShortStopTicket.StopPrice = Close - EntryOffsetFromLastTrade ;
+			EntryShortStopTicket.StopPrice = Close - OneTick*EntryOffsetTicksFromLastTrade ;
 		End ;
 
 
@@ -204,7 +211,7 @@ variables:
 			EntryBuyLmtTicket.Quantity = TradeSize ;
 			EntryBuyLmtTicket.Action = OrderAction.buy ;
 			EntryBuyLmtTicket.Type = OrderType.limit ;
-			EntryBuyLmtTicket.StopPrice = Close + EntryOffsetFromLastTrade ;
+			EntryBuyLmtTicket.StopPrice = Close + OneTick*EntryOffsetTicksFromLastTrade ;
 		End ;
 
 	
@@ -218,7 +225,7 @@ variables:
 			EntryShortLmtTicket.Quantity = TradeSize ;
 			EntryShortLmtTicket.Action = OrderAction.sellshort ;
 			EntryShortLmtTicket.Type = OrderType.limit ;
-			EntryShortLmtTicket.StopPrice = Close - EntryOffsetFromLastTrade ;			
+			EntryShortLmtTicket.StopPrice = Close - OneTick*EntryOffsetTicksFromLastTrade ;			
 		End ;
 
 	
@@ -295,9 +302,9 @@ Method void InitLastBarOnChart()
 		else
 			Begin
 				if(PositionInfo[0].Quantity > 0) then
-					ReplaceExitSellWithLimit(Close+ProfitTargetOffset)
+					ReplaceExitSellWithLimit(Close+OneTick*ProfitTargetOffsetTicks)
 				Else if(PositionInfo[0].Quantity < 0) then
-					ReplaceExitBuyWithLimit(Close-ProfitTargetOffset)
+					ReplaceExitBuyWithLimit(Close-OneTick*ProfitTargetOffsetTicks)
 				Else
 					print("--Flat--");
 			End;}
@@ -315,8 +322,8 @@ method void LongEntryUpdated( Object EntryOCOOrder, OrderUpdatedEventArgs
 		if LongEntryOrder.State = OrderState.Filled then
 			begin
 				LongExitBracket.LimitPrice = LongEntryOrder.AvgFilledPrice +
-		 		ProfitTargetOffset ;
-				LongExitBracket.StopPrice = LongEntryOrder.AvgFilledPrice - StopLossOffset ;
+		 		OneTick*ProfitTargetOffsetTicks ;
+				LongExitBracket.StopPrice = LongEntryOrder.AvgFilledPrice - OneTick*StopLossOffsetTicks ;
 				LongExitOrderSide1 = LongExitBracket.Send() ;
 				LongExitOrderSide2 = LongExitOrderSide1.NextSibling ;
 				LongExitOrderSide1.Updated += ExitOrderUpdate ;
@@ -336,8 +343,8 @@ method void ShortEntryUpdated( Object EntryOCOOrder, OrderUpdatedEventArgs
 		if ShortEntryOrder.State = OrderState.Filled then
 			begin
 				ShortExitBracket.LimitPrice = ShortEntryOrder.AvgFilledPrice -
-		 		ProfitTargetOffset ;
-				ShortExitBracket.StopPrice = ShortEntryOrder.AvgFilledPrice + StopLossOffset ;
+		 		OneTick*ProfitTargetOffsetTicks ;
+				ShortExitBracket.StopPrice = ShortEntryOrder.AvgFilledPrice + OneTick*StopLossOffsetTicks ;
 				ShortExitOrderSide1 = ShortExitBracket.Send() ;
 				ShortExitOrderSide2 = ShortExitOrderSide1.NextSibling ;
 				ShortExitOrderSide1.Updated += ExitOrderUpdate ;
@@ -548,11 +555,11 @@ variables: int buy_sell_signal;
 			Begin
 				Case BuySignal :
 					if TradingMode = LongOnly or TradingMode = BothLongShort then
-						IssueEntryLongLimit(Last - EntryOffsetFromLastTrade) ;
+						IssueEntryLongLimit(Last - OneTick*EntryOffsetTicksFromLastTrade) ;
 					Break ;
 				Case SellSignal :
 					if TradingMode = ShortOnly or TradingMode = BothLongShort then
-						IssueEntryShortLimit(Last + EntryOffsetFromLastTrade) ;
+						IssueEntryShortLimit(Last + OneTick*EntryOffsetTicksFromLastTrade) ;
 					Break ;
 			End ;
 	end;
