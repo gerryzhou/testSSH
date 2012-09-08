@@ -49,6 +49,7 @@ inputs:
 	double RegularBullTLAng(20),
 	double RegularBearTLAng(-20),
 	int MaxBarsSinceEntry(6),
+	int MaxBarsWaitForEntry(6),
 	int YYYMMDD_Start(1120420) ,
 	int YYYMMDD_End( 1121230 ),
 	int Weekday_Start( 1 ) ,
@@ -116,6 +117,7 @@ variables:
 	string AccountToTrade ( "" ),
 	OrdersProvider OrdersInfo( NULL ),
 	int BarSinceEntryCounter(MaxBarsSinceEntry),
+	int BarWait4EntryCounter(MaxBarsWaitForEntry),
 	double CurFastTLAngMA( 0 ),
 	double CurSlowTLAngMA( 0 ),
 	double MinFastTLAngMA( 0 ),
@@ -273,6 +275,7 @@ method void Init( )
 	
 Method void InitLastBarOnChart()
 	begin
+		BarWait4EntryCounter -= 1 ;
 		BarSinceEntryCounter -= 1 ;
 		Print("Init LastBar on Chart--", Symbol, "--, CurFastTLAngMA=", CurFastTLAngMA, "------Time update:", Currenttime, "---------") ;
 		
@@ -299,7 +302,7 @@ method void LongEntryUpdated( Object EntryOCOOrder, OrderUpdatedEventArgs
  EntryOCOUpdateArgs ) 
 	begin
 		{ set properties of long exit bracket and issue it }
-		if LongEntryOrder.State = OrderState.Filled then
+		If LongEntryOrder.State = OrderState.Filled then
 			begin
 				LongExitBracket.LimitPrice = LongEntryOrder.AvgFilledPrice + OneTick*ProfitTargetOffsetTicks ;
 				LongExitBracket.StopPrice = LongEntryOrder.AvgFilledPrice - OneTick*StopLossOffsetTicks ;
@@ -309,7 +312,12 @@ method void LongEntryUpdated( Object EntryOCOOrder, OrderUpdatedEventArgs
 				LongExitOrderSide2.Updated += ExitOrderUpdate ;
 				BarSinceEntryCounter = MaxBarsSinceEntry ;
 				Print("LongEntryUpdated--", Symbol, "--Order filled, LongExitBracket Input(", LongExitBracket.LimitPrice, " , ",  LongExitBracket.StopPrice, ")");
-			end ;	
+			end
+		Else if LongEntryOrder.State = OrderState.received then
+			Begin 
+				BarWait4EntryCounter = MaxBarsWaitForEntry ;
+				Print("LongEntryUpdated--", Symbol, "--Order received, BarWaitForEntryCounter = ", BarWait4EntryCounter);
+			End ;
 	end ;
 
 { method void ShortEntryUpdated: event handler for short entry order update events }
@@ -328,7 +336,12 @@ method void ShortEntryUpdated( Object EntryOCOOrder, OrderUpdatedEventArgs
 				ShortExitOrderSide2.Updated += ExitOrderUpdate ;
 				BarSinceEntryCounter = MaxBarsSinceEntry ;
 				Print("ShortEntryUpdated--", Symbol, "--Order filled, ShortExitBracket Input(", ShortExitBracket.LimitPrice, " , ",  ShortExitBracket.StopPrice, ")");
-			end ;
+			end 
+		Else if ShortEntryOrder.State = OrderState.received then
+			Begin 
+				BarWait4EntryCounter = MaxBarsWaitForEntry ;
+				Print("ShortEntryUpdated--", Symbol, "--Order received, BarWaitForEntryCounter = ", BarWait4EntryCounter);
+			End ;
 	end ;
 
 { method void ExitOrderUpdate: when an exit order update event occurs, update plots }
@@ -643,6 +656,17 @@ variables: int buy_sell_signal;
 			End ;
 	end;
 
+Method void TradeOnPosFlatEnOrder()
+	begin		
+		If BarWait4EntryCounter < 0 
+			And LongEntryOrder <> Null and LongEntryOrder.State <> OrderState.filled
+			And ShortEntryOrder <> Null and ShortEntryOrder.State <> OrderState.filled then 
+			Begin
+				print("TradeOnPosFlatEnOrder --", Symbol, "--, BarWait4EntryCounter=", BarWait4EntryCounter) ;
+				CancelAllEnOrders();
+			End ;			
+	end;
+	
 Method void TradeOnPosLong()
 	begin
 		print("TradeOnPosLong --", Symbol, "--") ;
@@ -755,15 +779,32 @@ method void ReplaceExitShortWithLimit(double prc)
 		
 		Print("replaceExitShortWithLimit--", Symbol, "--, price = ", prc) ;
 	end ;
-	
+
+Method void CancelAllEnOrders()
+	begin 
+		If LongEntryOrder <> Null and LongEntryOrder.CanCancel() then
+			LongEntryOrder.Cancel() ;
+		If ShortEntryOrder <> Null and ShortEntryOrder.CanCancel() then 
+			ShortEntryOrder.Cancel() ;
+	end ;
+
 Method void TradeOnLastBar()
 	Begin
-		If TradingStatus = PosFlatNoOrder then
-			TradeOnPosFlatNoOrder() 
-		Else if TradingStatus = PosLongNoOrder or TradingStatus = PosLongExOrder Then 
-			TradeOnPosLong()
-		Else if TradingStatus = PosShortNoOrder or TradingStatus = PosShortExOrder Then 
-			TradeOnPosShort() ;
+		switch(TradingStatus)
+			Begin
+				Case PosFlatNoOrder :
+					TradeOnPosFlatNoOrder();
+					Break ;
+				Case PosFlatEnOrder :
+					TradeOnPosFlatEnOrder();
+					Break ;
+				Case PosLongNoOrder, PosLongExOrder :
+					TradeOnPosLong();
+					Break ;
+				Case PosShortNoOrder, PosShortExOrder :
+					TradeOnPosShort();
+					Break ;
+			End ;
 	End ;
 			
 {-----------------------------------------}		
