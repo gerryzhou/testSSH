@@ -10,23 +10,27 @@
   specified names will appear in the chart analysis data window. }
 inputs: 
 	Price( Close ),
-	NormRatio(100),
+	NormRatio(2),
 	FastLength( 4 ),
-	SlowLength( 9 ),
+	SlowLength( 30 ),
 	TLLength( 4 ), 
-	ColorValFa( Red ), 
-	ColorValSl( Darkblue ), 
+	ColorTLAngMaFa( Red ), 
+	ColorTLAngMaSl( Blue ), 
+	ColorMaTLAngSl( Cyan ), 
 	ColorBase( Darkgreen ), 	
 	Displace( 0 ) ;
 
 variables:
-	FastAvg( 0 ),
-	SlowAvg( 0 ) ;
+	FastAvgTLAngMa( 0 ),
+	SlowAvgTLAngMa( 0 ),
+	SlowAvgMaTLAng( 0 )  ;
 
-Value1 = LinearRegAngleFC( NormRatio*Price, TLLength ) ;
+{Value1 = LinearRegAngleFC( NormRatio*Price, TLLength ) ;}
 
-FastAvg = GZF_TLAngMA(Price, NormRatio, FastLength, TLLength); {AverageFC( Value1, FastLength ) ;}
-SlowAvg = GZF_TLAngMA(Price, NormRatio, SlowLength, TLLength); {AverageFC( Value1, SlowLength ) ;}
+FastAvgTLAngMa = GZF_TLAngMA(Price, NormRatio, FastLength, TLLength); {AverageFC( Value1, FastLength ) ;}
+SlowAvgTLAngMa = GZF_TLAngMA(Price, NormRatio, SlowLength, TLLength); {AverageFC( Value1, SlowLength ) ;}
+
+SlowAvgMaTLAng = GZF_MATLAng(Price, NormRatio, SlowLength, TLLength);
 
 Plot1( 90, "TLAngMAUp" ) ;
 Plot2( 0, "TLAngMAFlat" ) ;
@@ -35,19 +39,17 @@ SetPlotColor( 1, ColorBase ) ;
 SetPlotColor( 2, ColorBase ) ;
 SetPlotColor( 3, ColorBase ) ;
 
-Plot4( FastAvg, "TLAngMAFa" ) ;
-SetPlotColor( 4, ColorValFa ) ;
+Plot4( FastAvgTLAngMa, "TLAngMAFa" ) ;
+SetPlotColor( 4, ColorTLAngMaFa ) ;
 
-Plot5( SlowAvg, "TLAngMASl" ) ;
-SetPlotColor( 5, ColorValSl ) ;
+Plot5( SlowAvgTLAngMa, "TLAngMASl" ) ;
+SetPlotColor( 5, ColorTLAngMaSl ) ;
 
+Plot6( SlowAvgMaTLAng, "MATLAngSl" ) ;
+SetPlotColor( 6, ColorMaTLAngSl ) ;
 
 { OPTIONAL STEPS: To specify alert criteria that will sound an audible alert when 
   triggered, replace FALSE with your criteria.  To specify a brief alert description 
   that will be included in the alert notification pop-up window, insert your 
   description between the quotes ( " ).  Note that Condition1 is a logical variable, a 
   temporary holding place for the true-false result of the criteria. }
-
-Condition1 = FALSE ;
-if Condition1 then
-	Alert( " ") ;
