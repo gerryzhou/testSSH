@@ -38,8 +38,12 @@ inputs:
 	 order from the average entry price }
 	double FloorAmt( 0.2 ),
 	Price( Close ),
-	double ResistanceP(HighD(1)),
-	double SupportP(LowD(1)),
+	double ResistanceST(HighD(1)),
+	double SupportST(LowD(1)),
+	double ResistanceMT(HighD(1)),
+	double SupportMT(LowD(1)),
+	double ResistanceLT(HighD(1)),
+	double SupportLT(LowD(1)),
 	NormRatio(2),
 	int FastLength( 4 ),
 	int SlowLength( 30 ),
@@ -114,7 +118,7 @@ variables:
 	QuotesProvider QuoteInfo( Null ),
 	PositionsProvider PositionInfo( NULL ),
 	Account myAccount ( NUll ),	
-	string AccountToTrade ( "" ),
+	string AccountToTrade ( " " ),
 	OrdersProvider OrdersInfo( NULL ),
 	int BarSinceEntryCounter(MaxBarsSinceEntry),
 	int BarWait4EntryCounter(MaxBarsWaitForEntry),
@@ -428,7 +432,7 @@ Method int CheckBullBearStatus()
 			Begin
 				If CurFastTLAngMA > ExtremeBullTLAng then
 					Begin
-						If High > ResistanceP then
+						If High > ResistanceST then
 							Return ExtremeBullish 
 						Else Return Bullish ;
 					End
@@ -439,7 +443,7 @@ Method int CheckBullBearStatus()
 			Begin
 				If CurFastTLAngMA < ExtremeBearTLAng then
 					Begin
-						If Low < SupportP then
+						If Low < SupportST then
 							Return ExtremeBearish 
 						Else Return Bearish ;
 					End
@@ -642,7 +646,7 @@ Variables: int cur_pos;
 
 Method void IssueEntryLongLimit(double prc)
 	begin
-		Print("IssueEntryLongLimit--", Symbol, "-- price = ", prc) ;
+		Print("IssueEntryLongLimit--", Symbol, "-- price = ", Numtostr(prc, getDecimals( prc, 5 ))) ;
 		EntryBuyLmtTicket.LimitPrice = prc ;
 		LongEntryOrder = EntryBuyLmtTicket.Send();
 		LongEntryOrder.Updated += LongEntryUpdated ;
@@ -650,7 +654,7 @@ Method void IssueEntryLongLimit(double prc)
 
 Method void IssueEntryShortLimit(double prc)
 	begin
-		Print("IssueEntryShortLimit--", Symbol, "--, price = ", prc) ;
+		Print("IssueEntryShortLimit--", Symbol, "--, price = ", Numtostr(prc, getDecimals( prc, 5 ))) ;
 		EntryShortLmtTicket.LimitPrice = prc ;
 		ShortEntryOrder = EntryShortLmtTicket.Send();
 		ShortEntryOrder.Updated += ShortEntryUpdated ;
@@ -658,7 +662,7 @@ Method void IssueEntryShortLimit(double prc)
 
 Method void IssueExitLongLimit(double prc, double stp)
 	begin
-		Print("IssueExitLongLimit--", Symbol, "--, price = ", prc, ", stop = ", stp) ;
+		Print("IssueExitLongLimit--", Symbol, "--, price = ", Numtostr(prc, getDecimals( prc, 5 )), ", stop = ", Numtostr(stp, getDecimals( stp, 5 ))) ;
 		If TradingStatus = PosLongExOrder Then 
 			ReplaceExitLongWithLimit(Last)
 		Else 
@@ -667,7 +671,7 @@ Method void IssueExitLongLimit(double prc, double stp)
 
 Method void IssueExitLongBracket(double prc, double stp)
 	begin
-		Print("IssueExitLongBracket--", Symbol, "--, price = ", prc, ", stop = ", stp) ;
+		Print("IssueExitLongBracket--", Symbol, "--, price = ", Numtostr(prc, getDecimals( prc, 5 )), ", stop = ", Numtostr(stp, getDecimals( stp, 5 ))) ;
 		LongExitBracket.LimitPrice = prc ;
 		LongExitBracket.StopPrice = stp ;
 		LongExitOrderSide1 = LongExitBracket.Send() ;
@@ -694,7 +698,7 @@ method void ReplaceExitLongWithLimit(double prc)
 			and LongExitOrderSide2.Type = OrderType.limit then
 			LongExitOrderSide2.Replace(ReplaceLmtTicket);
 		
-		Print("replaceExitLongWithLimit--", Symbol, "--, price = ", prc) ;
+		Print("replaceExitLongWithLimit--", Symbol, "--, price = ", Numtostr(prc, getDecimals( prc, 5 ))) ;
 	end ;
 
 Method void IssueExitShortLimit(double prc, double stp)
@@ -708,7 +712,7 @@ Method void IssueExitShortLimit(double prc, double stp)
 
 Method void IssueExitShortBracket(double prc, double stp)
 	begin
-		Print("IssueExitShortBracket--", Symbol, "--, price = ", prc, ", stop = ", stp) ;
+		Print("IssueExitShortBracket--", Symbol, "--, price = ", Numtostr(prc, getDecimals( prc, 5 )), ", stop = ", Numtostr(stp, getDecimals( stp, 5 ))) ;
 		ShortExitBracket.LimitPrice = prc ;
 		ShortExitBracket.StopPrice = stp ;
 		ShortExitOrderSide1 = ShortExitBracket.Send() ;
@@ -736,7 +740,7 @@ method void ReplaceExitShortWithLimit(double prc)
 			and ShortExitOrderSide2.Type = OrderType.limit then
 			ShortExitOrderSide2.Replace(ReplaceLmtTicket);
 		
-		Print("replaceExitShortWithLimit--", Symbol, "--, price = ", prc) ;
+		Print("replaceExitShortWithLimit--", Symbol, "--, price = ", Numtostr(prc, getDecimals( prc, 5 ))) ;
 	end ;
 
 Method void CancelAllEnOrders()
