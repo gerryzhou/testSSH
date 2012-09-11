@@ -771,11 +771,12 @@ variables: int buy_sell_signal;
 
 Method void TradeOnPosFlatEnOrder()
 	begin		
+		print("TradeOnPosFlatEnOrder --", Symbol, "--, BarWait4EntryCounter=", BarWait4EntryCounter) ;
 		If BarWait4EntryCounter < 0 
 			And LongEntryOrder <> Null and LongEntryOrder.State <> OrderState.filled
 			And ShortEntryOrder <> Null and ShortEntryOrder.State <> OrderState.filled then 
 			Begin
-				print("TradeOnPosFlatEnOrder --", Symbol, "--, BarWait4EntryCounter=", BarWait4EntryCounter) ;
+				print("TradeOnPosFlatEnOrder, cancelling --", Symbol, "--, BarWait4EntryCounter=", BarWait4EntryCounter) ;
 				CancelAllEnOrders();
 			End ;			
 	end;
@@ -796,6 +797,7 @@ Method void TradeOnPosShort()
 	
 Method void TradeOnLastBar()
 	Begin
+		print("tradeOnLastBar------------TradingStatus=", TradingStatus);
 		switch(TradingStatus)
 			Begin
 				Case PosFlatNoOrder :
