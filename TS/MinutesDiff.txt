@@ -1,13 +1,10 @@
-input:
-TimeVal1(Numericsimple),
-TimeVal2(Numericsimple);
+Input:
+TimeMin1(Numericseries),
+TimeMin2(Numericseries) ;
 
-MinutesDiff = 0 ;
-
-Value1 = TimeToMinutes(TimeVal1) ;
-Value2 = TimeToMinutes(TimeVal2) ;
-
+Value1 = TimeToMinutes(TimeMin1) ;
+Value2 = TimeToMinutes(TimeMin2) ;
 If Value1 <= Value2 then 
-	MinutesDiff = Value2 - Value1 	
+	MinutesDiff = Value2 - Value1
 Else 
-	MinutesDiff = 24*60 - Value1 + Value2 ;
+	MinutesDiff = 24*60 + Value2 - Value1 ;
