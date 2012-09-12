@@ -813,14 +813,14 @@ Variables:
 		stOrdLife = 0 ;
 		print("TradeOnPosFlatEnOrder --", Symbol, "-- Time:", Currenttime);
 		If LongEntryOrder <> Null then 
-		print(Symbol, ", LongEntryOrder.State=", LongEntryOrder.State.ToString(), "-- LongEntryOrder.EnteredTime=", LongEntryOrder.EnteredTime.TimeOfDay.TotalMinutes) ;
+		print(Symbol, ", LongEntryOrder.State=", LongEntryOrder.State.ToString(), "-- LongEntryOrder.EnteredTime=", LongEntryOrder.EnteredTime.ELTime) ;
 		If ShortEntryOrder <> Null then
 		print(Symbol, ", ShortEntryOrder.State=", ShortEntryOrder.State.ToString(), "-- ShortEntryOrder.EnteredTime=", ShortEntryOrder.EnteredTime.ELTime) ;
 		
 		If LongEntryOrder <> Null and LongEntryOrder.State <> OrderState.filled then  
 			Begin 					
 				lgOrdLife = MinutesDiff(LongEntryOrder.EnteredTime.ELTime, Currenttime) ;
-				print(Symbol, "-- lgOrdLife=", lgOrdLife, "-- LongEntryOrder.EnteredTime=", LongEntryOrder.EnteredTime.TimeOfDay.TotalMinutes) ;
+				print(Symbol, "-- lgOrdLife=", lgOrdLife, "-- LongEntryOrder.EnteredTime=", LongEntryOrder.EnteredTime.ELTime) ;
 			End ;
 		If ShortEntryOrder <> Null and ShortEntryOrder.State <> OrderState.filled then 
 			Begin 
