@@ -53,7 +53,9 @@ inputs:
 	double RegularBullTLAng(20),
 	double RegularBearTLAng(-20),
 	int MaxBarsSinceEntry(6),
+	int MaxMinsSinceEntry(3),
 	int MaxBarsWaitForEntry(6),
+	int MaxMinsWaitForEntry(3),
 	int YYYMMDD_Start(1120420) ,
 	int YYYMMDD_End( 1121230 ),
 	int Weekday_Start( 1 ) ,
@@ -120,8 +122,9 @@ variables:
 	Account myAccount ( NUll ),	
 	string AccountToTrade ( " " ),
 	OrdersProvider OrdersInfo( NULL ),
-	int BarSinceEntryCounter(MaxBarsSinceEntry),
+	{int BarSinceEntryCounter(MaxBarsSinceEntry),
 	int BarWait4EntryCounter(MaxBarsWaitForEntry),
+	int MinsWait4EntryFilled(MaxMinsWaitForEntry),}
 	double CurFastTLAngMA( 0 ),
 	double CurSlowTLAngMA( 0 ),
 	double MinFastTLAngMA( 0 ),
@@ -147,7 +150,8 @@ method void Init( )
 	{Print("Point=", Numtostr(Point, 5));}
 	Print("--", Symbol, "--MinMove=", MinMove, ", PriceScale=", Pricescale, ", PointValue=", PointValue, ", BigPointValue=", Bigpointvalue, ", Tick=", OneTick );
 	Print("AccountToTrade=", AccountToTrade, ", GetRTPurchingPower=", Getrtpurchasingpower(GetAccountID), ", Getrtinitialmargin=", Getrtinitialmargin(GetAccountID), ", Getrtmarginrequirement=", Getrtmarginrequirement(GetAccountID));
-	
+	Value2 = MinutesDiff(Currenttime, 202) ;
+	print("MinutesDiff(Currenttime)=", Value2) ;
 	{BarSinceEntryCounter = MaxBarsSinceEntry ;}
 	If QuoteInfo = Null then
 		Begin
@@ -281,8 +285,8 @@ method void Init( )
 	
 Method void InitLastBarOnChart()
 	begin
-		BarWait4EntryCounter -= 1 ;
-		BarSinceEntryCounter -= 1 ;
+		{BarWait4EntryCounter -= 1 ;
+		BarSinceEntryCounter -= 1 ;}
 		Print("Init LastBar on Chart--", Symbol, "--, CurFastTLAngMA=", CurFastTLAngMA, "------Time update:", Currenttime, "---------") ;
 		
 		BullBearStatus = CheckBullBearStatus() ;
@@ -316,13 +320,13 @@ method void LongEntryUpdated( Object EntryOCOOrder, OrderUpdatedEventArgs
 				LongExitOrderSide2 = LongExitOrderSide1.NextSibling ;
 				LongExitOrderSide1.Updated += ExitOrderUpdate ;
 				LongExitOrderSide2.Updated += ExitOrderUpdate ;
-				BarSinceEntryCounter = MaxBarsSinceEntry ;
+				{BarSinceEntryCounter = MaxBarsSinceEntry ;}
 				Print("LongEntryUpdated--", Symbol, "--Order filled, LongExitBracket Input(", LongExitBracket.LimitPrice, " , ",  LongExitBracket.StopPrice, ")");
 			end
 		Else if LongEntryOrder.State = OrderState.received then
 			Begin 
-				BarWait4EntryCounter = MaxBarsWaitForEntry ;
-				Print("LongEntryUpdated--", Symbol, "--Order received, BarWaitForEntryCounter = ", BarWait4EntryCounter);
+				{BarWait4EntryCounter = MaxBarsWaitForEntry ;}
+				Print("LongEntryUpdated--", Symbol, "--Order received, Time=", LongEntryOrder.EnteredTime.ELTime);
 			End ;
 	end ;
 
@@ -340,13 +344,13 @@ method void ShortEntryUpdated( Object EntryOCOOrder, OrderUpdatedEventArgs
 				ShortExitOrderSide2 = ShortExitOrderSide1.NextSibling ;
 				ShortExitOrderSide1.Updated += ExitOrderUpdate ;
 				ShortExitOrderSide2.Updated += ExitOrderUpdate ;
-				BarSinceEntryCounter = MaxBarsSinceEntry ;
+				{BarSinceEntryCounter = MaxBarsSinceEntry ;}
 				Print("ShortEntryUpdated--", Symbol, "--Order filled, ShortExitBracket Input(", ShortExitBracket.LimitPrice, " , ",  ShortExitBracket.StopPrice, ")");
 			end 
 		Else if ShortEntryOrder.State = OrderState.received then
 			Begin 
-				BarWait4EntryCounter = MaxBarsWaitForEntry ;
-				Print("ShortEntryUpdated--", Symbol, "--Order received, BarWaitForEntryCounter = ", BarWait4EntryCounter);
+				{BarWait4EntryCounter = MaxBarsWaitForEntry ;}
+				Print("ShortEntryUpdated--", Symbol, "--Order received, Time=", ShortEntryOrder.EnteredTime.ELTime);
 			End ;
 	end ;
 
@@ -495,7 +499,7 @@ Variables: int Long_Entry_Strategy, int Short_Entry_Strategy;
 		switch(Entry_Strategy)
 			Begin
 				Case BuyReversal, BuyCorrection, BuyBreakout, LongShortBySignal :
-					If BarSinceEntryCounter < 0 Then
+					If getExitLongWithLimitLife() > MaxMinsSinceEntry Then
 						Begin
 							if BullBearStatus[1] = ExtremeBullish and CurFastTLAngMA < MaxFastTLAngMA[1] then
 								Return SellSignal 
@@ -512,11 +516,8 @@ Variables: int Long_Entry_Strategy, int Short_Entry_Strategy;
 	begin
 		switch(Entry_Strategy)
 			Begin
-				Case BuyReversal, BuyCorrection, BuyBreakout :
-					if BullBearStatus[1] = ExtremeBearish and CurFastTLAngMA > MinFastTLAngMA[1] then
-						Return BuySignal ;				
 				Case ShortReversal, ShortCorrection, ShortBreakout, LongShortBySignal : 
-					If BarSinceEntryCounter < 0 Then
+					If getExitShortWithLimitLife() > MaxMinsSinceEntry Then
 						Begin
 							if BullBearStatus[1] = ExtremeBearish and CurFastTLAngMA > MinFastTLAngMA[1] then
 								Return BuySignal 
@@ -532,12 +533,12 @@ Method bool CheckLiquidateSignal()
 	begin
 		if CheckPosition() > 0 then
 			Begin
-				if CurFastTLAngMA < 0 and BarSinceEntryCounter < 0 then
+				if CurFastTLAngMA < 0 and getExitLongWithLimitLife() > MaxMinsSinceEntry then
 					Return true;
 			End
 		Else if CheckPosition() < 0 then
 			Begin
-				if CurFastTLAngMA > 0 and BarSinceEntryCounter < 0 then
+				if CurFastTLAngMA > 0 and getExitShortWithLimitLife() > MaxMinsSinceEntry then
 					Return true;
 			end;
 			
@@ -701,6 +702,23 @@ method void ReplaceExitLongWithLimit(double prc)
 		Print("replaceExitLongWithLimit--", Symbol, "--, price = ", Numtostr(prc, getDecimals( prc, 5 ))) ;
 	end ;
 
+method int getExitLongWithLimitLife()
+Variables:
+	int lgExLife;
+	begin
+		lgExLife = -1 ;
+		if LongExitOrderSide1 <> NULL and LongExitOrderSide1.State = OrderState.received
+			and LongExitOrderSide1.Type = OrderType.limit then
+			lgExLife = MinutesDiff(LongExitOrderSide1.EnteredTime.ELTime, Currenttime) ;
+		
+		if LongExitOrderSide2 <> NULL and LongExitOrderSide2.State = OrderState.received
+			and LongExitOrderSide2.Type = OrderType.limit then
+			lgExLife = MinutesDiff(LongExitOrderSide2.EnteredTime.ELTime, Currenttime) ;
+		
+		Print("ExitLongWithLimitLife--", lgExLife, "-- for ", Symbol, ) ;
+		Return lgExLife ;
+	end ;
+	
 Method void IssueExitShortLimit(double prc, double stp)
 	begin
 		Print("IssueExitShortLimit--", Symbol, "--, price = ", Numtostr(prc, getDecimals( prc, 5 )) ) ;
@@ -743,6 +761,24 @@ method void ReplaceExitShortWithLimit(double prc)
 		Print("replaceExitShortWithLimit--", Symbol, "--, price = ", Numtostr(prc, getDecimals( prc, 5 ))) ;
 	end ;
 
+method int getExitShortWithLimitLife()
+Variables:
+	int stExLife;
+	begin
+		stExLife = -1 ;
+		if ShortExitOrderSide1 <> NULL and ShortExitOrderSide1.State = OrderState.received
+			and ShortExitOrderSide1.Type = OrderType.limit then
+			stExLife = MinutesDiff(ShortExitOrderSide1.EnteredTime.ELTime, Currenttime) ;
+		
+		if ShortExitOrderSide2 <> NULL and ShortExitOrderSide2.State = OrderState.received
+			and ShortExitOrderSide2.Type = OrderType.limit then
+			stExLife = MinutesDiff(ShortExitOrderSide2.EnteredTime.ELTime, Currenttime) ;
+		
+		Print("ExitShortWithLimitLife--", stExLife, "-- for ", Symbol, ) ;
+		
+		Return stExLife ;
+	end ;
+	
 Method void CancelAllEnOrders()
 	begin 
 		If LongEntryOrder <> Null and LongEntryOrder.CanCancel() then
@@ -770,15 +806,33 @@ variables: int buy_sell_signal;
 	end;
 
 Method void TradeOnPosFlatEnOrder()
+Variables:
+	int lgOrdLife, int stOrdLife ;
 	begin		
-		print("TradeOnPosFlatEnOrder --", Symbol, "--, BarWait4EntryCounter=", BarWait4EntryCounter) ;
-		If BarWait4EntryCounter < 0 
-			And LongEntryOrder <> Null and LongEntryOrder.State <> OrderState.filled
-			And ShortEntryOrder <> Null and ShortEntryOrder.State <> OrderState.filled then 
+		lgOrdLife = 0 ;
+		stOrdLife = 0 ;
+		print("TradeOnPosFlatEnOrder --", Symbol, "-- Time:", Currenttime);
+		If LongEntryOrder <> Null then 
+		print(Symbol, ", LongEntryOrder.State=", LongEntryOrder.State.ToString(), "-- LongEntryOrder.EnteredTime=", LongEntryOrder.EnteredTime.TimeOfDay.TotalMinutes) ;
+		If ShortEntryOrder <> Null then
+		print(Symbol, ", ShortEntryOrder.State=", ShortEntryOrder.State.ToString(), "-- ShortEntryOrder.EnteredTime=", ShortEntryOrder.EnteredTime.ELTime) ;
+		
+		If LongEntryOrder <> Null and LongEntryOrder.State <> OrderState.filled then  
+			Begin 					
+				lgOrdLife = MinutesDiff(LongEntryOrder.EnteredTime.ELTime, Currenttime) ;
+				print(Symbol, "-- lgOrdLife=", lgOrdLife, "-- LongEntryOrder.EnteredTime=", LongEntryOrder.EnteredTime.TimeOfDay.TotalMinutes) ;
+			End ;
+		If ShortEntryOrder <> Null and ShortEntryOrder.State <> OrderState.filled then 
+			Begin 
+				stOrdLife = MinutesDiff(ShortEntryOrder.EnteredTime.ELTime, Currenttime) ;
+				print(Symbol, "-- stOrdLife=", stOrdLife, "-- ShortEntryOrder.EnteredTime=", ShortEntryOrder.EnteredTime.ELTime) ;
+			End ;
+		If (lgOrdLife > MaxMinsWaitForEntry and LongEntryOrder.State = OrderState.received )
+			Or (stOrdLife > MaxMinsWaitForEntry and ShortEntryOrder.State = OrderState.received ) then 
 			Begin
-				print("TradeOnPosFlatEnOrder, cancelling --", Symbol, "--, BarWait4EntryCounter=", BarWait4EntryCounter) ;
+				print("TradeOnPosFlatEnOrder, cancelling --", Symbol, "-- lgOrdLife=", lgOrdLife, "-- stOrdLife=", stOrdLife) ;
 				CancelAllEnOrders();
-			End ;			
+			End ;
 	end;
 	
 Method void TradeOnPosLong()
