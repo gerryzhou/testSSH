@@ -123,9 +123,7 @@ variables:
 	Account myAccount ( NUll ),	
 	string AccountToTrade ( " " ),
 	OrdersProvider OrdersInfo( NULL ),
-	{int BarSinceEntryCounter(MaxBarsSinceEntry),
-	int BarWait4EntryCounter(MaxBarsWaitForEntry),
-	int MinsWait4EntryFilled(MaxMinsWaitForEntry),}
+
 	double CurFastTLAngMA( 0 ),
 	double CurSlowTLAngMA( 0 ),
 	double MinFastTLAngMA( 0 ),
@@ -134,7 +132,9 @@ variables:
 	double MaxSlowTLAngMA( 0 ), 
 	OneTick(MinMove / PriceScale), {OneTickValue(iff(GetExchangeName="FOREX", MinMove/PriceScale*BigPointValue*100000, MinMove/PriceScale*BigPointValue))}
 	OneTickValue(Pointvalue*Minmove), {The dollar amount for one tick}
-	int BullBearStatus(NoBullNoBear),
+	int STermTrendStatus(NoBullNoBear),
+	int MTermTrendStatus(NoBullNoBear),
+	int LTermTrendStatus(NoBullNoBear),
 	int TradingStatus(PosOrderUnknown) ;
 
 method void Init( ) 
@@ -149,10 +149,9 @@ method void Init( )
 	AccountToTrade = Getaccountid ;
 	{SymbolToTrade = Symbol ;}
 	{Print("Point=", Numtostr(Point, 5));}
-	Print("--", Symbol, "--MinMove=", MinMove, ", PriceScale=", Pricescale, ", PointValue=", PointValue, ", BigPointValue=", Bigpointvalue, ", Tick=", OneTick );
+	Print("--", Symbol, "--MinMove=", MinMove, ", PriceScale=", Pricescale, ", PointValue=", PointValue, ", BigPointValue=", Bigpointvalue, ", Tick=", OneTick, ", TickValue=", OneTickValue );
 	Print("AccountToTrade=", AccountToTrade, ", GetRTPurchingPower=", Getrtpurchasingpower(GetAccountID), ", Getrtinitialmargin=", Getrtinitialmargin(GetAccountID), ", Getrtmarginrequirement=", Getrtmarginrequirement(GetAccountID));
-	Value2 = MinutesDiff(Currenttime, 202) ;
-	print("MinutesDiff(Currenttime)=", Value2) ;
+	
 	{BarSinceEntryCounter = MaxBarsSinceEntry ;}
 	If QuoteInfo = Null then
 		Begin
@@ -290,7 +289,7 @@ Method void InitLastBarOnChart()
 		BarSinceEntryCounter -= 1 ;}
 		Print("Init LastBar on Chart--", Symbol, "--, CurFastTLAngMA=", CurFastTLAngMA, "------Time update:", Currenttime, "---------") ;
 		
-		BullBearStatus = CheckBullBearStatus() ;
+		CheckBullBearStatus() ;
 		TradingStatus = CheckTradingStatus() ;		
 	end;
 
@@ -426,8 +425,25 @@ method void OrderUpdate( Object OrdProvide, OrderUpdatedEventArgs
 	int ExtremeBearish(6),
 	int NoBullNoBear(-1),
 }
-Method int CheckBullBearStatus()
+Method void CheckBullBearStatus()
 	begin		
+		STermTrendStatus = CheckSTermTrend() ;
+		MTermTrendStatus = CheckMTermTrend() ;
+		LTermTrendStatus = CheckLTermTrend() ;
+	end;
+
+Method int CheckLTermTrend() 
+	Begin 
+		Return NoBullNoBear ;
+	End ;
+
+Method int CheckMTermTrend()
+	Begin 
+		Return NoBullNoBear ;
+	End ;
+	
+Method int CheckSTermTrend()
+	Begin 
 		if CurFastTLAngMA > 0 and CurFastTLAngMA > MaxFastTLAngMA then
 			MaxFastTLAngMA = CurFastTLAngMA 
 		else if CurFastTLAngMA < 0 and CurFastTLAngMA < MinFastTLAngMA then
@@ -457,7 +473,7 @@ Method int CheckBullBearStatus()
 			End;
 			
 		Return NoBullNoBear ;
-	end;
+	End ;
 
 {
 {Bull Bear status}
@@ -479,15 +495,15 @@ Variables: int Long_Entry_Strategy, int Short_Entry_Strategy;
 		switch(Entry_Strategy)
 			Begin
 				Case BuyReversal, BuyCorrection, BuyBreakout :
-					if BullBearStatus[1] = ExtremeBearish and CurFastTLAngMA > MinFastTLAngMA[1] then
+					if STermTrendStatus[1] = ExtremeBearish and CurFastTLAngMA > MinFastTLAngMA[1] then
 						Return BuySignal ;				
 				Case ShortReversal, ShortCorrection, ShortBreakout : 
-					if BullBearStatus[1] = ExtremeBullish and CurFastTLAngMA < MaxFastTLAngMA[1] then
+					if STermTrendStatus[1] = ExtremeBullish and CurFastTLAngMA < MaxFastTLAngMA[1] then
 						Return SellSignal ;				
 				Default : {LongShortBySignal}
-					if BullBearStatus[1] = ExtremeBullish and CurFastTLAngMA < MaxFastTLAngMA[1] then
+					if STermTrendStatus[1] = ExtremeBullish and CurFastTLAngMA < MaxFastTLAngMA[1] then
 						Return SellSignal 
-					Else if BullBearStatus[1] = ExtremeBearish and CurFastTLAngMA > MinFastTLAngMA[1] then
+					Else if STermTrendStatus[1] = ExtremeBearish and CurFastTLAngMA > MinFastTLAngMA[1] then
 						Return BuySignal ;
 			End ;
 		
@@ -518,7 +534,7 @@ Variables: int Long_Entry_Strategy, int Short_Entry_Strategy;
 				Case BuyReversal, BuyCorrection, BuyBreakout, LongShortBySignal :
 					If getExitLongWithLimitLife() > MaxMinsSinceEntry Then
 						Begin
-							if BullBearStatus[1] = ExtremeBullish and CurFastTLAngMA < MaxFastTLAngMA[1] then
+							if STermTrendStatus[1] = ExtremeBullish and CurFastTLAngMA < MaxFastTLAngMA[1] then
 								Return SellSignal 
 							else if CurFastTLAngMA < RegularBullTLAng And CheckPosOpenPL() <= ProfitTargetLeastOffsetTicks*OneTickValue then
 								Return SellSignal ;
@@ -536,7 +552,7 @@ Variables: int Long_Entry_Strategy, int Short_Entry_Strategy;
 				Case ShortReversal, ShortCorrection, ShortBreakout, LongShortBySignal : 
 					If getExitShortWithLimitLife() > MaxMinsSinceEntry Then
 						Begin
-							if BullBearStatus[1] = ExtremeBearish and CurFastTLAngMA > MinFastTLAngMA[1] then
+							if STermTrendStatus[1] = ExtremeBearish and CurFastTLAngMA > MinFastTLAngMA[1] then
 								Return BuySignal 
 							else if CurFastTLAngMA > RegularBearTLAng And CheckPosOpenPL() <= ProfitTargetLeastOffsetTicks*OneTickValue then
 								Return BuySignal ;
@@ -915,12 +931,6 @@ Method void TradeOnLastBar()
 			if LastBarOnChart then begin 
 				InitLastBarOnChart() ;
 				TradeOnLastBar() ;
-				{If CurFastTLAngMA < ExtremeBearTLAng
-					And Price < SupportP then
-						IssueEntryLongLimit(AvgPrice)
-				else If CurFastTLAngMA > ExtremeBullTLAng 
-					And Price > ResistanceP then
-						IssueEntryShortLimit(AvgPrice) ; }
 			End ;
 		End 
 	Else if LastBarOnChart then
