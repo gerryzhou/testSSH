@@ -9,27 +9,46 @@
   may replace "Plot1" through "Plot4"  (leaving the quotes) with names you choose.  The 
   specified names will appear in the chart analysis data window. }
 inputs: 
-	Price( Close ),
+	DefaultPrice(Close),
 	NormRatio(2),
-	FastLength( 4 ),
-	SlowLength( 30 ),
-	TLLength( 4 ), 
-	ColorTLAngMaFa( Red ), 
-	ColorTLAngMaSl( Blue ), 
-	ColorMaTLAngSl( Cyan ), 
-	ColorBase( Darkgreen ), 	
+	FastLength(4),
+	MidLength(14),
+	SlowLength(30),
+	TLLength(4), 
+	ColorTLAngMaFa(Red), 
+	ColorTLAngMaMd(Magenta), 
+	ColorTLAngMaSl(Darkgreen), 
+	ColorMaTLAngSl(Cyan), 
+	ColorBase(Yellow), 	
 	Displace( 0 ) ;
 
 variables:
-	FastAvgTLAngMa( 0 ),
-	SlowAvgTLAngMa( 0 ),
-	SlowAvgMaTLAng( 0 )  ;
+	Price(DefaultPrice),
+	FastAvgTLAngMa(0),
+	MidAvgTLAngMa(0),
+	SlowAvgTLAngMa(0),
+	
+	FastAvgMaTLAng(0),
+	MidAvgMaTLAng(0),
+	SlowAvgMaTLAng(0)  ;
 
 {Value1 = LinearRegAngleFC( NormRatio*Price, TLLength ) ;}
 
+switch(FastAvgTLAngMa[1])
+	Begin 
+		Case > 0 :
+			Price = High ; Break ;
+		Case < 0 :
+			Price = Low ; Break ;
+		Default : 
+			Price = Close ;
+	End ;
+
 FastAvgTLAngMa = GZF_TLAngMA(Price, NormRatio, FastLength, TLLength); {AverageFC( Value1, FastLength ) ;}
+MidAvgTLAngMa = GZF_TLAngMA(Price, NormRatio, MidLength, TLLength); 
 SlowAvgTLAngMa = GZF_TLAngMA(Price, NormRatio, SlowLength, TLLength); {AverageFC( Value1, SlowLength ) ;}
 
+MidAvgMaTLAng = GZF_MATLAng(Price, NormRatio, MidLength, TLLength);
 SlowAvgMaTLAng = GZF_MATLAng(Price, NormRatio, SlowLength, TLLength);
 
 Plot1( 90, "TLAngMAUp" ) ;
@@ -42,11 +61,14 @@ SetPlotColor( 3, ColorBase ) ;
 Plot4( FastAvgTLAngMa, "TLAngMAFa" ) ;
 SetPlotColor( 4, ColorTLAngMaFa ) ;
 
-Plot5( SlowAvgTLAngMa, "TLAngMASl" ) ;
-SetPlotColor( 5, ColorTLAngMaSl ) ;
+Plot5( MidAvgTLAngMa, "TLAngMAMd" ) ;
+SetPlotColor( 5, ColorTLAngMaMd ) ;
 
-Plot6( SlowAvgMaTLAng, "MATLAngSl" ) ;
-SetPlotColor( 6, ColorMaTLAngSl ) ;
+Plot6( SlowAvgTLAngMa, "TLAngMASl" ) ;
+SetPlotColor( 6, ColorTLAngMaSl ) ;
+
+Plot7( SlowAvgMaTLAng, "MATLAngSl" ) ;
+SetPlotColor( 7, ColorMaTLAngSl ) ;
 
 { OPTIONAL STEPS: To specify alert criteria that will sound an audible alert when 
   triggered, replace FALSE with your criteria.  To specify a brief alert description 

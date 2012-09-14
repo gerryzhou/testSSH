@@ -4,6 +4,7 @@ Exit strategy: bars since entry expired without profits expected
 or TLAngMA change to the value expected;
 Cancel entry order: mins since order input expired or TLAngMA change to the reversal direction too far(cross regular bull/bear angle)
 ??How to detect wick/hammer ??
+It's not suitable for trend market, at trend market, it will go wrong and wrong once the trend is developing
 [Trade range]
 [Trend follow]
 if slow TLAngMA > 10 or < -10, trend follow entry at correction
@@ -25,20 +26,19 @@ using tsdata.marketdata ;
 inputs:
 	{string AccountNum( "21055300" ),  the account number to be used for
 	 trading }
-	int TradeSize( 1 ), { the size of the position, in number of contracts or
+	int TradeSize(1), { the size of the position, in number of contracts or
 	 shares, that is to be entered and exited }
-	int TradingMode( 0 ), {1=LongOnly, -1=ShortOnly, 0=LongShortBoth}
-	double EntryOffsetTicksFromLastTrade( 3 ), { the amount to offset the two entry
+	int TradingMode(0), {1=LongOnly, -1=ShortOnly, 0=LongShortBoth}
+	double EntryOffsetTicksFromLastTrade(3), { the amount to offset the two entry
 	 orders from the price of the first trade that follows setting the Start input
 	 to true }
-	double ProfitTargetOffsetTicks( 5 ), { the amount by which to offset the profit
+	double ProfitTargetOffsetTicks(30), { the amount by which to offset the profit
 	 target order from the average entry price }
-	double ProfitTargetLeastOffsetTicks( 2 ), { the least dollar amount of profit ticks 
+	double ProfitTargetLeastOffsetTicks(2), { the least dollar amount of profit ticks 
 	by which to keep the position open, otherwise, try to close it ASAP }
-	double StopLossOffsetTicks( 20 ), { the amount by which to offset the stop-loss
+	double StopLossOffsetTicks(40), { the amount by which to offset the stop-loss
 	 order from the average entry price }
-	double FloorAmt( 0.2 ),
-	Price( Close ),
+	DefaultPrice(Close),
 	double ResistanceST(HighD(1)),
 	double SupportST(LowD(1)),
 	double ResistanceMT(HighD(1)),
@@ -46,28 +46,26 @@ inputs:
 	double ResistanceLT(HighD(1)),
 	double SupportLT(LowD(1)),
 	NormRatio(2),
-	int FastLength( 4 ),
-	int SlowLength( 30 ),
-	int TLLength( 4 ),
-	double ExtremeBullTLAng(40),
-	double ExtremeBearTLAng(-40),
-	double RegularBullTLAng(20),
-	double RegularBearTLAng(-20),
-	int MaxBarsSinceEntry(6),
-	int MaxMinsSinceEntry(3),
-	int MaxBarsWaitForEntry(6),
-	int MaxMinsWaitForEntry(3),
+	int FastLength(4),
+	int SlowLength(30),
+	int TLLength(4),
+	double ExtremeBullTLAng(45),
+	double ExtremeBearTLAng(-45),
+	double RegularBullTLAng(15),
+	double RegularBearTLAng(-15),
+	int MaxMinsSinceEntry(30),
+	int MaxMinsWaitForEntry(15),
 	int MaxBars4EarlyTrend(10),
 	int MaxBars4TrunkTrend(30),
 	int MaxBars4LateTrend(50),
 	int YYYMMDD_Start(1120420) ,
-	int YYYMMDD_End( 1121230 ),
-	int Weekday_Start( 1 ) ,
-	int Weekday_End( 5 ),
-	int Timespan_Start( 600 ) ,
-	int Timespan_End( 1859 ) ,
-	int Entry_Strategy( -1 ),
-	bool LiquidateAtSessionClose( true ) ; 
+	int YYYMMDD_End(1121230),
+	int Weekday_Start(1) ,
+	int Weekday_End(5),
+	int Timespan_Start(2000) ,
+	int Timespan_End(1259) ,
+	int Entry_Strategy(0),
+	bool LiquidateAtSessionClose(true) ;
 
 consts:	
 	{Position and Order status}
@@ -127,6 +125,7 @@ variables:
 	string AccountToTrade ( " " ),
 	OrdersProvider OrdersInfo( NULL ),
 
+	Price(DefaultPrice),
 	double CurFastTLAngMA( 0 ),
 	double CurSlowTLAngMA( 0 ),
 	double MinFastTLAngMA( 0 ),
@@ -478,6 +477,21 @@ Method int CheckSTermTrend()
 		Return NoBullNoBear ;
 	End ;
 
+Method void calTLAng()
+	Begin 
+		switch(CurFastTLAngMA[1])
+			Begin 
+				Case > 0 :
+					Price = High ; Break ;
+				Case < 0 :
+					Price = Low ; Break ;
+				Default : 
+					Price = Close ;
+			End ;
+		
+		CurFastTLAngMA = GZF_TLAngMA(Price, NormRatio, FastLength, TLLength);			
+	End ;
+	
 {
 {Bull Bear status}
 	int ExtremeBullish(1),
@@ -881,8 +895,8 @@ Variables:
 		If ShortEntryOrder <> Null then
 		print(Symbol, ", ShortEntryOrder.State=", ShortEntryOrder.State.ToString(), "-- ShortEntryOrder.EnteredTime=", ShortEntryOrder.EnteredTime.ELTime) ;
 
-		If (LongEntryOrder.State = OrderState.received and CheckCancelEntryLongSignal() = true)
-			Or (ShortEntryOrder.State = OrderState.received and CheckCancelEntryShortSignal() = true) then 
+		If (LongEntryOrder <> Null and LongEntryOrder.State = OrderState.received and CheckCancelEntryLongSignal() = true)
+			Or (ShortEntryOrder <> Null and ShortEntryOrder.State = OrderState.received and CheckCancelEntryShortSignal() = true) then 
 			Begin
 				print("TradeOnPosFlatEnOrder, cancelling --", Symbol) ;
 				CancelAllEnOrders();
@@ -932,7 +946,7 @@ Method void TradeOnLastBar()
 {Print("checktime: date=" , date, ", weekday=", Dayofweek(date), ", time=", time );}
 	if GZF_CheckTradeTime(YYYMMDD_Start, YYYMMDD_End, Weekday_Start , Weekday_End, Timespan_Start ,Timespan_End, currenttime) then 
 		Begin
-			CurFastTLAngMA = GZF_TLAngMA(Price, NormRatio, FastLength, TLLength);			
+			calTLAng() ;
 			if LastBarOnChart then begin 
 				InitLastBarOnChart() ;
 				TradeOnLastBar() ;
