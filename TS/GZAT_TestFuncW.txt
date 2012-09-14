@@ -73,7 +73,9 @@ inputs:
 	int Timespan_Start(2000) ,
 	int Timespan_End(1259) ,
 	int Entry_Strategy(0),
-	bool LiquidateAtSessionClose(true) ; 
+	bool LiquidateAtSessionClose(true),
+	string LogFileName("C:\Users\Gerry\Documents\ts_log\TS_Log_" + NumtoStr(Date,0) + ".log") ; 
+	
 
 consts:	
 	{Position and Order status}
@@ -147,6 +149,13 @@ variables:
 	int LTermTrendStatus(NoBullNoBear),
 	int TradingStatus(PosOrderUnknown) ;
 
+Method void To_Log(string message, bool to_console)
+	Begin
+		If to_console then
+			Print(message) ;
+		FileAppend(LogFileName, message + Newline);
+	End ;
+	
 method void Init( ) 
 	begin
 	If AccountInfo = Null then
@@ -946,7 +955,7 @@ Method void TradeOnLastBar()
 {-----------------------------------------}		
 	Once(Currentbar = 1)
 		Begin
-			Print("Time init GZAT_TestFuncW--", Symbol, "--", Currenttime);	
+			To_Log("Time init GZAT_TestFuncW--" + Symbol + "--"+Numtostr(Currenttime,0), true) ;
 			Init( ) ;
 		End;
 {Print("checktime: date=" , date, ", weekday=", Dayofweek(date), ", time=", time );}
