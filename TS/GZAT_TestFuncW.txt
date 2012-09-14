@@ -3,10 +3,19 @@
 Exit strategy: bars since entry expired without profits expected 
 or TLAngMA change to the value expected;
 Cancel entry order: mins since order input expired or TLAngMA change to the reversal direction too far(cross regular bull/bear angle)
-??How to detect wick/hammer ??
-It's not suitable for trend market, at trend market, it will go wrong and wrong once the trend is developing
+<How to detect wick/hammer>
+<Reversal point>
+a) wick/hammer detected; 
+b) range narrow down after several big bars;
+<When to use and when not to use>
+a) It's not suitable for trend market, at trend market, it will go wrong and wrong once the trend is developing
+b) So pick the market which is at reversal point or is developing a trend with predictable range;
+c) Never pick the market that is in range play for a long time and is subject to generate a huge range extension;
+d) Or use this trader to get a better price at correctoins during a trend; 
+e) Or get a better price for a reversal;
 [Trade range]
 [Trend follow]
+Trend following need to identify the true breakout first;
 if slow TLAngMA > 10 or < -10, trend follow entry at correction
 tracking fast TLAngMA if cross 0 or less than 5, then entry at the turning point;
 track the bar number since entry, if > 10 bars no profits, exit;
