@@ -40,6 +40,7 @@ inputs:
 	int TradeSize(1), { the size of the position, in number of contracts or
 	 shares, that is to be entered and exited }
 	int TradingMode(0), {1=LongOnly, -1=ShortOnly, 0=LongShortBoth}
+	MarginUSD(-1),
 	double EntryOffsetTicksFromLastTrade(3), { the amount to offset the two entry
 	 orders from the price of the first trade that follows setting the Start input
 	 to true }
@@ -110,7 +111,12 @@ consts:
 	int ShortReversal(-1),
 	int ShortCorrection(-2),
 	int ShortBreakout(-3),
-	int LongShortBySignal(0); {Range trading}
+	int LongShortBySignal(0), {Range trading}
+	{Margins}
+	int ES_Margin(4500), {4375/3500}
+	int GC_Margin(9200), {9113/6750}
+	int AD_Margin(2800), {2750/2500}
+	int CL_Margin(5700); {5610/5100}
 
 variables:	
 	OrderTicket EntryBuyStopTicket( NULL ),
@@ -384,33 +390,25 @@ method void ExitOrderUpdate( Object ExitOrder, OrderUpdatedEventArgs
 method void AccountInfoUpdated (elsystem.Object sender, tsdata.trading.AccountUpdatedEventArgs args )
 variables: 
 tsdata.trading.Account myAccount, 	{ object variable used to access the values for each Account }
-double AcctValue, 					{ used to accumulate the total real-time net worth of all accounts }
 int Counter;
-	Begin 
+	Begin
 		Once If (AccountInfo.Count > 0) then
 			begin
-				print(AccountInfo.Count, " accounts detected....");
-				AcctValue = 0;
-				For Counter=0 to AccountInfo.Count-1 
-					{ reads each Account object and adds the real-time value to the total }
-				begin
-					myAccount = AccountInfo[Counter] ;
-					AcctValue = AcctValue + myAccount.RTAccountNetWorth;
-					if myAccount.Type = AccountType.futures then
-						Begin 
-							AccountToTrade = myAccount.AccountID.ToString() ;
-							Print(myAccount.Type.ToString()," Accts"); 
-							Print(myAccount.RTAccountNetWorth,"=TotalValue");
-							Print(myAccount.RTPurchasingPower.ToString()," =RTPurchasingPower "); 
-						End ;
-				end;
-					{ displays the number of accounts and their total value }
-				Print(AcctValue,"=TotalValue");
+				print("Account updated reason = ", args.Reason.ToString());
+				For Counter=0 to AccountInfo.Count-1						
+					begin
+						myAccount = AccountInfo[Counter] ;						
+						if myAccount.Type = AccountType.futures and args.Reason = AccountUpdateReason.statechanged then
+							Begin 
+								print(myAccount.Type.ToString()," Accts--", myAccount.AccountID.ToString(), " detected....");								
+								Print(myAccount.RTAccountNetWorth,"=TotalValue");
+								Print(myAccount.RTPurchasingPower.ToString()," =RTPurchasingPower "); 
+							End ;
+					end;				
 			end
 		else
 			begin
 				print("No accounts detected....");
-				{ display an error message if no accounts are found }
 				throw elsystem.Exception.Create("No accounts available");
 			end;		
 	End ;
@@ -432,6 +430,47 @@ method void OrderUpdate( Object OrdProvide, OrderUpdatedEventArgs
 			Print("OrderUpdate--", Symbol, "--", OrdUpdateArgs.State.ToString(), ", ", OrdUpdateArgs.Message) ;
 	end ;
 
+{-----------------------Accounts---------------------------}
+
+Method double getBuyingPower()
+variables: 
+Account myAccount, 	
+double buyingPower,
+int Counter;
+	Begin 
+		buyingPower = 0 ;
+		If (AccountInfo <> null and AccountInfo.Count > 0) then
+			begin				
+				For Counter=0 to AccountInfo.Count-1 
+					begin
+						myAccount = AccountInfo[Counter] ;
+						if myAccount.Type = AccountType.futures then
+							Begin 
+								buyingPower = myAccount.RTPurchasingPower ; 
+							End ;
+					end;
+			end ;
+		Print("Account buyingPower=", buyingPower, " --for--", Symbol);
+		Return buyingPower ;	
+	End ;
+
+Method bool checkMargin(double buying_pow)
+variables: bool is_ok, string symb, double req_margin ;
+	Begin
+		is_ok = False ;
+		switch(Midstr(Symbol, 1, 2))
+			Begin
+				Case "ES" : req_margin = ES_Margin; break;
+				Case "CL" : req_margin = CL_Margin; break;
+				Case "AD" : req_margin = AD_Margin; break;
+				Case "GC" : req_margin = GC_Margin; break;
+				Default : req_margin = MarginUSD;
+			End ;
+		is_ok = (buying_pow > req_margin) ;
+		If is_ok = False then
+			Print("Insufficent buying power:", buying_pow, " for ", Symbol, ", req_margin=", req_margin);
+		Return is_ok ;
+	End ;
 
 {-----------------------Indicators and signals---------------------------}
 {
@@ -647,7 +686,7 @@ Variables: int iCount;
 					PositionInfo[iCount].Close();
 			End ;
 	End ;
-	
+
 {--------------------------Trade------------------------------------}	
 { Canceled 9 
   Cancelpending 10 
@@ -885,17 +924,18 @@ variables: int buy_sell_signal;
 	begin
 		buy_sell_signal = CheckEntrySignal();
 		print("TradeOnPosFlatNoOrder --", Symbol, "--, buy_sell_signal = ", buy_sell_signal) ;
-		switch(buy_sell_signal)
-			Begin
-				Case BuySignal :
-					if TradingMode = LongOnly or TradingMode = BothLongShort then
-						IssueEntryLongLimit(Last - OneTick*EntryOffsetTicksFromLastTrade) ;
-					Break ;
-				Case SellSignal :
-					if TradingMode = ShortOnly or TradingMode = BothLongShort then
-						IssueEntryShortLimit(Last + OneTick*EntryOffsetTicksFromLastTrade) ;
-					Break ;
-			End ;
+		If checkMargin(getBuyingPower()) = True then 
+			switch(buy_sell_signal)
+				Begin
+					Case BuySignal :
+						if TradingMode = LongOnly or TradingMode = BothLongShort then
+							IssueEntryLongLimit(Last - OneTick*EntryOffsetTicksFromLastTrade) ;
+						Break ;
+					Case SellSignal :
+						if TradingMode = ShortOnly or TradingMode = BothLongShort then
+							IssueEntryShortLimit(Last + OneTick*EntryOffsetTicksFromLastTrade) ;
+						Break ;
+				End ;
 	end;
 
 Method void TradeOnPosFlatEnOrder()
