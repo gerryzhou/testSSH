@@ -4,6 +4,8 @@ Exit strategy: bars since entry expired without profits expected
 or TLAngMA change to the value expected;
 Cancel entry order: mins since order input expired or TLAngMA change to the reversal direction too far(cross regular bull/bear angle)
 <How to detect wick/hammer>
+a) Type of bars: normal, big, middle, big bar with wick/hammer, big bar with wick, big bar with hammer
+b) Type of bars serials, consecutive big bars followed by wick/hammer bars, consecutive big bars followed by range narrow down bars,
 <Reversal point>
 a) wick/hammer detected; 
 b) range narrow down after several big bars;
