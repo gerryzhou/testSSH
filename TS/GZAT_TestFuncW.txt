@@ -75,8 +75,7 @@ inputs:
 	int Timespan_End(1259) ,
 	int Entry_Strategy(0),
 	bool LiquidateAtSessionClose(true),
-	bool LiquidateAtInit(true),
-	string LogFileName("C:\Users\Gerry\Documents\ts_log\TS_Log_" + NumtoStr(Date,0) + ".log") ; 
+	bool LiquidateAtInit(true) ; 
 	
 
 consts:	
@@ -153,6 +152,7 @@ variables:
 	int MTermTrendStatus(NoBullNoBear),
 	int LTermTrendStatus(NoBullNoBear),
 	int TradingStatus(PosOrderUnknown),
+	string LogFileName("C:\Users\Gerry\Documents\ts_log\TS_Log_" + Symbol + "_" + Datetime.Today.Format("%m-%d-%y").ToString() + ".log"),
 	string log_text("") ;
 
 {-------------------------Init----------------------------------}	
