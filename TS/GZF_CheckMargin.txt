@@ -1,0 +1,23 @@
+Input: 
+SymbolToTrade(Stringsimple),
+DefaultMargin(Numericsimple);
+
+consts:
+{Margins}
+	int ES_Margin(4500), {4375/3500}
+	int GC_Margin(9200), {9113/6750}
+	int AD_Margin(2800), {2750/2500}
+	int CL_Margin(5700); {5610/5100}
+	
+variables: 
+double req_margin(DefaultMargin) ;
+
+	switch(Leftstr(Symbol, 2)) {Leftstr, rightstr, midstr}
+		Begin
+			Case "ES" : req_margin = ES_Margin; break;
+			Case "CL" : req_margin = CL_Margin; break;
+			Case "AD" : req_margin = AD_Margin; break;
+			Case "GC" : req_margin = GC_Margin; break;
+			Default : req_margin = DefaultMargin;
+		End ;
+	GZF_CheckMargin = req_margin ;

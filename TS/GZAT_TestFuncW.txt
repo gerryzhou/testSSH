@@ -75,6 +75,7 @@ inputs:
 	int Timespan_End(1259) ,
 	int Entry_Strategy(0),
 	bool LiquidateAtSessionClose(true),
+	bool LiquidateAtInit(true),
 	string LogFileName("C:\Users\Gerry\Documents\ts_log\TS_Log_" + NumtoStr(Date,0) + ".log") ; 
 	
 
@@ -111,12 +112,7 @@ consts:
 	int ShortReversal(-1),
 	int ShortCorrection(-2),
 	int ShortBreakout(-3),
-	int LongShortBySignal(0), {Range trading}
-	{Margins}
-	int ES_Margin(4500), {4375/3500}
-	int GC_Margin(9200), {9113/6750}
-	int AD_Margin(2800), {2750/2500}
-	int CL_Margin(5700); {5610/5100}
+	int LongShortBySignal(0); {Range trading}
 
 variables:	
 	OrderTicket EntryBuyStopTicket( NULL ),
@@ -305,6 +301,12 @@ method void Init( )
 	
 	Print("Init.....--", Symbol, "----Time update:", Currenttime, "---------") ;
 	
+	If LiquidateAtInit = True then 
+		Begin 
+			Print("LiquidateCurSymbol at initial--", Symbol, "----Time update:", Currenttime, "---------") ;
+			LiquidateCurSymbol();
+		End ;
+		
 	End ; {End init()}
 
 	
@@ -454,7 +456,7 @@ int Counter;
 		Return buyingPower ;	
 	End ;
 
-Method bool checkMargin(double buying_pow)
+{Method bool checkMargin(double buying_pow)
 variables: bool is_ok, string symb, double req_margin ;
 	Begin
 		is_ok = False ;
@@ -470,7 +472,7 @@ variables: bool is_ok, string symb, double req_margin ;
 		If is_ok = False then
 			Print("Insufficent buying power:", buying_pow, " for ", Symbol, ", req_margin=", req_margin);
 		Return is_ok ;
-	End ;
+	End ;}
 
 {-----------------------Indicators and signals---------------------------}
 {
@@ -815,7 +817,7 @@ Variables:
 		lgEnLife = -1 ;		
 		If LongEntryOrder <> Null and LongEntryOrder.State <> OrderState.filled then  
 			Begin 					
-				lgEnLife = MinutesDiff(LongEntryOrder.EnteredTime.ELTime, Currenttime) ;
+				lgEnLife = GZF_MinutesDiff(LongEntryOrder.EnteredTime.ELTime, Currenttime) ;
 				print(Symbol, "-- lgEnLife=", lgEnLife, "-- LongEntryOrder.EnteredTime=", LongEntryOrder.EnteredTime.ELTime) ;
 			End ;
 		Return lgEnLife ;
@@ -828,11 +830,11 @@ Variables:
 		lgExLife = -1 ;
 		if LongExitOrderSide1 <> NULL and LongExitOrderSide1.State = OrderState.received
 			and LongExitOrderSide1.Type = OrderType.limit then
-			lgExLife = MinutesDiff(LongExitOrderSide1.EnteredTime.ELTime, Currenttime) ;
+			lgExLife = GZF_MinutesDiff(LongExitOrderSide1.EnteredTime.ELTime, Currenttime) ;
 		
 		if LongExitOrderSide2 <> NULL and LongExitOrderSide2.State = OrderState.received
 			and LongExitOrderSide2.Type = OrderType.limit then
-			lgExLife = MinutesDiff(LongExitOrderSide2.EnteredTime.ELTime, Currenttime) ;
+			lgExLife = GZF_MinutesDiff(LongExitOrderSide2.EnteredTime.ELTime, Currenttime) ;
 		
 		Print("ExitLongWithLimitLife--", lgExLife, "-- for ", Symbol, ) ;
 		Return lgExLife ;
@@ -887,7 +889,7 @@ Variables:
 		stEnLife = -1 ;
 		If ShortEntryOrder <> Null and ShortEntryOrder.State <> OrderState.filled then 
 			Begin 
-				stEnLife = MinutesDiff(ShortEntryOrder.EnteredTime.ELTime, Currenttime) ;
+				stEnLife = GZF_MinutesDiff(ShortEntryOrder.EnteredTime.ELTime, Currenttime) ;
 				print(Symbol, "-- stEnLife=", stEnLife, "-- ShortEntryOrder.EnteredTime=", ShortEntryOrder.EnteredTime.ELTime) ;
 			End ;
 		Return stEnLife ;
@@ -900,11 +902,11 @@ Variables:
 		stExLife = -1 ;
 		if ShortExitOrderSide1 <> NULL and ShortExitOrderSide1.State = OrderState.received
 			and ShortExitOrderSide1.Type = OrderType.limit then
-			stExLife = MinutesDiff(ShortExitOrderSide1.EnteredTime.ELTime, Currenttime) ;
+			stExLife = GZF_MinutesDiff(ShortExitOrderSide1.EnteredTime.ELTime, Currenttime) ;
 		
 		if ShortExitOrderSide2 <> NULL and ShortExitOrderSide2.State = OrderState.received
 			and ShortExitOrderSide2.Type = OrderType.limit then
-			stExLife = MinutesDiff(ShortExitOrderSide2.EnteredTime.ELTime, Currenttime) ;
+			stExLife = GZF_MinutesDiff(ShortExitOrderSide2.EnteredTime.ELTime, Currenttime) ;
 		
 		Print("ExitShortWithLimitLife--", stExLife, "-- for ", Symbol, ) ;
 		
@@ -920,22 +922,28 @@ Method void CancelAllEnOrders()
 	end ;
 
 Method void TradeOnPosFlatNoOrder()
-variables: int buy_sell_signal;
-	begin
-		buy_sell_signal = CheckEntrySignal();
+variables: int buy_sell_signal, double req_margin, double buying_power;
+	begin		
 		print("TradeOnPosFlatNoOrder --", Symbol, "--, buy_sell_signal = ", buy_sell_signal) ;
-		If checkMargin(getBuyingPower()) = True then 
-			switch(buy_sell_signal)
-				Begin
-					Case BuySignal :
-						if TradingMode = LongOnly or TradingMode = BothLongShort then
-							IssueEntryLongLimit(Last - OneTick*EntryOffsetTicksFromLastTrade) ;
-						Break ;
-					Case SellSignal :
-						if TradingMode = ShortOnly or TradingMode = BothLongShort then
-							IssueEntryShortLimit(Last + OneTick*EntryOffsetTicksFromLastTrade) ;
-						Break ;
-				End ;
+		req_margin = GZF_CheckMargin(Symbol, MarginUSD) ;
+		buying_power = getBuyingPower() ;
+		If buying_power > req_margin then 
+			Begin 
+				buy_sell_signal = CheckEntrySignal() ;
+				switch(buy_sell_signal)
+					Begin
+						Case BuySignal :
+							if TradingMode = LongOnly or TradingMode = BothLongShort then
+								IssueEntryLongLimit(Last - OneTick*EntryOffsetTicksFromLastTrade) ;
+							Break ;
+						Case SellSignal :
+							if TradingMode = ShortOnly or TradingMode = BothLongShort then
+								IssueEntryShortLimit(Last + OneTick*EntryOffsetTicksFromLastTrade) ;
+							Break ;
+					End ;
+			End
+		Else 
+			Print("Insufficent buying power:", buying_power, " for ", Symbol, ", req_margin=", req_margin);
 	end;
 
 Method void TradeOnPosFlatEnOrder()
