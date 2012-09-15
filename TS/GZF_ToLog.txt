@@ -1,0 +1,26 @@
+Using elsystem ;
+
+input:
+LogFilePath(Stringsimple),
+MessageText(Stringsimple),
+With_TimeStamp(Truefalsesimple),
+To_Console(Truefalsesimple),
+To_File(Truefalsesimple);
+
+variables:
+string message(""), string time_stamp("");
+
+message = MessageText ;
+If With_TimeStamp then
+	Begin 
+		time_stamp = "[" + DateTime.Now.Format("%H:%M:%S - %m/%d/%y") + "]  " ;
+		message = time_stamp + MessageText ;
+	End ;
+	
+If To_Console then
+	Print(message) ;
+		
+If To_File then
+	FileAppend(LogFilePath, message + Newline);
+		
+GZF_ToLog = True ;
