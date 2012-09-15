@@ -138,6 +138,9 @@ variables:
 	OrdersProvider OrdersInfo( NULL ),
 
 	Price(DefaultPrice),
+	double PriceEnLmt(-1),
+	double PriceExLmt(-1),
+	double PriceExStp(-1),
 	double CurFastTLAngMA( 0 ),
 	double CurSlowTLAngMA( 0 ),
 	double MinFastTLAngMA( 0 ),
@@ -149,17 +152,11 @@ variables:
 	int STermTrendStatus(NoBullNoBear),
 	int MTermTrendStatus(NoBullNoBear),
 	int LTermTrendStatus(NoBullNoBear),
-	int TradingStatus(PosOrderUnknown) ;
+	int TradingStatus(PosOrderUnknown),
+	string log_text("") ;
 
-Method void To_Log(string message, bool to_console)
-	Begin
-		If to_console then
-			Print(message) ;
-		FileAppend(LogFileName, message + Newline);
-	End ;
-	
-method void Init( ) 
-	begin
+{-------------------------Init----------------------------------}	
+method void Init( ) Begin
 	If AccountInfo = Null then
 		Begin
 			AccountInfo = AccountsProvider.Create() ; 
@@ -172,7 +169,7 @@ method void Init( )
 	{Print("Point=", Numtostr(Point, 5));}
 	Print("--", Symbol, "--MinMove=", MinMove, ", PriceScale=", Pricescale, ", PointValue=", PointValue, ", BigPointValue=", Bigpointvalue, ", Tick=", OneTick, ", TickValue=", OneTickValue );
 	Print("AccountToTrade=", AccountToTrade, ", GetRTPurchingPower=", Getrtpurchasingpower(GetAccountID), ", Getrtinitialmargin=", Getrtinitialmargin(GetAccountID), ", Getrtmarginrequirement=", Getrtmarginrequirement(GetAccountID));
-	
+	log_text = GZF_ToLog(LogFileName, "Init Trade on " + Symbol, true, true, true);
 	{BarSinceEntryCounter = MaxBarsSinceEntry ;}
 	If QuoteInfo = Null then
 		Begin
@@ -183,7 +180,7 @@ method void Init( )
 			QuoteInfo.Realtime = True ;
 			QuoteInfo.Load = True ;			
 		End ;
-	Print("Quote Margin=", getDecimals(QuoteInfo.Quote["Margin"].DoubleValue, 4), "MinMove=", getDecimals(QuoteInfo.Quote["MinMove"].DoubleValue, 5)) ;
+	Print("Quote Margin=", GZF_NumToStr(QuoteInfo.Quote["Margin"].DoubleValue, 4), "MinMove=", GZF_NumToStr(QuoteInfo.Quote["MinMove"].DoubleValue, 5)) ;
 			
 	// Long Entry Stop OrderTicket - EntryBuyStopTicket
 	If EntryBuyStopTicket = NULL then
@@ -299,38 +296,21 @@ method void Init( )
 			OrdersInfo.Load = true ;			
 		End ;
 	
-	Print("Init.....--", Symbol, "----Time update:", Currenttime, "---------") ;
-	
 	If LiquidateAtInit = True then 
 		Begin 
-			Print("LiquidateCurSymbol at initial--", Symbol, "----Time update:", Currenttime, "---------") ;
+			log_text = GZF_ToLog(LogFileName, "LiquidateCurSymbol at initial--" + Symbol, true, true, true);			
 			LiquidateCurSymbol();
 		End ;
 		
-	End ; {End init()}
-
+End ; {End init()}
 	
 Method void InitLastBarOnChart()
 	begin
-		{BarWait4EntryCounter -= 1 ;
-		BarSinceEntryCounter -= 1 ;}
-		Print("Init LastBar on Chart--", Symbol, "--, CurFastTLAngMA=", CurFastTLAngMA, "------Time update:", Currenttime, "---------") ;
-		
+		log_text = GZF_ToLog(LogFileName, "Init LastBar on Chart--" + Symbol + "--, CurFastTLAngMA=" + Numtostr(CurFastTLAngMA,1), true, true, false);			
 		CheckBullBearStatus() ;
 		TradingStatus = CheckTradingStatus() ;		
 	end;
 
-{Var: Symbol_Decimals ( Decimals( MinMove / PriceScale, 10 ) ) ;}
-Method int getDecimals(double prc, int Max_Decimals) 
-VARIABLES: string Decimal_String ;
-	Begin
-		Decimal_String = NumToStr( FracPortion( prc ), Max_Decimals ) ;
-		While RightStr( Decimal_String, 1 ) = "0" begin 
-			Decimal_String = LeftStr( Decimal_String, StrLen( Decimal_String ) - 1 ) ;
-		end ;
-
-		return StrLen(Decimal_String) -2 ;	// subtract 2 for decimals	
-	End ;
 
 {-----------------------Event Handlers---------------------------}
 	
@@ -347,14 +327,13 @@ method void LongEntryUpdated( Object EntryOCOOrder, OrderUpdatedEventArgs
 				LongExitOrderSide2 = LongExitOrderSide1.NextSibling ;
 				LongExitOrderSide1.Updated += ExitOrderUpdate ;
 				LongExitOrderSide2.Updated += ExitOrderUpdate ;
-				{BarSinceEntryCounter = MaxBarsSinceEntry ;}
-				Print("LongEntryUpdated--", Symbol, "--Order filled, LongExitBracket Input(", LongExitBracket.LimitPrice, " , ",  LongExitBracket.StopPrice, ")");
+				log_text = "LongEntryUpdated--" + Symbol + "--Order filled, LongExitBracket Input(" + GZF_NumToStr(LongExitBracket.LimitPrice, 5) + " , " + GZF_NumToStr(LongExitBracket.StopPrice, 5) + ")" ;
 			end
 		Else if LongEntryOrder.State = OrderState.received then
-			Begin 
-				{BarWait4EntryCounter = MaxBarsWaitForEntry ;}
-				Print("LongEntryUpdated--", Symbol, "--Order received, Time=", LongEntryOrder.EnteredTime.ELTime);
+			Begin				
+				log_text = "LongEntryUpdated--" + Symbol + "--Order received, Time=" + LongEntryOrder.EnteredTime.ELTime.ToString() ;
 			End ;
+		log_text = GZF_ToLog(LogFileName, log_text, true, true, true);
 	end ;
 
 { method void ShortEntryUpdated: event handler for short entry order update events }
@@ -371,22 +350,24 @@ method void ShortEntryUpdated( Object EntryOCOOrder, OrderUpdatedEventArgs
 				ShortExitOrderSide2 = ShortExitOrderSide1.NextSibling ;
 				ShortExitOrderSide1.Updated += ExitOrderUpdate ;
 				ShortExitOrderSide2.Updated += ExitOrderUpdate ;
-				{BarSinceEntryCounter = MaxBarsSinceEntry ;}
-				Print("ShortEntryUpdated--", Symbol, "--Order filled, ShortExitBracket Input(", ShortExitBracket.LimitPrice, " , ",  ShortExitBracket.StopPrice, ")");
+				log_text = "ShortEntryUpdated--" + Symbol + "--Order filled, ShortExitBracket Input(" + GZF_NumToStr(ShortExitBracket.LimitPrice, 5) + " , " + GZF_NumToStr(ShortExitBracket.StopPrice, 5) + ")" ;
 			end 
 		Else if ShortEntryOrder.State = OrderState.received then
 			Begin 
-				{BarWait4EntryCounter = MaxBarsWaitForEntry ;}
-				Print("ShortEntryUpdated--", Symbol, "--Order received, Time=", ShortEntryOrder.EnteredTime.ELTime);
+				log_text = "ShortEntryUpdated--" + Symbol + "--Order received, Time=" + ShortEntryOrder.EnteredTime.ELTime.ToString();
 			End ;
+		log_text = GZF_ToLog(LogFileName, log_text, true, true, true);
 	end ;
 
 { method void ExitOrderUpdate: when an exit order update event occurs, update plots }
 method void ExitOrderUpdate( Object ExitOrder, OrderUpdatedEventArgs
  ExitUpdateArgs )
 	begin
-		If LastBarOnChart and ExitUpdateArgs.Reason = OrderUpdateReason.statechanged then
-			Print("ExitOrderUpdate--", Symbol, "--", ExitUpdateArgs.State.ToString(), ", ", ExitUpdateArgs.Message) ;
+		If LastBarOnChart and ExitUpdateArgs.Reason = OrderUpdateReason.statechanged then 
+			Begin 
+				log_text = "ExitOrderUpdate--" + Symbol + "--" + ExitUpdateArgs.State.ToString() + ", " + ExitUpdateArgs.Message ;
+				log_text = GZF_ToLog(LogFileName, log_text, true, true, true) ;
+			End ;			
 	end ;
 
 method void AccountInfoUpdated (elsystem.Object sender, tsdata.trading.AccountUpdatedEventArgs args )
@@ -755,7 +736,9 @@ Variables: int cur_pos;
 
 Method void IssueEntryLongLimit(double prc)
 	begin
-		Print("IssueEntryLongLimit--", Symbol, "-- price = ", Numtostr(prc, getDecimals( prc, 5 ))) ;
+		PriceEnLmt = prc ;
+		log_text = "IssueEntryLongLimit--" + Symbol + "-- price = " + GZF_Numtostr(PriceEnLmt, 5) ;
+		log_text = GZF_ToLog(LogFileName, log_text, true, true, true) ;
 		EntryBuyLmtTicket.LimitPrice = prc ;
 		LongEntryOrder = EntryBuyLmtTicket.Send();
 		LongEntryOrder.Updated += LongEntryUpdated ;
@@ -763,7 +746,9 @@ Method void IssueEntryLongLimit(double prc)
 
 Method void IssueEntryShortLimit(double prc)
 	begin
-		Print("IssueEntryShortLimit--", Symbol, "--, price = ", Numtostr(prc, getDecimals( prc, 5 ))) ;
+		PriceEnLmt = prc ;
+		log_text = "IssueEntryShortLimit--" + Symbol + "-- price = " + GZF_Numtostr(PriceEnLmt, 5) ;
+		log_text = GZF_ToLog(LogFileName, log_text, true, true, true) ;		
 		EntryShortLmtTicket.LimitPrice = prc ;
 		ShortEntryOrder = EntryShortLmtTicket.Send();
 		ShortEntryOrder.Updated += ShortEntryUpdated ;
@@ -771,7 +756,10 @@ Method void IssueEntryShortLimit(double prc)
 
 Method void IssueExitLongLimit(double prc, double stp)
 	begin
-		Print("IssueExitLongLimit--", Symbol, "--, price = ", Numtostr(prc, getDecimals( prc, 5 )), ", stop = ", Numtostr(stp, getDecimals( stp, 5 ))) ;
+		PriceExLmt = prc ;
+		PriceExStp = stp ;
+		log_text = "IssueExitLongLimit--" + Symbol + "-- price = " + GZF_Numtostr(PriceExLmt, 5) + ", stop = " + GZF_Numtostr(PriceExStp, 5) ;
+		log_text = GZF_ToLog(LogFileName, log_text, true, true, true) ;		
 		If TradingStatus = PosLongExOrder Then 
 			ReplaceExitLongWithLimit(Last)
 		Else 
@@ -780,7 +768,10 @@ Method void IssueExitLongLimit(double prc, double stp)
 
 Method void IssueExitLongBracket(double prc, double stp)
 	begin
-		Print("IssueExitLongBracket--", Symbol, "--, price = ", Numtostr(prc, getDecimals( prc, 5 )), ", stop = ", Numtostr(stp, getDecimals( stp, 5 ))) ;
+		PriceExLmt = prc ;
+		PriceExStp = stp ;
+		log_text = "IssueExitLongBracket--" + Symbol + "-- price = " + GZF_Numtostr(PriceExLmt, 5) + ", stop = " + GZF_Numtostr(PriceExStp, 5) ;
+		log_text = GZF_ToLog(LogFileName, log_text, true, true, true) ;	
 		LongExitBracket.LimitPrice = prc ;
 		LongExitBracket.StopPrice = stp ;
 		LongExitOrderSide1 = LongExitBracket.Send() ;
@@ -807,7 +798,9 @@ method void ReplaceExitLongWithLimit(double prc)
 			and LongExitOrderSide2.Type = OrderType.limit then
 			LongExitOrderSide2.Replace(ReplaceLmtTicket);
 		
-		Print("replaceExitLongWithLimit--", Symbol, "--, price = ", Numtostr(prc, getDecimals( prc, 5 ))) ;
+		PriceExLmt = prc ;
+		log_text = "replaceExitLongWithLimit--" + Symbol + "-- price = " + GZF_Numtostr(PriceExLmt, 5) ;
+		log_text = GZF_ToLog(LogFileName, log_text, true, true, true) ;
 	end ;
 	
 method int getEntryLongOrderLife()
@@ -842,7 +835,9 @@ Variables:
 	
 Method void IssueExitShortLimit(double prc, double stp)
 	begin
-		Print("IssueExitShortLimit--", Symbol, "--, price = ", Numtostr(prc, getDecimals( prc, 5 )) ) ;
+		PriceExLmt = prc ;
+		log_text = "IssueExitShortLimit--" + Symbol + "-- price = " + GZF_Numtostr(PriceExLmt, 5) ;
+		log_text = GZF_ToLog(LogFileName, log_text, true, true, true) ;	
 		If TradingStatus = PosShortExOrder Then 
 			ReplaceExitShortWithLimit(Last)
 		Else 
@@ -851,7 +846,10 @@ Method void IssueExitShortLimit(double prc, double stp)
 
 Method void IssueExitShortBracket(double prc, double stp)
 	begin
-		Print("IssueExitShortBracket--", Symbol, "--, price = ", Numtostr(prc, getDecimals( prc, 5 )), ", stop = ", Numtostr(stp, getDecimals( stp, 5 ))) ;
+		PriceExLmt = prc ;
+		PriceExStp = stp ;
+		log_text = "IssueExitShortBracket--" + Symbol + "-- price = " + GZF_Numtostr(PriceExLmt, 5) + ", stop = " + GZF_Numtostr(PriceExStp, 5) ;
+		log_text = GZF_ToLog(LogFileName, log_text, true, true, true) ;	
 		ShortExitBracket.LimitPrice = prc ;
 		ShortExitBracket.StopPrice = stp ;
 		ShortExitOrderSide1 = ShortExitBracket.Send() ;
@@ -879,7 +877,9 @@ method void ReplaceExitShortWithLimit(double prc)
 			and ShortExitOrderSide2.Type = OrderType.limit then
 			ShortExitOrderSide2.Replace(ReplaceLmtTicket);
 		
-		Print("replaceExitShortWithLimit--", Symbol, "--, price = ", Numtostr(prc, getDecimals( prc, 5 ))) ;
+		PriceExLmt = prc ;
+		log_text = "replaceExitShortWithLimit--" + Symbol + "-- price = " + GZF_Numtostr(PriceExLmt, 5) ;
+		log_text = GZF_ToLog(LogFileName, log_text, true, true, true) ;	
 	end ;
 
 method int getEntryShortOrderLife()
@@ -961,7 +961,7 @@ Variables:
 		If (LongEntryOrder <> Null and LongEntryOrder.State = OrderState.received and CheckCancelEntryLongSignal() = true)
 			Or (ShortEntryOrder <> Null and ShortEntryOrder.State = OrderState.received and CheckCancelEntryShortSignal() = true) then 
 			Begin
-				print("TradeOnPosFlatEnOrder, cancelling --", Symbol) ;
+				log_text = GZF_ToLog(LogFileName, "TradeOnPosFlatEnOrder, cancelling --" + Symbol, true, true, true) ;
 				CancelAllEnOrders();
 			End ;
 	end;
@@ -1003,7 +1003,8 @@ Method void TradeOnLastBar()
 {-----------------------------------------}		
 	Once(Currentbar = 1)
 		Begin
-			To_Log("Time init GZAT_TestFuncW--" + Symbol + "--"+Numtostr(Currenttime,0), true) ;
+			log_text = "Start init GZAT_TestFuncW -------" + Symbol + "---------------" ;
+			log_text = GZF_ToLog(LogFileName, log_text, true, true, true) ;
 			Init( ) ;
 		End;
 {Print("checktime: date=" , date, ", weekday=", Dayofweek(date), ", time=", time );}

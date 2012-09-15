@@ -1,0 +1,14 @@
+Input:
+num_in(Numericsimple),
+Max_Decimals(Numericsimple);
+
+VARIABLES: 
+string Decimal_String("") ;
+
+	Decimal_String = NumToStr( num_in , Max_Decimals ) ;
+	While RightStr( Decimal_String, 1 ) = "0" begin 
+		Decimal_String = LeftStr( Decimal_String, StrLen( Decimal_String ) - 1 ) ;
+	end ;
+	
+	GZF_NumToStr = Decimal_String ;
+		

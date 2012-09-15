@@ -23,4 +23,4 @@ If To_Console then
 If To_File then
 	FileAppend(LogFilePath, message + Newline);
 		
-GZF_ToLog = True ;
+GZF_ToLog = message ;
