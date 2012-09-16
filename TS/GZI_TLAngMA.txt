@@ -17,9 +17,9 @@ inputs:
 	TLLength(4), 
 	ColorTLAngMaFa(Red), 
 	ColorTLAngMaMd(Magenta), 
-	ColorTLAngMaSl(Darkgreen), 
+	ColorTLAngMaSl(Yellow), 
 	ColorMaTLAngSl(Cyan), 
-	ColorBase(Yellow), 	
+	ColorBase(Darkgray), 	
 	Displace( 0 ) ;
 
 variables:
