@@ -1,0 +1,54 @@
+Using elsystem.collections ;
+
+input:
+in_symbol(Stringsimple),
+in_prop(Stringsimple),
+out_str(Stringref),
+out_num(Numericref),
+out_bool(Truefalseref) ;
+
+{consts:
+string Fut_ES("ES"),
+string Fut_ES("GC"),
+string Fut_ES("CL"),
+string Fut_ES("AD") ;}
+
+variables:
+Dictionary fut_dict(Null),
+string in_key(in_symbol+"_"+in_prop) ;
+
+Once If fut_dict = Null then Begin
+	fut_dict = Dictionary.Create() ;
+	
+	fut_dict.add("ES_MARGIN", 4500.0) ;
+	fut_dict.add("ES_NORMRATIO", 2.0) ;
+	fut_dict.add("ES_LIQATINIT", true) ;
+	
+	fut_dict.add("GC_MARGIN", 9200.0) ;
+	fut_dict.add("GC_NORMRATIO", 1.6) ;
+	fut_dict.add("GC_LIQATINIT", true) ;
+	
+	fut_dict.add("CL_MARGIN", 9200.0) ;
+	fut_dict.add("CL_NORMRATIO", 20.0) ;
+	fut_dict.add("CL_LIQATINIT", true) ;
+	
+	fut_dict.add("AD_MARGIN", 9200.0) ;
+	fut_dict.add("AD_NORMRATIO", 10000.0) ;
+	fut_dict.add("AD_LIQATINIT", true) ;
+	
+End ;
+
+in_key = Upperstr(in_key) ;
+
+If fut_dict.Contains(in_key) then
+	switch(upperstr(in_prop)) Begin
+		Case "MARGIN", "NORMRATIO" : 
+			out_num = fut_dict.Items[in_key] astype double ;
+			Break ;
+		Case "LIQATINIT" : 
+			out_bool = fut_dict.Items[in_key] astype bool ;
+			Break ;
+	End ;
+
+
+GZD_SymbolProps = "NULL" ;

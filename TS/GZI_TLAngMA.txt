@@ -10,7 +10,7 @@
   specified names will appear in the chart analysis data window. }
 inputs: 
 	DefaultPrice(Close),
-	NormRatio(2),
+	{NormRatio(2),}
 	FastLength(4),
 	MidLength(14),
 	SlowLength(30),
@@ -30,10 +30,15 @@ variables:
 	
 	FastAvgMaTLAng(0),
 	MidAvgMaTLAng(0),
-	SlowAvgMaTLAng(0)  ;
+	SlowAvgMaTLAng(0),
+	double NormRatio(-1)  ;
 
 {Value1 = LinearRegAngleFC( NormRatio*Price, TLLength ) ;}
 
+NormRatio = GZF_GetSymbolPropDouble(symbol, "NORMRATIO") ;
+If LastBarOnChart then
+	print(symbol, ", NormRatio=", NormRatio);
+	
 switch(FastAvgTLAngMa[1])
 	Begin 
 		Case > 0 :
