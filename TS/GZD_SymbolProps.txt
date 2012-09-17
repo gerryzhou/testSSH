@@ -20,20 +20,28 @@ string in_key(in_symbol+"_"+in_prop) ;
 Once If fut_dict = Null then Begin
 	fut_dict = Dictionary.Create() ;
 	
-	fut_dict.add("ES_MARGIN", 4500.0) ;
+	fut_dict.add("ES_MARGIN", 4500) ;
 	fut_dict.add("ES_NORMRATIO", 2.0) ;
+	fut_dict.add("ES_TIMESTART", 2000) ;
+	fut_dict.add("ES_TIMEEND", 1500) ;
 	fut_dict.add("ES_LIQATINIT", true) ;
 	
-	fut_dict.add("GC_MARGIN", 9200.0) ;
+	fut_dict.add("GC_MARGIN", 9200) ;
 	fut_dict.add("GC_NORMRATIO", 1.6) ;
+	fut_dict.add("GC_TIMESTART", 1900) ;
+	fut_dict.add("GC_TIMEEND", 1600) ;
 	fut_dict.add("GC_LIQATINIT", true) ;
 	
-	fut_dict.add("CL_MARGIN", 9200.0) ;
+	fut_dict.add("CL_MARGIN", 5700) ;
 	fut_dict.add("CL_NORMRATIO", 20.0) ;
+	fut_dict.add("CL_TIMESTART", 2030) ;
+	fut_dict.add("CL_TIMEEND", 1430) ;
 	fut_dict.add("CL_LIQATINIT", true) ;
 	
-	fut_dict.add("AD_MARGIN", 9200.0) ;
+	fut_dict.add("AD_MARGIN", 2800) ;
 	fut_dict.add("AD_NORMRATIO", 10000.0) ;
+	fut_dict.add("AD_TIMESTART", 2000) ;
+	fut_dict.add("AD_TIMEEND", 1500) ;
 	fut_dict.add("AD_LIQATINIT", true) ;
 	
 End ;
@@ -42,7 +50,10 @@ in_key = Upperstr(in_key) ;
 
 If fut_dict.Contains(in_key) then
 	switch(upperstr(in_prop)) Begin
-		Case "MARGIN", "NORMRATIO" : 
+		Case "MARGIN", "TIMESTART", "TIMEEND" : 
+			out_num = fut_dict.Items[in_key] astype int ;
+			Break ;
+		Case "NORMRATIO" : 
 			out_num = fut_dict.Items[in_key] astype double ;
 			Break ;
 		Case "LIQATINIT" : 
