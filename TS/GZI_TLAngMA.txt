@@ -37,7 +37,7 @@ variables:
 
 NormRatio = GZF_GetSymbolPropDouble(symbol, "NORMRATIO") ;
 If LastBarOnChart then
-	print(symbol, ", NormRatio=", NormRatio);
+	once print(symbol, ", NormRatio=", NormRatio);
 	
 switch(FastAvgTLAngMa[1])
 	Begin 
@@ -80,3 +80,4 @@ SetPlotColor( 7, ColorMaTLAngSl ) ;
   that will be included in the alert notification pop-up window, insert your 
   description between the quotes ( " ).  Note that Condition1 is a logical variable, a 
   temporary holding place for the true-false result of the criteria. }
+  
