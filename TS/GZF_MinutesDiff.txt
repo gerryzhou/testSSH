@@ -5,6 +5,8 @@ TimeMin2(Numericseries) ;
 Value1 = TimeToMinutes(TimeMin1) ;
 Value2 = TimeToMinutes(TimeMin2) ;
 If Value1 <= Value2 then 
-	MinutesDiff = Value2 - Value1
+	GZF_MinutesDiff = Value2 - Value1
 Else 
-	MinutesDiff = 24*60 + Value2 - Value1 ;
+	GZF_MinutesDiff = 24*60 + Value2 - Value1 ;
+	
+	
