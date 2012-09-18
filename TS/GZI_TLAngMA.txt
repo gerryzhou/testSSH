@@ -35,9 +35,8 @@ variables:
 
 {Value1 = LinearRegAngleFC( NormRatio*Price, TLLength ) ;}
 
-NormRatio = GZF_GetSymbolPropDouble(symbol, "NORMRATIO") ;
-If LastBarOnChart then
-	once print(symbol, ", NormRatio=", NormRatio);
+once (Currentbar = 1) Begin NormRatio = GZF_GetSymbolPropDouble(symbol, "NORMRATIO") ; End ;
+if LastBarOnChart then once print(symbol, ", NormRatio=", NormRatio);
 	
 switch(FastAvgTLAngMa[1])
 	Begin 
