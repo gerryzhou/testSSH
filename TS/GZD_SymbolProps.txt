@@ -44,6 +44,24 @@ Once If fut_dict = Null then Begin
 	fut_dict.add("AD_TIMEEND", 1500) ;
 	fut_dict.add("AD_LIQATINIT", true) ;
 	
+	fut_dict.add("DX_MARGIN", 1400) ;
+	fut_dict.add("DX_NORMRATIO", 40.0) ;
+	fut_dict.add("DX_TIMESTART", 2000) ;
+	fut_dict.add("DX_TIMEEND", 1500) ;
+	fut_dict.add("DX_LIQATINIT", true) ;
+	
+	fut_dict.add("SM_MARGIN", 2700) ;
+	fut_dict.add("SM_NORMRATIO", 2.0) ;
+	fut_dict.add("SM_TIMESTART", 2000) ;
+	fut_dict.add("SM_TIMEEND", 1500) ;
+	fut_dict.add("SM_LIQATINIT", true) ;
+	
+	fut_dict.add("QN_MARGIN", 700) ;
+	fut_dict.add("QN_NORMRATIO", 2.0) ;
+	fut_dict.add("QN_TIMESTART", 2000) ;
+	fut_dict.add("QN_TIMEEND", 1500) ;
+	fut_dict.add("QN_LIQATINIT", true) ;
+	
 End ;
 
 in_key = Upperstr(in_key) ;
