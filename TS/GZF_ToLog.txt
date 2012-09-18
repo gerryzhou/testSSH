@@ -8,7 +8,7 @@ To_Console(Truefalsesimple),
 To_File(Truefalsesimple);
 
 variables:
-string message(""), string time_stamp("");
+string message(" "), string time_stamp(" ");
 
 message = MessageText ;
 If With_TimeStamp then
