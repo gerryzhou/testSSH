@@ -57,7 +57,7 @@ inputs:
 	double SupportMT(LowD(1)),
 	double ResistanceLT(HighD(1)),
 	double SupportLT(LowD(1)),
-	NormRatio(2),
+	NormRatio(-1),
 	int FastLength(4),
 	int SlowLength(30),
 	int TLLength(4),
@@ -140,6 +140,8 @@ variables:
 	double PriceEnLmt(-1),
 	double PriceExLmt(-1),
 	double PriceExStp(-1),
+	int Margin_Init(MarginUSD),
+	double Norm_Ratio(NormRatio),
 	double CurFastTLAngMA( 0 ),
 	double CurSlowTLAngMA( 0 ),
 	double MinFastTLAngMA( 0 ),
@@ -152,6 +154,9 @@ variables:
 	int MTermTrendStatus(NoBullNoBear),
 	int LTermTrendStatus(NoBullNoBear),
 	int TradingStatus(PosOrderUnknown),
+	int TradeTime_Start(Timespan_Start),
+	int TradeTime_End(Timespan_End),
+	bool LiqAtInit(LiquidateAtInit),
 	string LogFileName("C:\Users\Gerry\Documents\ts_log\TS_Log_" + Symbol + "_" + Datetime.Today.Format("%m-%d-%y").ToString() + ".log"),
 	string log_text("") ;
 
@@ -164,13 +169,26 @@ method void Init( ) Begin
 			AccountInfo.Load = True ;
 			AccountInfo.Updated += AccountInfoUpdated ;				
 		End ;
-	AccountToTrade = Getaccountid ;
+	AccountToTrade = GetAccountID ;
 	{SymbolToTrade = Symbol ;}
 	{Print("Point=", Numtostr(Point, 5));}
 	Print("--", Symbol, "--MinMove=", MinMove, ", PriceScale=", Pricescale, ", PointValue=", PointValue, ", BigPointValue=", Bigpointvalue, ", Tick=", OneTick, ", TickValue=", OneTickValue );
 	Print("AccountToTrade=", AccountToTrade, ", GetRTPurchingPower=", Getrtpurchasingpower(GetAccountID), ", Getrtinitialmargin=", Getrtinitialmargin(GetAccountID), ", Getrtmarginrequirement=", Getrtmarginrequirement(GetAccountID));
-	log_text = GZF_ToLog(LogFileName, "Init Trade on " + Symbol, true, true, true);
-	{BarSinceEntryCounter = MaxBarsSinceEntry ;}
+	
+	If Margin_Init < 0 Then
+		Begin Margin_Init = GZF_GetSymbolPropInt(symbol, "MARGIN") ; End ;
+	If Norm_Ratio < 0 Then
+		Begin Norm_Ratio = GZF_GetSymbolPropDouble(Symbol, "NORMRATIO") ; End ;
+	If TradeTime_Start < 0 Then
+		Begin TradeTime_Start = GZF_GetSymbolPropInt(symbol, "TIMESTART") ; End ;
+	If TradeTime_End < 0 Then
+		Begin TradeTime_End = GZF_GetSymbolPropInt(symbol, "TIMEEND") ; End ;
+	Once LiqAtInit = GZF_GetSymbolPropBool(Symbol, "LIQATINIT") ;
+
+	Once log_text = "Init Trade On " + Symbol + ", Margin_init=" + Numtostr(Margin_Init, 0) + ", Norm_Ratio=" + Numtostr(Norm_Ratio, 2) + 
+		", TradeTime_Start=" + Numtostr(TradeTime_Start, 0) + ", TradeTime_End=" + Numtostr(TradeTime_End, 0) + ", LiqAtInit=" + LiqAtInit.ToString() ; 
+	Once log_text = GZF_ToLog(LogFileName, log_text, true, true, true);
+	
 	If QuoteInfo = Null then
 		Begin
 			QuoteInfo = QuotesProvider.Create() ;
@@ -1001,7 +1019,7 @@ Method void TradeOnLastBar()
 	End ;
 			
 {-----------------------------------------}		
-	Once(Currentbar = 1)
+	If Currentbar = 1 Then Once
 		Begin
 			log_text = "Start init GZAT_TestFuncW -------" + Symbol + "---------------" ;
 			log_text = GZF_ToLog(LogFileName, log_text, true, true, true) ;
@@ -1016,6 +1034,6 @@ Method void TradeOnLastBar()
 				TradeOnLastBar() ;
 			End ;
 		End 
-	Else if LastBarOnChart then
+	Else if LastBarOnChart then Once
 		LiquidateCurSymbol() ;
 		
