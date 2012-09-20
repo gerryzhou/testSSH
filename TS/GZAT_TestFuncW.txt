@@ -71,8 +71,8 @@ inputs:
 	int YYYMMDD_End(1121230),
 	int Weekday_Start(1) ,
 	int Weekday_End(5),
-	int Timespan_Start(2000) ,
-	int Timespan_End(1259) ,
+	int Timespan_Start(-1) ,
+	int Timespan_End(-1) ,
 	int Entry_Strategy(0),
 	bool LiquidateAtSessionClose(true),
 	bool LiquidateAtInit(true) ; 
@@ -1026,7 +1026,7 @@ Method void TradeOnLastBar()
 			Init( ) ;
 		End;
 {Print("checktime: date=" , date, ", weekday=", Dayofweek(date), ", time=", time );}
-	if GZF_CheckTradeTime(YYYMMDD_Start, YYYMMDD_End, Weekday_Start , Weekday_End, Timespan_Start ,Timespan_End, currenttime) then 
+	if GZF_CheckTradeTime(YYYMMDD_Start, YYYMMDD_End, Weekday_Start , Weekday_End, TradeTime_Start ,TradeTime_End, currenttime) then 
 		Begin
 			calTLAng() ;
 			if LastBarOnChart then begin 

@@ -56,11 +56,11 @@ Once If fut_dict = Null then Begin
 	fut_dict.add("SM_TIMEEND", 1330) ;
 	fut_dict.add("SM_LIQATINIT", true) ;
 	
-	fut_dict.add("QN_MARGIN", 700) ;
-	fut_dict.add("QN_NORMRATIO", 2.0) ;
-	fut_dict.add("QN_TIMESTART", 2000) ;
-	fut_dict.add("QN_TIMEEND", 1500) ;
-	fut_dict.add("QN_LIQATINIT", true) ;
+	fut_dict.add("NG_MARGIN", 2800) ;
+	fut_dict.add("NG_NORMRATIO", 100.0) ; {10 Min}
+	fut_dict.add("NG_TIMESTART", 500) ;
+	fut_dict.add("NG_TIMEEND", 1630) ;
+	fut_dict.add("NG_LIQATINIT", true) ;
 	
 	fut_dict.add("OJ_MARGIN", 2000) ;
 	fut_dict.add("OJ_NORMRATIO", 5.0) ;
