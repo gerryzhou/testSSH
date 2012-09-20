@@ -158,7 +158,7 @@ variables:
 	int TradeTime_End(Timespan_End),
 	bool LiqAtInit(LiquidateAtInit),
 	string LogFileName("C:\Users\Gerry\Documents\ts_log\TS_Log_" + Symbol + "_" + Datetime.Today.Format("%m-%d-%y").ToString() + ".log"),
-	string log_text("") ;
+	string log_text(" ") ;
 
 {-------------------------Init----------------------------------}	
 method void Init( ) Begin
