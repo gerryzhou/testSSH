@@ -546,7 +546,7 @@ Method void calTLAng()
 					Price = Close ;
 			End ;
 		
-		CurFastTLAngMA = GZF_TLAngMA(Price, NormRatio, FastLength, TLLength);			
+		CurFastTLAngMA = GZF_TLAngMA(Price, Norm_Ratio, FastLength, TLLength);			
 	End ;
 
 {
