@@ -51,9 +51,9 @@ Once If fut_dict = Null then Begin
 	fut_dict.add("DX_LIQATINIT", true) ;
 	
 	fut_dict.add("SM_MARGIN", 2700) ;
-	fut_dict.add("SM_NORMRATIO", 2.0) ;
-	fut_dict.add("SM_TIMESTART", 2000) ;
-	fut_dict.add("SM_TIMEEND", 1500) ;
+	fut_dict.add("SM_NORMRATIO", 1.5) ; {3 Min}
+	fut_dict.add("SM_TIMESTART", 1900) ;
+	fut_dict.add("SM_TIMEEND", 1330) ;
 	fut_dict.add("SM_LIQATINIT", true) ;
 	
 	fut_dict.add("QN_MARGIN", 700) ;
@@ -61,6 +61,48 @@ Once If fut_dict = Null then Begin
 	fut_dict.add("QN_TIMESTART", 2000) ;
 	fut_dict.add("QN_TIMEEND", 1500) ;
 	fut_dict.add("QN_LIQATINIT", true) ;
+	
+	fut_dict.add("OJ_MARGIN", 2000) ;
+	fut_dict.add("OJ_NORMRATIO", 5.0) ;
+	fut_dict.add("OJ_TIMESTART", 830) ;
+	fut_dict.add("OJ_TIMEEND", 1330) ;
+	fut_dict.add("OJ_LIQATINIT", true) ;
+	
+	fut_dict.add("SB_MARGIN", 1600) ;
+	fut_dict.add("SB_NORMRATIO", 20.0) ; {10 Min}
+	fut_dict.add("SB_TIMESTART", 300) ;
+	fut_dict.add("SB_TIMEEND", 1330) ;
+	fut_dict.add("SB_LIQATINIT", true) ;
+	
+	fut_dict.add("CC_MARGIN", 1400) ;
+	fut_dict.add("CC_NORMRATIO", 0.4) ; {3 Min}
+	fut_dict.add("CC_TIMESTART", 430) ;
+	fut_dict.add("CC_TIMEEND", 1330) ;
+	fut_dict.add("CC_LIQATINIT", true) ;
+	
+	fut_dict.add("KC_MARGIN", 4500) ;
+	fut_dict.add("KC_NORMRATIO", 4.0) ; {5 Min}
+	fut_dict.add("KC_TIMESTART", 400) ;
+	fut_dict.add("KC_TIMEEND", 1330) ;
+	fut_dict.add("KC_LIQATINIT", true) ;
+	
+	fut_dict.add("LC_MARGIN", 1700) ;
+	fut_dict.add("LC_NORMRATIO", 10.0) ; {15 Min, NOT suitable for reversal entry}
+	fut_dict.add("LC_TIMESTART", 1900) ;
+	fut_dict.add("LC_TIMEEND", 1600) ;
+	fut_dict.add("LC_LIQATINIT", true) ;
+	
+	fut_dict.add("FC_MARGIN", 2500) ;
+	fut_dict.add("FC_NORMRATIO", 10.0) ; {3 Min}
+	fut_dict.add("FC_TIMESTART", 1015) ;
+	fut_dict.add("FC_TIMEEND", 1330) ;
+	fut_dict.add("FC_LIQATINIT", true) ;
+	
+	fut_dict.add("LH_MARGIN", 1700) ;
+	fut_dict.add("LH_NORMRATIO", 12.0) ; {5 Min}
+	fut_dict.add("LH_TIMESTART", 1900) ;
+	fut_dict.add("LH_TIMEEND", 1600) ;
+	fut_dict.add("LH_LIQATINIT", true) ;
 	
 End ;
 
