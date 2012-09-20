@@ -7,6 +7,6 @@ double out_num(-1),
 string out_str(" "),
 bool out_bool(false) ;
 
-out_str = GZD_SymbolProps(Upperstr(Leftstr(in_symbol, 2)), Upperstr(in_prop), out_str, out_num, out_bool) ;
+out_str = GZD_SymbolProps(Upperstr(Leftstr(in_symbol, Strlen(in_symbol)-3)), Upperstr(in_prop), out_str, out_num, out_bool) ;
 
 GZF_GetSymbolPropDouble = out_num ;
