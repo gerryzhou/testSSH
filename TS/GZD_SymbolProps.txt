@@ -56,6 +56,12 @@ Once If fut_dict = Null then Begin
 	fut_dict.add("SM_TIMEEND", 1330) ;
 	fut_dict.add("SM_LIQATINIT", true) ;
 	
+	fut_dict.add("C_MARGIN", 2400) ;
+	fut_dict.add("C_NORMRATIO", 1.6) ; {10 Min}
+	fut_dict.add("C_TIMESTART", 1900) ;
+	fut_dict.add("C_TIMEEND", 1330) ;
+	fut_dict.add("C_LIQATINIT", true) ;
+	
 	fut_dict.add("NG_MARGIN", 2800) ;
 	fut_dict.add("NG_NORMRATIO", 100.0) ; {10 Min}
 	fut_dict.add("NG_TIMESTART", 500) ;
@@ -123,3 +129,4 @@ If fut_dict.Contains(in_key) then
 
 
 GZD_SymbolProps = "NULL" ;
+
