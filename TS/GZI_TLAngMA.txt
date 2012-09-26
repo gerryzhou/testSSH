@@ -9,21 +9,23 @@
   may replace "Plot1" through "Plot4"  (leaving the quotes) with names you choose.  The 
   specified names will appear in the chart analysis data window. }
 inputs: 
-	DefaultPrice(Close),
+	DefaultPrice1(Close of Data1),
+	DefaultPrice2(Close of Data2),
 	{NormRatio(2),}
 	FastLength(4),
 	MidLength(14),
 	SlowLength(30),
 	TLLength(4), 
 	ColorTLAngMaFa(Red), 
-	ColorTLAngMaMd(Magenta), 
+	ColorTLAngMaMd(Cyan), 
 	ColorTLAngMaSl(Yellow), 
-	ColorMaTLAngSl(Cyan), 
+	ColorMaTLAngSl(Magenta), 
 	ColorBase(Darkgray), 	
 	Displace( 0 ) ;
 
 variables:
-	Price(DefaultPrice),
+	Price1(DefaultPrice1),
+	Price2(DefaultPrice2),
 	FastAvgTLAngMa(0),
 	MidAvgTLAngMa(0),
 	SlowAvgTLAngMa(0),
@@ -38,7 +40,7 @@ variables:
 once (Currentbar = 1) Begin NormRatio = GZF_GetSymbolPropDouble(symbol, "NORMRATIO") ; End ;
 if LastBarOnChart then once print(symbol, ", NormRatio=", NormRatio);
 	
-switch(FastAvgTLAngMa[1])
+{switch(FastAvgTLAngMa[1])
 	Begin 
 		Case > 0 :
 			Price = High ; Break ;
@@ -46,14 +48,15 @@ switch(FastAvgTLAngMa[1])
 			Price = Low ; Break ;
 		Default : 
 			Price = Close ;
-	End ;
+	End ;}
+Price1 = Close of Data1 ;
+Price2 = Close of Data2 ;
+FastAvgTLAngMa = GZF_TLAngMA(Price1, NormRatio, FastLength, TLLength); {AverageFC( Value1, FastLength ) ;}
+MidAvgTLAngMa = GZF_TLAngMA(Price2, NormRatio, MidLength, TLLength); 
+SlowAvgTLAngMa = GZF_TLAngMA(Price1, NormRatio, SlowLength, TLLength); {AverageFC( Value1, SlowLength ) ;}
 
-FastAvgTLAngMa = GZF_TLAngMA(Price, NormRatio, FastLength, TLLength); {AverageFC( Value1, FastLength ) ;}
-MidAvgTLAngMa = GZF_TLAngMA(Price, NormRatio, MidLength, TLLength); 
-SlowAvgTLAngMa = GZF_TLAngMA(Price, NormRatio, SlowLength, TLLength); {AverageFC( Value1, SlowLength ) ;}
-
-MidAvgMaTLAng = GZF_MATLAng(Price, NormRatio, MidLength, TLLength);
-SlowAvgMaTLAng = GZF_MATLAng(Price, NormRatio, SlowLength, TLLength);
+MidAvgMaTLAng = GZF_MATLAng(Price1, NormRatio, MidLength, TLLength);
+SlowAvgMaTLAng = GZF_MATLAng(Price1, NormRatio, SlowLength, TLLength);
 
 Plot1( 90, "TLAngMAUp" ) ;
 Plot2( 0, "TLAngMAFlat" ) ;
