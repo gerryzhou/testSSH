@@ -9,8 +9,8 @@
   may replace "Plot1" through "Plot4"  (leaving the quotes) with names you choose.  The 
   specified names will appear in the chart analysis data window. }
 inputs: 
-	DefaultPrice1(Close of Data1),
-	DefaultPrice2(Close of Data2),
+	DefaultPrice1(Close of Data(1)),
+	DefaultPrice2(Close of Data(1)),
 	{NormRatio(2),}
 	FastLength(4),
 	MidLength(14),
@@ -33,7 +33,8 @@ variables:
 	FastAvgMaTLAng(0),
 	MidAvgMaTLAng(0),
 	SlowAvgMaTLAng(0),
-	double NormRatio(-1)  ;
+	double NormRatio(-1),
+	int DataNum(1) ;
 
 {Value1 = LinearRegAngleFC( NormRatio*Price, TLLength ) ;}
 
@@ -49,10 +50,13 @@ if LastBarOnChart then once print(symbol, ", NormRatio=", NormRatio);
 		Default : 
 			Price = Close ;
 	End ;}
-Price1 = Close of Data1 ;
-Price2 = Close of Data2 ;
+DataNum = 1 ;
+Price1 = Close of Data(DataNum) ;
+DataNum = 2 ;
+if Barstatus(DataNum) <> -1 then
+	Price2 = Close of Data(DataNum) ;
 FastAvgTLAngMa = GZF_TLAngMA(Price1, NormRatio, FastLength, TLLength); {AverageFC( Value1, FastLength ) ;}
-MidAvgTLAngMa = GZF_TLAngMA(Price2, NormRatio, MidLength, TLLength); 
+MidAvgTLAngMa = GZF_TLAngMA(Price2, NormRatio, FastLength, TLLength); 
 SlowAvgTLAngMa = GZF_TLAngMA(Price1, NormRatio, SlowLength, TLLength); {AverageFC( Value1, SlowLength ) ;}
 
 MidAvgMaTLAng = GZF_MATLAng(Price1, NormRatio, MidLength, TLLength);
