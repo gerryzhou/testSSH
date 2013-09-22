@@ -1,0 +1,41 @@
+{ Helpful instructions on the use of EasyLanguage, such as this, appear below and are 
+  contained within French curly braces {}.  There is no need to erase these 
+  instructions when using EasyLanguage in order for it to function properly, because 
+  this text will be ignored. }
+
+{ STEP 1: Replace <CRITERIA> with the logical criteria that will trigger the placement 
+  of a ShowMe marker on the chart, such as Close > Close[1].  Note that Condition1 is a 
+  logical variable, a temporary holding place for the true-false result of your 
+  criteria. }
+Using elsystem ;
+
+inputs:	 WeekDay( 5 ), Dist( 0.001 ) ;
+variables:
+int Day_of_Week( -1 ), ID(-1);
+
+Day_of_Week = Dayofweek(Date)  ;
+
+
+{ OPTIONAL STEP: Replace CLOSE with your own formula for the price at which the marker 
+  will be placed.  Note that Value1 is a numeric variable, a temporary holding place 
+  for the result of the numeric formula. }
+
+//WeekDay = Dayofweek(Date) ;
+
+if C > C[1] then
+	Value1 = High // + Dist
+else
+Value1 = Low;// - Dist ;
+
+{ Leave the following as is.  The plot is not named because there is only one plot, and 
+  the default name Plot1 will be adequate.  The alert does not include a description 
+  because the alerting criteria and the plotting criteria are the same, and the 
+  description will be redundant. }
+  Print(  );  
+print("Date=" , FormatDate( "ddd MMM dd yyyy", ElDateToDateTime( Date ) ), ", DoW=" , Day_Of_Week.ToString());
+if Dayofweek(Date) <= Day_of_Week then
+	begin
+	ID = Text_New(Date, Time, Value1,  Day_of_Week.ToString());	
+	Alert ;
+	end ;	
+
