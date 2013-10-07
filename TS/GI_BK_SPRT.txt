@@ -1,0 +1,29 @@
+{ Helpful instructions on the use of EasyLanguage, such as this, appear below and are 
+  contained within French curly braces {}. There is no need to erase these instructions  
+  when using EasyLanguage in order for it to function properly, because this text will 
+  be ignored. }
+
+{ STEP 1: Replace <FORMULA1> and <FORMULA2> with the formulas you wish to plot.  Note 
+  that Value1 and Value2 are numeric variables, temporary holding places for the 
+  results of your numeric formulas.  To assign non-generic names to your plots, you may 
+  replace "Plot1" and "Plot2"  (leaving the quotes) with names you choose.  The 
+  specified names will appear in the chart analysis data window. }
+inputs:
+	Price_Support( LowD(1) ),
+	Price_Resistent( HighD(1) );
+	
+Value1 =  Last;
+Plot1( Value1, "Plot1" ) ;
+
+
+{ OPTIONAL STEPS: To specify alert criteria that will sound an audible alert when 
+  triggered, replace FALSE with your criteria.  To specify a brief alert description 
+  that will be included in the alert notification pop-up window, insert your 
+  description between the quotes ( "" ).  Note that Condition1 is a logical variable, a 
+  temporary holding place for the true-false result of the criteria. }
+
+if Value1 <= Price_Support then
+	Alert( "Breakout down...." )
+Else if Value1 >= Price_Resistent then
+	Alert( "Breakout up...." );
+	
