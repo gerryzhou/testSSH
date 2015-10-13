@@ -1,0 +1,57 @@
+
+using elsystem ;
+using tsdata.common ;
+using tsdata.trading ;
+using tsdata.marketdata ;
+
+[IntrabarOrderGeneration = FALSE]
+
+inputs:
+	DefaultPrice(Close),
+	int TrailingBarBack(24),
+	int AvgBarCount(2),
+	double BaseDiff(7),
+	double LowBound(0.5),
+	double HighBound(1.1),
+	EXTRMRColor( Magenta ),
+	BaselineColor( White ),
+	bool Cal_Log_Val(false),
+	int YYYMMDD_Start(1150610) ,
+	int YYYMMDD_End(1151012),
+	int Weekday_Start(1) ,
+	int Weekday_End(5),
+	int Timespan_Start(-1) ,
+	int Timespan_End(-1) ; 	
+
+consts:	
+	int ExtremeBullish(1),
+	int Bullish(2),
+	int Bull2Bear(3),
+	int Bear2Bull(4),
+	int Bearish(5),
+	int ExtremeBearish(6); {Range trading}
+
+variables:	
+	Price(DefaultPrice),
+	int TradeTime_Start(Timespan_Start),
+	int TradeTime_End(Timespan_End),
+	string LogFileName("C:\Users\Gerry\Documents\ts_log\TS_Log_" + Symbol + "_" + Datetime.Today.Format("%m-%d-%y").ToString() + ".log"),
+	string log_text(" ") ;
+
+
+{-----------------------------------------}		
+	If Currentbar = 1 Then Once
+		Begin
+			log_text = "Start init GI_ExtrmR -------" + Symbol + "---------------" ;
+			log_text = GF_ToLog(LogFileName, log_text, true, true, true) ;
+		End;
+{Print("checktime: date=" , date, ", weekday=", Dayofweek(date), ", time=", time );}
+	Value1 = HighestFC(DefaultPrice, TrailingBarBack);
+	Value2 = LowestFC(DefaultPrice, TrailingBarBack);
+	Value3 = AverageFC((Value1-Value2)/BaseDiff, AvgBarCount);
+	Plot1(Absvalue(Value3), "EXTRMR");
+	SetPlotColor( 1, EXTRMRColor ) ;
+	SetPlotColor( 2, BaselineColor ) ;
+	SetPlotColor( 3, BaselineColor ) ;
+	Plot2( LowBound, !( "LowBound" ) ) ;
+	Plot3( HighBound, !( "HighBound" ) ) ;
