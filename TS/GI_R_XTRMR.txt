@@ -1,0 +1,83 @@
+using elsystem ;
+using tsdata.common ;
+using tsdata.trading ;
+using tsdata.marketdata ;
+
+inputs:
+	{ExtremeR}
+	DefaultPrice(Close),
+	int XtrmR_TrailingBarsBack(24),
+	int AvgBarCount(2),
+	double BaseDiff(7),
+	double ValPower(30),
+	EXTRMRColor( Magenta ),
+	bool Cal_Log_Val(false),
+	int YYYMMDD_Start(1150610) ,
+	int YYYMMDD_End(1151012),
+	int Weekday_Start(1) ,
+	int Weekday_End(5),
+	int Timespan_Start(-1) ,
+	int Timespan_End(-1) ,	
+	{PctR}
+	PctR_TrailingBarsBack( 48 ), 
+	OverSold( 15 ), 
+	OverBought( 85 ), 
+	bool Alert_OverSold(true),
+	bool Alert_OverBought(true),
+	PctR_Color( White ),
+	BotSld_Color( Yellow ),
+	OverSColor( Cyan ), 
+	OverBColor( Red ) ;
+	
+consts:	
+	int ExtremeBullish(1),
+	int Bullish(2),
+	int Bull2Bear(3),
+	int Bear2Bull(4),
+	int Bearish(5),
+	int ExtremeBearish(6); {Range trading}
+
+variables:	
+	Price(DefaultPrice),
+	int TradeTime_Start(Timespan_Start),
+	int TradeTime_End(Timespan_End),
+	string LogFileName("C:\Users\Gerry\Documents\ts_log\TS_Log_" + Symbol + "_" + Datetime.Today.Format("%m-%d-%y").ToString() + ".log"),
+	string log_text(" ") ,
+	{PctR}	
+	PctR( 0 ) ;
+
+{-----------------------------------------}		
+	If Currentbar = 1 Then Once
+		Begin
+			log_text = "Start init GI_ExtrmR -------" + Symbol + "---------------" ;
+			log_text = GF_ToLog(LogFileName, log_text, true, true, true) ;
+		End;
+{Print("checktime: date=" , date, ", weekday=", Dayofweek(date), ", time=", time );}
+
+PctR = PercentR( PctR_TrailingBarsBack ) ;
+Plot1( PctR, "%R" ) ;
+Plot2( OverBought, "OverBot" ) ;
+Plot3( OverSold, "OverSld" ) ;
+
+Value1 = HighestFC(DefaultPrice, XtrmR_TrailingBarsBack);
+Value2 = LowestFC(DefaultPrice, XtrmR_TrailingBarsBack);
+Value3 = AverageFC((Value1-Value2)/BaseDiff, AvgBarCount);
+Plot4(ValPower*Absvalue(Value3), "EXTRMR");
+
+{ Color criteria }
+	
+SetPlotColor( 1, PctR_Color ) ;
+SetPlotColor( 2, BotSld_Color ) ;
+SetPlotColor( 3, BotSld_Color ) ;
+SetPlotColor( 4, EXTRMRColor ) ;
+
+if PctR > OverBought then 
+	SetPlotColor( 1, OverBColor ) 
+else if PctR < OverSold then 
+	SetPlotColor( 1, OverSColor ) ;
+
+{ Alert criteria }
+if PctR crosses over OverSold and Alert_OverSold then
+	Alert( "Indicator exiting oversold zone: %R=" + Numtostr(PctR, 2) )
+else if PctR crosses under OverBought and Alert_OverBought then
+	Alert( "Indicator exiting overbought zone: %R=" + Numtostr(PctR, 2) ) ;
