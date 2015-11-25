@@ -8,9 +8,12 @@ inputs:
 	DefaultPrice(Close),
 	int XtrmR_TrailingBarsBack(24),
 	int AvgBarCount(2),
-	double BaseDiff(7),
-	double ValPower(30),
+	double BaseDiff(20),
+	double ValPower(100),
+	SweetTop( 65 ), 
+	SweetBtm( 25 ),
 	EXTRMRColor( Magenta ),
+	SweetColor( DarkGray ),
 	bool Cal_Log_Val(false),
 	int YYYMMDD_Start(1150610) ,
 	int YYYMMDD_End(1151012),
@@ -61,8 +64,15 @@ Plot3( OverSold, "OverSld" ) ;
 
 Value1 = HighestFC(DefaultPrice, XtrmR_TrailingBarsBack);
 Value2 = LowestFC(DefaultPrice, XtrmR_TrailingBarsBack);
-Value3 = AverageFC((Value1-Value2)/BaseDiff, AvgBarCount);
-Plot4(ValPower*Absvalue(Value3), "EXTRMR");
+{Value3 = AverageFC((Value1-Value2)/BaseDiff, AvgBarCount);}
+Value3 = AverageFC(Absvalue(Value1-Value2)/BaseDiff, AvgBarCount);
+if(Value3 > 1) then Value3 = 1;
+Value3 = ValPower*Value3;
+
+Plot4(Value3, "XTRMR");
+Plot5( SweetTop, "SweetTop" ) ;
+Plot6( SweetBtm, "SweetBtm" ) ;
+
 
 { Color criteria }
 	
@@ -70,6 +80,8 @@ SetPlotColor( 1, PctR_Color ) ;
 SetPlotColor( 2, BotSld_Color ) ;
 SetPlotColor( 3, BotSld_Color ) ;
 SetPlotColor( 4, EXTRMRColor ) ;
+SetPlotColor( 5, SweetColor ) ;
+SetPlotColor( 6, SweetColor ) ;
 
 if PctR > OverBought then 
 	SetPlotColor( 1, OverBColor ) 
