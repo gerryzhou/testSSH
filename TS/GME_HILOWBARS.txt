@@ -1,0 +1,219 @@
+Using elsystem ;
+Using elsystem.collections ;
+{ STEP 1: Replace <CRITERIA> with the logical criteria that will trigger the placement 
+  of a ShowMe marker on the chart, such as Close > Close[1].  Note that Condition1 is a 
+  logical variable, a temporary holding place for the true-false result of your 
+  criteria. }
+
+{ Candlestick multiple-output function; see MULTIPLE-OUTPUT FUNCTIONS note below }
+
+inputs: 
+	int CrtIntvLen( 20 ) ; //10, 20, 30, or 60 mins	 
+
+variables: 
+	Max_Day_RangeTrue(0),
+	Max_RangeBar_Number(-1),
+	Day_Bar_Number(0),
+	Max_Week_RangeTrue(0),
+	Max_WKRangeBar_Num(-1),
+	Week_Bar_Number(0),
+	Current_Session ( 0 ),
+	Session_Count( 0 ),	
+	CrtIntv_Count( 0 ),
+	CrtWeek_Count( 0 ),
+	Current_Week( -1 ),
+	Dictionary bar_dict(Null),
+	Dictionary crtIntv_dict(Null),
+	Dictionary crtDayOfWK_dict(Null) ;
+	{IntrabarPersist bool CurrentlyPaused(false),	//this variables is set within an event, and so
+														// must be declared as 'intrabarpersist'
+
+	Timer Timer1(NULL) ;}
+
+Method bool isNewSession() 
+Variables: bool isSessNew ;
+Begin
+	isSessNew = False ;
+	Current_Session = CurrentSession(1) ; 
+	//Print("Session[:", SessionStartTime(1, 2 ), ",", Sessionendtime(1,2), "], CurTime=", ELDateToString(Date), "--", Time, ", CurrentSession=", Current_Session);
+	if Current_Session[1] <> Current_Session then
+		isSessNew = True ;
+	Return isSessNew ;
+End;
+
+Method bool isNewWeek() 
+Variables: bool isWeekNew ;
+Begin
+	isWeekNew = False ;
+	Current_Week = Dayofweek(Date) ; 
+	
+	if Current_Week = 1 and Current_Week[1] <> Current_Week then begin 
+		isWeekNew = True ;
+		//Print("CurTime=", ELDateToString(Date), "--", Time, ", Current_Week=", Current_Week);
+	End ;
+	Return isWeekNew ;
+End ;
+
+Method void updateMaxRange()
+Variables: double rng ;
+Begin
+	Week_Bar_Number += 1 ;
+	If TrueRange > Max_Week_RangeTrue then 
+		Begin 
+			Max_Week_RangeTrue = TrueRange ;
+			Max_WKRangeBar_Num = Week_Bar_Number ;
+		End ;
+	//Return rng ;
+End;
+
+Method void resetNewSessionRange()
+Begin 
+	Max_Week_RangeTrue = 0;
+	Max_WKRangeBar_Num = 0;
+	Week_Bar_Number = 0 ;
+End ;
+
+Method void outputPlot() 
+Variables: int back_bar_amount, string key, int bar_date, int day_of_week ;
+Begin
+	back_bar_amount = Week_Bar_Number - Max_WKRangeBar_Num + 1 ;
+	bar_date =  Date[back_bar_amount] ;
+	day_of_week = Dayofweek(bar_date) ;
+	If Max_WKRangeBar_Num >= 0 and back_bar_amount >= 0 then 
+	Begin	 		
+		Print("MaxBar:", FormatDate( "MM/dd/yyyy", ElDateToDateTime(bar_date) ) , "--", Time[back_bar_amount]);// CalcTime(time, Neg(back_bar_amount*Barinterval)));
+		print("Week_Bar_Number=", Week_Bar_Number, ",Max_Week_RangeBar_Number=", Max_WKRangeBar_Num);
+		Plot1[back_bar_amount](Close, "BigBar", Yellow) ;
+		Value1 = Text_New(Date[back_bar_amount], Time[back_bar_amount], Low[back_bar_amount], day_of_week.ToString());
+		bar_dict.Remove( get_Bar_Key());	
+		bar_dict.Add( get_Bar_Key(), day_of_week);
+		Session_Count += 1 ;
+	End ;
+	 
+	If isNewWeek() then begin
+		Plot2(Close, "WeekNew", Blue) ;
+		//print("----------------------------New week:", FormatDate( "MM/dd/yyyy", ElDateToDateTime(Date)));
+	End ;
+End ;
+
+Method bool is_Cur_Bar_Done()
+Variables: bool is_done ;
+Begin	
+	is_done = bar_dict.Contains( get_Bar_Key());
+	Return is_done;
+End;
+
+Method string get_Bar_Key()
+Variables: string key ;
+Begin
+	key = "B-" + Numtostr(BarNumber,0) ;
+	Return key ;
+End;
+
+Method string get_Hour_As_Key(int val)
+Variables: string key ;
+Begin
+	If val >= 10 then
+		key = val.ToString()
+	Else 
+		key = "0" + val.ToString();
+	Return key ;
+End;
+
+Method void print_Dict()
+Variables: 
+int pass, int val, string k, Vector keys;
+Begin
+	//Session_Count = 0 ;
+	keys = bar_dict.Keys ;
+	For pass = 0 to keys.Count - 1 begin
+		k = keys.Items[pass].ToString() ;
+		val = bar_dict.Items[k] astype int ;
+		If val >= 0 then Begin
+			print("Bar#:", k, ", CrtDayOfWeek:", NumToStr(val,0) );
+			//Session_Count += 1 ;
+		End ;
+	End ; 	
+End;
+
+Method void init_Crt_DayOfWK_Dict()
+Variables: int dow;
+Begin
+	For dow = 0 to 6 begin 
+		if crtDayOfWK_dict.Contains(dow.ToString()) = False then
+			crtDayOfWK_dict.Add(dow.ToString(), 0);		
+	End ;
+	//print_crt_Dicts();
+End ;
+
+Method void print_clean_Dict()
+Variables: 
+int pass, 
+int val,
+string k, 
+Vector keys,
+int dup_count, int sum_count,
+int dow, double dDateTime,
+int val_min, int val_hr;
+Begin
+	//print_Dict() ; 
+	print("-----------Clean Dict Begin----------------");
+	
+	keys = bar_dict.Keys ;	
+	print("bar_dict count=", keys.Count); 
+	sum_count = 0 ;
+	print("--Bar#	CrtIntv--");
+	For pass = 0 to keys.Count - 1 begin
+		k = keys.Items[pass].ToString() ;
+		dow = bar_dict.Items[k] astype int ;
+		
+		if dow >= 0 then Begin			
+			print(k, "	", dow.ToString()); //Continue ;
+			dup_count = crtDayOfWK_dict.Items[dow.ToString()] astype int ;
+			crtDayOfWK_dict.Items[dow.ToString()] = dup_count + 1;
+			CrtWeek_Count += 1 ;
+		End ; //if tm >= 0
+	End ; //For pass = 0 
+	
+	//print("Session_count=", Session_Count);
+	
+	print("CrtWeek sum_count=", CrtWeek_Count);
+	keys = crtDayOfWK_dict.Keys ;
+	print("--CrtDayOfWeek	dup_count--");		
+	For pass = 0 to keys.Count - 1 begin
+		k = keys.Items[pass].ToString();
+		dup_count = crtDayOfWK_dict.Items[k] astype int ;
+		print(k , "	", dup_count);		
+	End;
+	
+	print("-----------Clean Dict End------------------");
+End;
+
+Once If bar_dict = Null then Begin
+	bar_dict = Dictionary.Create() ;
+	crtIntv_dict = Dictionary.Create() ;	
+	crtDayOfWK_dict = Dictionary.Create() ;
+End ;
+
+//".... this is the first bar of the new session."
+If is_Cur_Bar_Done() = false Then
+Begin
+	bar_dict.Add( get_Bar_Key(), -1);
+	if isNewWeek() then Begin
+	//if Time = SessionStartTime(1, 2 ) then begin
+		Print("Session start:", Time);
+		outputPlot() ;
+		resetNewSessionRange() ;
+		End
+	Else Begin
+		updateMaxRange() ;
+	End ;
+	//this_Bar_Done() ;
+End ;
+
+If LastBarOnChart then once begin
+	init_Crt_DayOfWK_Dict() ;
+	//print_Dict() ;
+	//init_Intv_Dict();
+	print_clean_Dict();
+End ;

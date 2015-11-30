@@ -1,0 +1,335 @@
+Using elsystem ;
+Using elsystem.collections ;
+
+{Find out which day is the HiLo of this week}
+
+inputs: 
+	int Show_Hi_Or_Lo( 0 ), //-1=low, 1=hi 
+	int Week_Start_Day(0); //0=Sun, 1=Mon
+
+variables: 
+	Max_Day_RangeTrue(0),
+	Max_RangeBar_Number(-1),
+	Day_Bar_Number(0),
+	//Max_Week_RangeTrue(0),
+	Week_Hi(0),
+	Week_Lo(0),
+	//Max_WKRangeBar_Num(-1),
+	WK_Hi_Bar_Num(-1),
+	WK_Lo_Bar_Num(-1),
+	Week_Bar_Number(0),
+	Current_Session ( 0 ),
+	Session_Count( 0 ),	
+	CrtIntv_Count( 0 ),
+	CrtWeek_Count_Hi( 0 ),
+	CrtWeek_Count_Lo( 0 ),
+	Current_Week( -1 ),
+	Dictionary bar_dict_hi(Null),
+	Dictionary bar_dict_lo(Null),
+	Dictionary crtIntv_dict(Null),
+	Dictionary crtDayOfWK_dict_hi(Null),
+	Dictionary crtDayOfWK_dict_lo(Null) ;
+	{IntrabarPersist bool CurrentlyPaused(false),	//this variables is set within an event, and so
+														// must be declared as 'intrabarpersist'
+
+	Timer Timer1(NULL) ;}
+
+Method bool isNewSession() 
+Variables: bool isSessNew ;
+Begin
+	isSessNew = False ;
+	Current_Session = CurrentSession(1) ; 
+	//Print("Session[:", SessionStartTime(1, 2 ), ",", Sessionendtime(1,2), "], CurTime=", ELDateToString(Date), "--", Time, ", CurrentSession=", Current_Session);
+	if Current_Session[1] <> Current_Session then
+		isSessNew = True ;
+	Return isSessNew ;
+End;
+
+Method bool isNewWeek() 
+Variables: bool isWeekNew ;
+Begin
+	isWeekNew = False ;
+	Current_Week = Dayofweek(Date) ; 
+	
+	if Current_Week = Week_Start_Day and Current_Week[1] <> Current_Week then begin 
+		isWeekNew = True ;
+		//Print("CurTime=", ELDateToString(Date), "--", Time, ", Current_Week=", Current_Week);
+	End ;
+	Return isWeekNew ;
+End ;
+
+Method void updateWeeklyHi()
+Variables: double rng ;
+Begin
+	Week_Bar_Number += 1 ;
+	If High > Week_Hi then 
+		Begin 
+			Week_Hi = High ;
+			WK_Hi_Bar_Num = Week_Bar_Number ;
+		End ;
+End;
+
+Method void updateWeeklyLo()
+Variables: double rng ;
+Begin
+	Week_Bar_Number += 1 ;
+	If Low < Week_Lo then 
+		Begin 
+			Week_Lo = Low ;
+			WK_Lo_Bar_Num = Week_Bar_Number ;
+		End ;
+	//Return rng ;
+End;
+
+Method void resetNewSessionRange()
+Begin 
+	Week_Hi = 0;
+	Week_Lo = 10*HighW(0);
+	WK_Hi_Bar_Num = 0;
+	WK_Lo_Bar_Num = 0;
+	//Max_WKRangeBar_Num = 0;
+	Week_Bar_Number = 0 ;
+End ;
+
+Method void outputPlot() 
+Variables: int back_bar_amount_hi, int back_bar_amount_lo,
+ string key, int bar_date_hi, int bar_date_lo, 
+ int day_of_week_hi, int day_of_week_lo ;
+Begin
+	back_bar_amount_hi = Week_Bar_Number - WK_Hi_Bar_Num + 1 ;
+	bar_date_hi =  Date[back_bar_amount_hi] ;
+	day_of_week_hi = Dayofweek(bar_date_hi) ;
+	
+	back_bar_amount_lo = Week_Bar_Number - WK_Lo_Bar_Num + 1 ;
+	bar_date_lo =  Date[back_bar_amount_lo] ;
+	day_of_week_lo = Dayofweek(bar_date_lo) ;
+	
+	If Show_Hi_Or_Lo > 0 and WK_Hi_Bar_Num >= 0 and back_bar_amount_hi >= 0 then 
+	Begin	 		
+		Print("WK_Hi_Bar:", FormatDate( "MM/dd/yyyy", ElDateToDateTime(bar_date_hi) ) , "--", Time[back_bar_amount_hi]);
+		print("Week_Bar_Number=", Week_Bar_Number, ", Week_Hi_Bar_Number=", WK_Hi_Bar_Num);
+		Plot1[back_bar_amount_hi](Close, "BigBarHi", Yellow) ;
+		Value1 = Text_New(Date[back_bar_amount_hi], Time[back_bar_amount_hi], High[back_bar_amount_hi], "H:" + day_of_week_hi.ToString());
+		bar_dict_hi.Remove( get_Bar_Key());	
+		bar_dict_hi.Add( get_Bar_Key(), day_of_week_hi);
+		Session_Count += 1 ;
+	End ;
+	
+	If Show_Hi_Or_Lo < 0 and WK_Lo_Bar_Num >= 0 and back_bar_amount_lo >= 0 then 
+	Begin	 		
+		Print("WK_Lo_Bar:", FormatDate( "MM/dd/yyyy", ElDateToDateTime(bar_date_lo) ) , "--", Time[back_bar_amount_lo]);
+		print("Week_Bar_Number=", Week_Bar_Number, ", Week_Lo_Bar_Number=", WK_Lo_Bar_Num);
+		Plot2[back_bar_amount_lo](Close, "BigBarLo", Magenta) ;
+		Value2 = Text_New(Date[back_bar_amount_lo], Time[back_bar_amount_lo], Low[back_bar_amount_lo], "L:" + day_of_week_lo.ToString());
+		bar_dict_lo.Remove( get_Bar_Key());	
+		bar_dict_lo.Add( get_Bar_Key(), day_of_week_lo);
+		Session_Count += 1 ;
+	End ;
+	 
+	If isNewWeek() then begin
+		Plot3(Close, "WeekNew", Blue) ;
+		//print("----------------------------New week:", FormatDate( "MM/dd/yyyy", ElDateToDateTime(Date)));
+	End ;
+End ;
+
+Method bool is_Cur_Bar_Done_Hi()
+Variables: bool is_done ;
+Begin	
+	is_done = bar_dict_hi.Contains( get_Bar_Key());
+	Return is_done;
+End;
+
+Method bool is_Cur_Bar_Done_Lo()
+Variables: bool is_done ;
+Begin	
+	is_done = bar_dict_lo.Contains( get_Bar_Key());
+	Return is_done;
+End;
+
+Method string get_Bar_Key()
+Variables: string key ;
+Begin
+	key = "B-" + Numtostr(BarNumber,0) ;
+	Return key ;
+End;
+
+Method string get_Hour_As_Key(int val)
+Variables: string key ;
+Begin
+	If val >= 10 then
+		key = val.ToString()
+	Else 
+		key = "0" + val.ToString();
+	Return key ;
+End;
+
+{
+/*
+Method void print_Dict()
+Variables: 
+int pass, int val, string k, Vector keys;
+Begin	
+	keys = bar_dict_hi.Keys ;
+	For pass = 0 to keys.Count - 1 begin
+		k = keys.Items[pass].ToString() ;
+		val = bar_dict_hi.Items[k] astype int ;
+		If val >= 0 then Begin
+			print("Bar#:", k, ", HiDayOfWeek:", NumToStr(val,0) );
+		End ;
+	End ;
+	
+	keys = bar_dict_lo.Keys ;
+	For pass = 0 to keys.Count - 1 begin
+		k = keys.Items[pass].ToString() ;
+		val = bar_dict_lo.Items[k] astype int ;
+		If val >= 0 then Begin
+			print("Bar#:", k, ", LoDayOfWeek:", NumToStr(val,0) );
+		End ;
+	End ; 	
+End;
+*/}
+
+Method void init_Crt_DayOfWK_Dict()
+Variables: int dow;
+Begin
+	For dow = 0 to 6 begin 
+		if crtDayOfWK_dict_hi.Contains(dow.ToString()) = False then
+			crtDayOfWK_dict_hi.Add(dow.ToString(), 0);	
+		if crtDayOfWK_dict_lo.Contains(dow.ToString()) = False then
+			crtDayOfWK_dict_lo.Add(dow.ToString(), 0);	
+	End ;
+	//print_crt_Dicts();
+End ;
+
+Method void print_clean_Dict_Hi()
+Variables: 
+int pass, 
+int val,
+string k, 
+Vector keys,
+int dup_count, int sum_count,
+int dow, double dDateTime,
+int val_min, int val_hr;
+Begin	
+	print("-----------Clean Dict Hi Begin----------------");
+	
+	keys = bar_dict_hi.Keys ;	
+	print("bar_dict_hi count=", keys.Count); 
+	sum_count = 0 ;
+	print("--Bar#	CrtIntv--");
+	For pass = 0 to keys.Count - 1 begin
+		k = keys.Items[pass].ToString() ;
+		dow = bar_dict_hi.Items[k] astype int ;
+		
+		if dow >= 0 then Begin			
+			print(k, "	", dow.ToString()); //Continue ;
+			dup_count = crtDayOfWK_dict_hi.Items[dow.ToString()] astype int ;
+			crtDayOfWK_dict_hi.Items[dow.ToString()] = dup_count + 1;
+			CrtWeek_Count_Hi += 1 ;
+		End ; //if tm >= 0
+	End ; //For pass = 0 
+	
+	//print("Session_count=", Session_Count);
+	
+	print("CrtWeek Hi sum_count=", CrtWeek_Count_Hi);
+	keys = crtDayOfWK_dict_hi.Keys ;
+	print("--CrtDayOfWeekHi	dup_count--");		
+	For pass = 0 to keys.Count - 1 begin
+		k = keys.Items[pass].ToString();
+		dup_count = crtDayOfWK_dict_hi.Items[k] astype int ;
+		print(k , "	", dup_count);		
+	End;
+	
+	print("-----------Clean Dict Hi End------------------");
+End;
+
+Method void print_clean_Dict_Lo()
+Variables: 
+int pass, 
+int val,
+string k, 
+Vector keys,
+int dup_count, int sum_count,
+int dow, double dDateTime,
+int val_min, int val_hr;
+Begin	
+	print("-----------Clean Dict Lo Begin----------------");
+	
+	keys = bar_dict_lo.Keys ;	
+	print("bar_dict_lo count=", keys.Count); 
+	sum_count = 0 ;
+	print("--Bar#	CrtIntv--");
+	For pass = 0 to keys.Count - 1 begin
+		k = keys.Items[pass].ToString() ;
+		dow = bar_dict_lo.Items[k] astype int ;
+		
+		if dow >= 0 then Begin			
+			print(k, "	", dow.ToString()); //Continue ;
+			dup_count = crtDayOfWK_dict_lo.Items[dow.ToString()] astype int ;
+			crtDayOfWK_dict_lo.Items[dow.ToString()] = dup_count + 1;
+			CrtWeek_Count_Lo += 1 ;
+		End ; //if tm >= 0
+	End ; //For pass = 0 
+	
+	//print("Session_count=", Session_Count);
+	
+	print("CrtWeek Lo sum_count=", CrtWeek_Count_Lo);
+	keys = crtDayOfWK_dict_lo.Keys ;
+	print("--CrtDayOfWeekLo	dup_count--");		
+	For pass = 0 to keys.Count - 1 begin
+		k = keys.Items[pass].ToString();
+		dup_count = crtDayOfWK_dict_lo.Items[k] astype int ;
+		print(k , "	", dup_count);		
+	End;
+	
+	print("-----------Clean Dict Lo End------------------");
+End;
+
+Once If bar_dict_hi = Null or bar_dict_lo = Null then Begin
+	bar_dict_hi = Dictionary.Create() ;
+	bar_dict_lo = Dictionary.Create() ;
+	crtIntv_dict = Dictionary.Create() ;	
+	crtDayOfWK_dict_hi = Dictionary.Create() ;
+	crtDayOfWK_dict_lo = Dictionary.Create() ;
+End ;
+
+//".... this is the first bar of the new session."
+If Show_Hi_Or_Lo > 0 and is_Cur_Bar_Done_Hi() = false Then
+Begin
+	bar_dict_hi.Add( get_Bar_Key(), -1);
+	if isNewWeek() then Begin
+	//if Time = SessionStartTime(1, 2 ) then begin
+		Print("Session start:", Time);
+		outputPlot() ;
+		resetNewSessionRange() ;
+		End
+	Else Begin
+		updateWeeklyHi() ;
+	End ;
+	//this_Bar_Done() ;
+End ;
+
+If Show_Hi_Or_Lo < 0 and is_Cur_Bar_Done_Lo() = false Then
+Begin
+	bar_dict_lo.Add( get_Bar_Key(), -1);
+	if isNewWeek() then Begin
+	//if Time = SessionStartTime(1, 2 ) then begin
+		Print("Session start:", Time);
+		outputPlot() ;
+		resetNewSessionRange() ;
+		End
+	Else Begin
+		updateWeeklyLo() ;
+	End ;
+	//this_Bar_Done() ;
+End ;
+
+If LastBarOnChart then once begin
+	init_Crt_DayOfWK_Dict() ;
+	//print_Dict() ;
+	//init_Intv_Dict();
+	If Show_Hi_Or_Lo > 0 then
+		print_clean_Dict_Hi();
+	if Show_Hi_Or_Lo < 0 then
+		print_clean_Dict_Lo();
+End ;

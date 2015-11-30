@@ -1,0 +1,135 @@
+{ Helpful instructions on the use of EasyLanguage, such as this, appear below and are 
+  contained within French curly braces {}.  There is no need to erase these 
+  instructions when using EasyLanguage in order for it to function properly, because 
+  this text will be ignored. }
+
+{ STEP 1 OF 2: Replace <CRITERIA> with the criteria that will trigger a Buy at the open 
+  of the next bar using a market order. }
+
+
+{ STEP 2 OF 2: Replace "Entry Name" (leaving the quotes) with a short name for the 
+  entry.  The entry name will appear on the chart above/below the trade arrows and in 
+  the trade by trade performance report. }
+
+
+using elsystem ;
+using tsdata.common ;
+using tsdata.trading ;
+using tsdata.marketdata ;
+using elsystem.collections ;
+
+inputs:
+	{ExtremeR}
+	DefaultPrice(Close),
+	int XtrmR_TrailingBarsBack(24),
+	int AvgBarCount(2),
+	double BaseDiff(20),
+	double ValPower(100),
+	SweetTop( 61 ), 
+	SweetBtm( 39 ),
+	EXTRMRColor( Magenta ),
+	SweetColor( DarkGray ),
+	bool Cal_Log_Val(false),
+	int YYYMMDD_Start(1150610) ,
+	int YYYMMDD_End(1151012),
+	int Weekday_Start(1) ,
+	int Weekday_End(5),
+	int Timespan_Start(-1) ,
+	int Timespan_End(-1) ,	
+	{PctR}
+	PctR_TrailingBarsBack( 48 ), 
+	OverSold( 15 ), 
+	OverBought( 85 ), 
+	bool Alert_OverSold(true),
+	bool Alert_OverBought(true),
+	PctR_Color( White ),
+	BotSld_Color( Yellow ),
+	OverSColor( Cyan ), 
+	OverBColor( Red ) ,
+	{Trade}
+	ProfitTargetAmt( 5 ), { pass in 0 if you don't want a profit target }
+	StopLossAmt( 3 ); { pass in 0 if you don't want a stop loss }
+	
+consts:	
+	int ExtremeBullish(1),
+	int Bullish(2),
+	int Bull2Bear(3),
+	int Bear2Bull(4),
+	int Bearish(5),
+	int ExtremeBearish(6); {Range trading}
+
+variables:	
+	Price(DefaultPrice),
+	int TradeTime_Start(Timespan_Start),
+	int TradeTime_End(Timespan_End),
+	string LogFileName("C:\Users\Gerryappl\Documents\ts_log\TS_Log_" + Symbol + "_" + Datetime.Today.Format("%m-%d-%y").ToString() + ".log"),
+	string log_text(" ") ,
+	{ExtremeR}
+	GlobalDictionary GD_Xtrmr,
+	{PctR}	
+	PctR( 0 ) ;
+
+{-----------------------------------------}		
+	If Currentbar = 1 Then Once
+		Begin
+			log_text = "Start init GI_ExtrmR -------" + Symbol + "---------------" ;
+			log_text = GF_ToLog(LogFileName, log_text, true, true, true) ;
+		End;
+{Print("checktime: date=" , date, ", weekday=", Dayofweek(date), ", time=", time );}
+
+PctR = PercentR( PctR_TrailingBarsBack ) ;
+{
+Plot1( PctR, "%R" ) ;
+Plot2( OverBought, "OverBot" ) ;
+Plot3( OverSold, "OverSld" ) ;
+}
+
+Value1= HighestFC(DefaultPrice, XtrmR_TrailingBarsBack);
+Value2 = LowestFC(DefaultPrice, XtrmR_TrailingBarsBack);
+Value3 = AverageFC(Absvalue(Value1-Value2)/BaseDiff, AvgBarCount);
+if(Value3 > 1) then Value3 = 1;
+Value3 = ValPower*Value3;
+{
+Plot4(ValPower*Value3, "XTRMR");
+Plot5( SweetTop, "SweetTop" ) ;
+Plot6( SweetBtm, "SweetBtm" ) ;
+}
+
+{ Color criteria }
+{	
+SetPlotColor( 1, PctR_Color ) ;
+SetPlotColor( 2, BotSld_Color ) ;
+SetPlotColor( 3, BotSld_Color ) ;
+SetPlotColor( 4, EXTRMRColor ) ;
+SetPlotColor( 5, SweetColor ) ;
+SetPlotColor( 6, SweetColor ) ;
+
+if PctR > OverBought then 
+	SetPlotColor( 1, OverBColor ) 
+else if PctR < OverSold then 
+	SetPlotColor( 1, OverSColor ) ;
+}
+{ Alert criteria }
+SetStopShare;
+if PctR crosses over OverSold then 
+	Begin
+		{Alert( "Indicator exiting oversold zone: %R=" + Numtostr(PctR, 2) );}
+		Sell Short next bar at market ;
+		if ProfitTargetAmt > 0 then
+			Setprofittarget( -200 ) ;
+		if StopLossAmt > 0 then
+			SetStopLoss( -100 ) ;
+		SetExitOnClose ;
+	End
+else if PctR crosses under OverBought and Value3 > SweetBtm then 
+	Begin
+		{Alert( "Indicator exiting oversold zone: %R=" + Numtostr(PctR, 2) );}
+		Buy next bar at market ;
+		if ProfitTargetAmt > 0 then
+			SetProfitTarget( 300 ) ;
+		if StopLossAmt > 0 then
+			SetStopLoss( 100 ) ;
+		SetExitOnClose ;
+	End;
+{else if PctR crosses under OverBought and Alert_OverBought then
+	Alert( "Indicator exiting overbought zone: %R=" + Numtostr(PctR, 2) ) ;}
