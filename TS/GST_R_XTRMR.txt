@@ -16,6 +16,7 @@ using elsystem ;
 using tsdata.common ;
 using tsdata.trading ;
 using tsdata.marketdata ;
+Using elsystem.collections ;
 
 inputs:
 	{ExtremeR}
@@ -63,10 +64,66 @@ variables:
 	Price(DefaultPrice),
 	int TradeTime_Start(Timespan_Start),
 	int TradeTime_End(Timespan_End),
-	string LogFileName("C:\Users\Gerry\Documents\ts_log\TS_Log_" + Symbol + "_" + Datetime.Today.Format("%m-%d-%y").ToString() + ".log"),
+	string LogFileName("C:\Users\gerryappl\Documents\ts_log\TS_Log_" + Symbol + "_" + Datetime.Today.Format("%m-%d-%y").ToString() + ".log"),
 	string log_text(" ") ,
+	{ExtremeR}
+	Dictionary Dict_PctR(Null),
 	{PctR}	
 	PctR( 0 ) ;
+
+
+Method int get_Time_As_Val(int dt, int hr, int min)
+Variables: int val;
+Begin
+	val = dt*24*60 + hr*60 + min ;
+	Return val ;
+End;
+
+Method string get_Time_As_Key(int dt, int hr, int min, int sec)
+Variables: string key, 
+string hh,
+string mm,
+string ss;
+Begin
+	If hr >= 10 then
+		hh = hr.ToString()
+	Else 
+		hh = "0" + hr.ToString();
+		
+	If min >= 10 then
+		mm = min.ToString()
+	Else 
+		mm = "0" + min.ToString();
+		
+	If sec >= 10 then
+		ss = sec.ToString()
+	Else 
+		ss = "0" + sec.ToString();
+		
+	key = dt.ToString() + "_" + hh + "_" + mm + "_" + ss ;
+	if Dict_PctR.Contains(key) = true then
+		key = key + "*" ;
+	Return key ;
+End;
+
+Method void print_Dict()
+Variables: 
+int pass, int val, string k, Vector keys;
+Begin
+	print("=============print_Dict()==============");
+	keys = Dict_PctR.Keys ;
+	For pass = 0 to keys.Count - 1 begin
+		k = keys.Items[pass].ToString() ;
+		val = Dict_PctR.Items[k] astype int ;
+		If val >= 0 then Begin
+			print("Bar#:", k, ", PctR:", NumToStr(val,0) );
+		End ;
+	End ;
+End;
+
+Once If Dict_PctR = Null then Begin
+	Dict_PctR = Dictionary.Create() ;
+End ;
 
 {-----------------------------------------}		
 	If Currentbar = 1 Then Once
@@ -86,7 +143,7 @@ Bardatetime.Second:4:0, " ",
 Bardatetime.Value, " ",
 Bardatetime.ToString(), " ",
 );
-
+{
 Print(
 "== 1 ==",
 Bardatetime[1].ELDate:4:0, " ",
@@ -97,7 +154,7 @@ Bardatetime[1].Minute:4:0, " ",
 Bardatetime[1].Second:4:0, " ",
 Bardatetime[1].ToString(), " ",
 );
-
+}
 PctR = PercentR( PctR_TrailingBarsBack ) ;
 {
 Plot1( PctR, "%R" ) ;
@@ -134,6 +191,7 @@ else if PctR < OverSold then
 SetStopShare;
 if PctR crosses over OverSold then 
 	Begin
+		Dict_PctR.add(get_Time_As_Key(Bardatetime.ELDate, Bardatetime.Hour, Bardatetime.Minute, Bardatetime.Second), get_Time_As_Val(Bardatetime.ELDate, Bardatetime.Hour, Bardatetime.Minute));
 		{Alert( "Indicator exiting oversold zone: %R=" + Numtostr(PctR, 2) );}
 		Buy next bar at market ;
 		if ProfitTargetAmtLX > 0 then
@@ -144,6 +202,7 @@ if PctR crosses over OverSold then
 	End
 else if PctR crosses under OverBought and Value3 > SweetBtm then 
 	Begin
+		Dict_PctR.add(get_Time_As_Key(Bardatetime.ELDate, Bardatetime.Hour, Bardatetime.Minute, Bardatetime.Second), get_Time_As_Val(Bardatetime.ELDate, Bardatetime.Hour, Bardatetime.Minute));
 		{Alert( "Indicator exiting oversold zone: %R=" + Numtostr(PctR, 2) );}
 		Sell Short next bar at market ;
 		if ProfitTargetAmtST < 0 then
@@ -153,5 +212,6 @@ else if PctR crosses under OverBought and Value3 > SweetBtm then
 		SetExitOnClose ;
 	End;
 
-{else if PctR crosses under OverBought and Alert_OverBought then
-	Alert( "Indicator exiting overbought zone: %R=" + Numtostr(PctR, 2) ) ;}
+If LastBarOnChart then once begin
+	print_Dict() ;
+End ;
