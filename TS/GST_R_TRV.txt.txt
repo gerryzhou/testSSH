@@ -1,0 +1,280 @@
+
+using elsystem ;
+using tsdata.common ;
+using tsdata.trading ;
+using tsdata.marketdata ;
+Using elsystem.collections ;
+
+inputs:
+	{ExtremeR}
+	DefaultPrice(Close),
+	int XtrmR_TrailingBarsBack(24),
+	int AvgBarCount(2),
+	double BaseDiff(20),
+	double ValPower(100),
+	SweetTop( 65 ), 
+	SweetBtm( 25 ),
+	EXTRMRColor( Magenta ),
+	SweetColor( DarkGray ),
+	bool Cal_Log_Val(false),
+	int YYYMMDD_Start(1150610) ,
+	int YYYMMDD_End(1151012),
+	int Weekday_Start(1) ,
+	int Weekday_End(5),
+	int Timespan_Start(6) ,
+	int Timespan_End(14) ,	
+	{PctR}
+	PctR_BarsBackSl( 120 ), 
+	PctR_BarsBackFa( 14 ),
+	int AvgBarCountPctRSl(20),
+	int AvgBarCountPctRFa(7),
+	OverSold( 30 ), 
+	OverBought( 70 ), 
+	int PctR_Cluster_Thrshhold(60), //60 min interval for a new cluster
+	bool Alert_OverSold(true),
+	bool Alert_OverBought(true),
+	PctR_Color( White ),
+	BotSld_Color( Yellow ),
+	OverSColor( Cyan ), 
+	OverBColor( Red ) ,
+	{Trade}
+	ProfitTargetAmtLX( 300 ), { pass in 0 if you don't want a profit target }
+	StopLossAmtLX( 100 ), { pass in 0 if you don't want a stop loss }
+	ProfitTargetAmtST( -300 ), { pass in 0 if you don't want a profit target }
+	StopLossAmtST( -100 ); { pass in 0 if you don't want a stop loss }
+
+consts:	
+	int ExtremeBullish(1),
+	int Bullish(2),
+	int Bull2Bear(3),
+	int Bear2Bull(4),
+	int Bearish(5),
+	int ExtremeBearish(6); {Range trading}
+
+variables:	
+	Price(DefaultPrice),
+	int TradeTime_Start(Timespan_Start),
+	int TradeTime_End(Timespan_End),
+	string LogFileName("C:\Users\gerry\Documents\ts_log\TS_Log_" + Symbol + "_" + Datetime.Today.Format("%m-%d-%y").ToString() + ".log"),
+	string log_text(" ") ,
+	{ExtremeR}
+ 
+	{PctR}
+	int Cur_PctR_Time(-1),
+	int Cur_R_Cluster_Count(-1),
+	int Prev_R_Cluster_Count(-1),
+	Dictionary Dict_PctR(Null),
+	Dictionary Dict_PctR_Cluster(Null),
+	Stack Stk_PctR(Null),
+	Stack Stk_PctR_Cluster(Null),
+	PctR_Sl( 0 ),
+	Avg_PctR_Sl(0),
+	PctR_Fa( 0 ),
+	Avg_PctR_Fa(0) ;
+
+Method int count_PctR(int tm_val, int bot_sld)
+Variables: int cur_pctr_count,
+int cur_cluster_count,
+string dict_key,
+string dict_key_start_time,
+string dict_key_cluster_count;
+Begin
+	dict_key_start_time = "START_TIME" ;
+	dict_key_cluster_count = "CLUSTER";
+	if Cur_PctR_Time <= 0 or Stk_PctR.Count <= 0 then 
+		Begin
+			Cur_PctR_Time = tm_val ;
+			Stk_PctR.push(bot_sld) ;
+			dict_key = dict_key_start_time + "-1" ;
+			Dict_PctR.add(dict_key, tm_val) ;
+			dict_key = dict_key_cluster_count + "-1" ;
+			Dict_PctR.add(dict_key, bot_sld) ;
+			Cur_R_Cluster_Count = bot_sld ;
+			Prev_R_Cluster_Count = bot_sld ;
+			Return bot_sld ;
+		End
+	Else 
+		cur_pctr_count = Stk_PctR.peek() astype int ;
+	if (tm_val - Cur_PctR_Time) > PctR_Cluster_Thrshhold or cur_pctr_count * bot_sld < 0  then
+		Begin
+			cur_pctr_count = bot_sld ;
+			If Cur_R_Cluster_Count * cur_pctr_count < 0 then
+				Begin
+					Prev_R_Cluster_Count = Cur_R_Cluster_Count;
+					Cur_R_Cluster_Count = cur_pctr_count ;
+				End 
+			Else 
+				Begin
+					 If Cur_R_Cluster_Count > 0 then
+					 	Cur_R_Cluster_Count = Cur_R_Cluster_Count + 1
+					 Else 
+					 	Cur_R_Cluster_Count = Cur_R_Cluster_Count -1 ;
+				End ;
+		End
+	else if cur_pctr_count * bot_sld > 0 then
+		Begin 
+			cur_pctr_count = cur_pctr_count + bot_sld ;
+			Stk_PctR.pop();
+		end;
+	Stk_PctR.push(cur_pctr_count);
+	Cur_PctR_Time = tm_val ;
+	Return cur_pctr_count ;
+End;
+
+Method int get_Time_As_Val(int dt, int hr, int min)
+Variables: int val;
+Begin
+	val = dt*24*60 + hr*60 + min ;
+	Return val ;
+End;
+
+Method string get_Time_As_Key(int dt, int hr, int min, int sec)
+Variables: string key, 
+string hh,
+string mm,
+string ss;
+Begin
+	If hr >= 10 then
+		hh = hr.ToString()
+	Else 
+		hh = "0" + hr.ToString();
+		
+	If min >= 10 then
+		mm = min.ToString()
+	Else 
+		mm = "0" + min.ToString();
+		
+	If sec >= 10 then
+		ss = sec.ToString()
+	Else 
+		ss = "0" + sec.ToString();
+		
+	key = dt.ToString() + "_" + hh + "_" + mm + "_" + ss ;
+	if Dict_PctR.Contains(key) = true then
+		key = key + "*" ;
+	Return key ;
+End;
+
+Method void print_Dict()
+Variables: 
+int pass, int val, string k, Vector keys;
+Begin
+	print("=============print_Dict()==============");
+	keys = Dict_PctR.Keys ;
+	For pass = 0 to keys.Count - 1 begin
+		k = keys.Items[pass].ToString() ;
+		val = Dict_PctR.Items[k] astype int ;
+		If val >= 0 then Begin
+			print("Bar#:", k, ", PctR:", NumToStr(val,0) );
+		End ;
+	End ;
+End;
+
+Method void print_Stack()
+Variables: 
+int val;
+Begin
+	//print("=============print_Stack()==============");
+	val = Stk_PctR.peek() astype int ;
+	print("PctR cluster from peek stack:", NumToStr(val,0) );
+End;
+
+Method void print_Cluster_Count()
+Variables: 
+int val;
+Begin
+	Print("Cur_R_Cluster_Count=" , Cur_R_Cluster_Count,
+		",",
+		"Prev_R_Cluster_Count" , Prev_R_Cluster_Count
+	);
+End;
+
+Method void print_Bar_Time()
+Begin
+	Print(
+	"Bartime=",
+	Bardatetime.ELDate:4:0, "--",
+	//Bardatetime.ELDateTimeEx, " ",
+	//Bardatetime.ELTime:4:0, " ",
+	Bardatetime.Hour:4:0, ":",
+	Bardatetime.Minute:4:0, ":",
+	Bardatetime.Second:4:0, "--",
+	//Bardatetime.Value, " ",
+	Bardatetime.ToString(), " ",
+	);
+End;
+
+Method bool is_Range_Zone()
+Variables: bool val;
+Begin
+	if Avg_PctR_Sl >= OverBought or Avg_PctR_Sl <= OverSold then
+		val = false
+	Else val = true ;
+	Return val ;
+End;
+
+Method bool is_Trend_Up()
+Variables: bool val;
+Begin
+	if Avg_PctR_Sl < OverBought then
+		val = false
+	Else val = true ;
+	Return val ;
+End;
+
+Method bool is_Trend_Down()
+Variables: bool val;
+Begin
+	if Avg_PctR_Sl > OverSold then
+		val = false
+	Else val = true ;
+	Return val ;
+End;
+
+Once If Dict_PctR = Null then Begin
+	Dict_PctR = Dictionary.Create() ;
+	Stk_PctR = Stack.Create();
+	Dict_PctR_Cluster = Dictionary.Create() ;
+	Stk_PctR_Cluster = Stack.Create();
+End ;
+
+{-----------------------------------------}		
+If Currentbar = 1 Then Once
+	Begin
+		log_text = "Start init GI_ExtrmR -------" + Symbol + "---------------" ;
+		log_text = GF_ToLog(LogFileName, log_text, true, true, true) ;
+	End;
+
+
+PctR_Sl = PercentR( PctR_BarsBackSl ) ;
+PctR_Fa = PercentR( PctR_BarsBackFa ) ;
+Avg_PctR_Sl = AverageFC(PctR_Sl, AvgBarCountPctRSl) ;
+Avg_PctR_Fa = AverageFC(PctR_Fa, AvgBarCountPctRSl) ;
+
+SetStopShare;
+if Avg_PctR_Fa crosses over OverSold and is_Trend_Up() then 
+	Begin
+		{Alert( "Indicator exiting oversold zone: %R=" + Numtostr(PctR, 2) );}
+		print("----Buy Long at ------", Close);
+		Buy next bar at market ;
+		if ProfitTargetAmtLX > 0 then
+			SetProfitTarget( ProfitTargetAmtLX ) ;
+		if StopLossAmtLX > 0 then
+			SetStopLoss( StopLossAmtLX ) ;
+		SetExitOnClose ;
+	End
+else if Avg_PctR_Fa crosses under OverBought and is_Trend_Down() then 
+	Begin
+		{Alert( "Indicator exiting oversold zone: %R=" + Numtostr(PctR, 2) );}
+		print("----Sell Short at------", Close);
+		Sell Short next bar at market ;
+		if ProfitTargetAmtST < 0 then
+			Setprofittarget( ProfitTargetAmtST ) ;
+		if StopLossAmtST < 0 then
+			SetStopLoss( StopLossAmtST ) ;
+		SetExitOnClose ;
+	End;
+
+If LastBarOnChart then once begin
+	print_Dict() ;
+End ;
