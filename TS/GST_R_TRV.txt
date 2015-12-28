@@ -249,7 +249,7 @@ If Currentbar = 1 Then Once
 PctR_Sl = PercentR( PctR_BarsBackSl ) ;
 PctR_Fa = PercentR( PctR_BarsBackFa ) ;
 Avg_PctR_Sl = AverageFC(PctR_Sl, AvgBarCountPctRSl) ;
-Avg_PctR_Fa = AverageFC(PctR_Fa, AvgBarCountPctRSl) ;
+Avg_PctR_Fa = AverageFC(PctR_Fa, AvgBarCountPctRFa) ;
 
 SetStopShare;
 if Avg_PctR_Fa crosses over OverSold and is_Trend_Up() then 
