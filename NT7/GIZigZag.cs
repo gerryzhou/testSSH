@@ -171,8 +171,6 @@ namespace NinjaTrader.Indicator
 		/// <summary>
 		/// Print zig zag size.
 		/// </summary>
-		/// <param name="barNo"></param>
-		/// <param name="lookBackPeriod"></param>
 		public void PrintZZSize()
 		{
 			Update();
@@ -372,6 +370,20 @@ namespace NinjaTrader.Indicator
 			return 0;
 		}
 
+		/// <summary>
+		/// Get the zig zag turning point and the size of the swing before the barNo.
+		/// </summary>
+
+		/// <returns></returns>
+		public bool GetZigZag(out DataSeries zZSizeSeries, out DataSeries zZSize)
+		{
+			Update();
+			Print(CurrentBar.ToString() + ", GetZigZag called");
+			zZSizeSeries = zigZagSizeSeries;
+			zZSize = zigZagSizeZigZag;
+			return true;
+		}
+		
 		/// <summary>
 		/// Set the latest zig zag size for the barNo.
 		/// </summary>
@@ -673,8 +685,8 @@ namespace NinjaTrader.Indicator
 			if(IsLastBarOnChart() > 0) {
 				Print(ToTime(Time[0]).ToString() + "-Last Bar:"+ CurrentBar + ", Close[0]=" + Close[0].ToString() + ", Close[-1]=" + Close[-1].ToString() + ", High[-1]=" + High[-1].ToString() + ", Low[-1]=" + Low[-1].ToString());// + ", Close[-4]=" + Close[-4].ToString() + ", High[-4]=" + High[-4].ToString() + ", Low[-4]=" + Low[-4].ToString());
 				Print("this.ChartControl.LastBarPainted=" + this.ChartControl.LastBarPainted + ", Input.count=" + IsLastBarOnChart());
-				PrintZZSize();
-				PrintZZHiLo();
+				//PrintZZSize();
+				//PrintZZHiLo();
 			}
 			//Print(CurrentBar+ " BarsRequired=" + BarsRequired);		
 			
@@ -696,8 +708,8 @@ namespace NinjaTrader.Indicator
 				return;
 			}
 			
-			Print((CurrentBar-1).ToString() + " - ZZLo, ZZHi=" + zigZagLowZigZags.Get(CurrentBar-1) + ", " + zigZagHighZigZags.Get(CurrentBar-1));
-			Print((CurrentBar-1).ToString() + " - ZZLoSeries, ZZHiSeries=" + zigZagLowSeries.Get(CurrentBar-1) + ", " + zigZagHighSeries.Get(CurrentBar-1));
+			//Print((CurrentBar-1).ToString() + " - ZZLo, ZZHi=" + zigZagLowZigZags.Get(CurrentBar-1) + ", " + zigZagHighZigZags.Get(CurrentBar-1));
+			//Print((CurrentBar-1).ToString() + " - ZZLoSeries, ZZHiSeries=" + zigZagLowSeries.Get(CurrentBar-1) + ", " + zigZagHighSeries.Get(CurrentBar-1));
 
 			// Initialization
 			if (lastSwingPrice == 0.0)
@@ -775,7 +787,7 @@ namespace NinjaTrader.Indicator
 			{
 				if(zigZagSizeZigZag.Get(lastZigZagIdx)>0) 
 				{
-					Print(CurrentBar.ToString() + " - lastZigZagIdx, lastSwingIdx=" + lastZigZagIdx + ", " + lastSwingIdx + ",isOverHighDeviation=" + isOverHighDeviation + ",zigZagSizeZigZag=" + zigZagSizeZigZag.Get(lastZigZagIdx) + ",lastZigZagPrice=" + lastZigZagPrice);
+					//Print(CurrentBar.ToString() + " - lastZigZagIdx, lastSwingIdx=" + lastZigZagIdx + ", " + lastSwingIdx + ",isOverHighDeviation=" + isOverHighDeviation + ",zigZagSizeZigZag=" + zigZagSizeZigZag.Get(lastZigZagIdx) + ",lastZigZagPrice=" + lastZigZagPrice);
 					if(isOverHighDeviation) //Find the ZigZag low point
 					{
 						zigZagSizeZigZag.Set(CurrentBar-lastSwingIdx, lastSwingPrice-lastZigZagPrice);
@@ -794,7 +806,7 @@ namespace NinjaTrader.Indicator
 				}
 				else if(zigZagSizeZigZag.Get(lastZigZagIdx)<0) 
 				{
-					Print(CurrentBar.ToString() + " - lastZigZagIdx, lastSwingIdx=" + lastZigZagIdx + ", " + lastSwingIdx + ",isOverLowDeviation=" + isOverLowDeviation + ",zigZagSizeZigZag=" + zigZagSizeZigZag.Get(lastZigZagIdx) + ",lastZigZagPrice=" + lastZigZagPrice);
+					//Print(CurrentBar.ToString() + " - lastZigZagIdx, lastSwingIdx=" + lastZigZagIdx + ", " + lastSwingIdx + ",isOverLowDeviation=" + isOverLowDeviation + ",zigZagSizeZigZag=" + zigZagSizeZigZag.Get(lastZigZagIdx) + ",lastZigZagPrice=" + lastZigZagPrice);
 					if(isOverLowDeviation) //Find the ZigZag high point
 					{
 						zigZagSizeZigZag.Set(CurrentBar-lastSwingIdx, lastSwingPrice-lastZigZagPrice);
@@ -887,7 +899,8 @@ namespace NinjaTrader.Indicator
 
 				lastSwingIdx	= CurrentBar - 1;
 				lastSwingPrice	= saveValue;
-				if(lastZigZagIdx < 0)
+				
+				if(lastZigZagIdx < 0) // initialize the lastZigZagIdx, lastZigZagPrice and zigZagSizeZigZag
 				{
 					lastZigZagIdx = lastSwingIdx;
 					lastZigZagPrice = lastSwingPrice;

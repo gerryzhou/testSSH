@@ -37,6 +37,15 @@ namespace NinjaTrader.Strategy
 		private IDataSeries zzLowValue;
 		private DataSeries		zigZagSizeSeries;
 		private DataSeries		zigZagSizeZigZag;
+		
+		private int ZZ_Count_0_6 = 0;
+		private int ZZ_Count_6_10 = 0;
+		private int ZZ_Count_10_16 = 0;
+		private int ZZ_Count_16_22 = 0;
+		private int ZZ_Count_22_30 = 0;
+		private int ZZ_Count_30_ = 0;
+		private int ZZ_Count = 0;
+		
         #endregion
 
         /// <summary>
@@ -59,6 +68,56 @@ namespace NinjaTrader.Strategy
 			zigZagSizeZigZag = new DataSeries(this, MaximumBarsLookBack.Infinite);
         }
 
+		public int IsLastBarOnChart() {
+			if(Input.Count - CurrentBar <= 2) {
+				return Input.Count;
+			} else {
+				return -1;
+			}
+		}
+		
+		/// <summary>
+		/// Print zig zag size.
+		/// </summary>
+		public void PrintZZSize()
+		{
+			//Update();
+			Print(CurrentBar + " PrintZZSize called from GS");			
+			double zzSize = 0;
+			double zzS = 0;
+			
+			for (int idx = BarsRequired; idx <= Input.Count; idx++)
+			{
+				zzS = zigZagSizeSeries.Get(idx);
+				zzSize = zigZagSizeZigZag.Get(idx);
+				Print(idx.ToString() + " - ZZSizeSeries=" + zzS);
+				Print(idx.ToString() + " - ZZSize=" + zzSize);
+				if(zzSize > 0 && zzSize <=6){
+					ZZ_Count_0_6 ++;
+				}
+				else if(zzSize > 6 && zzSize <=10){
+					ZZ_Count_6_10 ++;
+				}
+				else if(zzSize > 10 && zzSize <=16){
+					ZZ_Count_10_16 ++;
+				}
+				else if(zzSize > 16 && zzSize <=22){
+					ZZ_Count_16_22 ++;
+					Print(idx.ToString() + "- " + Time[CurrentBar-idx].ToString() + ", zzSize=" + zzSize);
+				}
+				else if(zzSize > 22 && zzSize <=30){
+					ZZ_Count_22_30 ++;
+					Print(idx.ToString() + "- " + Time[CurrentBar-idx].ToString() + ", zzSize=" + zzSize);
+				}
+				else if(zzSize > 30){
+					ZZ_Count_30_ ++;
+					Print(idx.ToString() + "- " + Time[CurrentBar-idx].ToString() + ", zzSize=" + zzSize);
+				}
+			}
+			ZZ_Count = ZZ_Count_0_6 + ZZ_Count_6_10 + ZZ_Count_10_16 + ZZ_Count_16_22 + ZZ_Count_22_30 + ZZ_Count_30_ ;
+			Print(CurrentBar + "\r\n ZZ_Count=" + ZZ_Count + "\r\n ZZ_Count_0_6=" + ZZ_Count_0_6 + "\r\n ZZ_Count_6_10=" + ZZ_Count_6_10 + "\r\n ZZ_Count_10_16=" + ZZ_Count_10_16 + "\r\n ZZ_Count_16_22=" + ZZ_Count_16_22 + "\r\n ZZ_Count_22_30=" + ZZ_Count_22_30 + "\r\n ZZ_Count_30_=" + ZZ_Count_30_);
+		}
+		
         /// <summary>
         /// Called on each bar update event (incoming tick)
         /// </summary>
@@ -71,10 +130,14 @@ namespace NinjaTrader.Strategy
 			//zzHighValue.Set(ZigZag(DeviationType.Points, 4, true).ZigZagHigh[0]);
 			//zzLowValue.Set(ZigZag(DeviationType.Points, 4, true).ZigZagLow[0]);
 			//Print("Time=" + Time[0].ToString() + ", High=" + highValue + ", Low=" + lowValue);
-			Print("Time=" + Time[0].ToString() + ", High=" + High + ", Low=" + Low);
+			//Print("Time=" + Time[0].ToString() + ", High=" + High + ", Low=" + Low);
 			if (CurrentBar > BarsRequired)
 			{
-				double zzSize = GIZigZag(DeviationType.Points, 4, true).GetZigZagSize(CurrentBar,CurrentBar-BarsRequired, 0, true);
+				if(IsLastBarOnChart() > 0) {
+					bool GIZZ = GIZigZag(DeviationType.Points, 4, true).GetZigZag(out zigZagSizeSeries, out zigZagSizeZigZag);
+					PrintZZSize();
+				}
+				//double zzSize = GIZigZag(DeviationType.Points, 4, true).GetZigZagSize(CurrentBar,CurrentBar-BarsRequired, 0, true);
 				//zigZagSizeSeries.Set(zzSize);
 				//Print(CurrentBar+ " LastBarOnChart=" + GIZigZag(DeviationType.Points, 4, true).IsLastBarOnChart());
 				//Print(CurrentBar+ " zzSize=" + zigZagSizeSeries.Get(CurrentBar).ToString());
