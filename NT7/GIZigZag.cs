@@ -1065,6 +1065,21 @@ namespace NinjaTrader.Indicator
 				return zigZagLowSeries; 
 			}
 		}
+
+		/// <summary>
+		/// Gets the GIZigZag gap between current bar with last ZZ price.
+		/// </summary>
+		[Browsable(false)]
+		[XmlIgnore()]
+		public DataSeries ZigZagGap
+		{
+			get 
+			{ 
+				Update();
+				return zigZagSizeSeries; 
+			}
+		}
+		
         #endregion
 
 		#region Miscellaneous

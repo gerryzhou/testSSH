@@ -84,34 +84,41 @@ namespace NinjaTrader.Strategy
 			//Update();
 			Print(CurrentBar + " PrintZZSize called from GS");			
 			double zzSize = 0;
+			double zzSizeAbs = -1;
 			double zzS = 0;
-			
+			int lastZZIdx = BarsRequired;
 			for (int idx = BarsRequired; idx <= Input.Count; idx++)
 			{
 				zzS = zigZagSizeSeries.Get(idx);
 				zzSize = zigZagSizeZigZag.Get(idx);
-				Print(idx.ToString() + " - ZZSizeSeries=" + zzS);
-				Print(idx.ToString() + " - ZZSize=" + zzSize);
-				if(zzSize > 0 && zzSize <=6){
+				zzSizeAbs = Math.Abs(zzSize);
+				//Print(idx.ToString() + " - ZZSizeSeries=" + zzS);
+
+				if(zzSizeAbs > 0 && zzSizeAbs <=6){
 					ZZ_Count_0_6 ++;
 				}
-				else if(zzSize > 6 && zzSize <=10){
+				else if(zzSizeAbs > 6 && zzSizeAbs <=10){
 					ZZ_Count_6_10 ++;
 				}
-				else if(zzSize > 10 && zzSize <=16){
+				else if(zzSizeAbs > 10 && zzSizeAbs <=16){
 					ZZ_Count_10_16 ++;
+					Print(idx.ToString() + " - zzSize=" + zzSize + "  [" + Time[CurrentBar-lastZZIdx].ToString() + "--" + Time[CurrentBar-idx].ToString() + "]" );
 				}
-				else if(zzSize > 16 && zzSize <=22){
+				else if(zzSizeAbs > 16 && zzSizeAbs <=22){
 					ZZ_Count_16_22 ++;
-					Print(idx.ToString() + "- " + Time[CurrentBar-idx].ToString() + ", zzSize=" + zzSize);
+					Print(idx.ToString() + " - zzSize=" + zzSize + "  [" + Time[CurrentBar-lastZZIdx].ToString() + "--" + Time[CurrentBar-idx].ToString() + "]" );
 				}
-				else if(zzSize > 22 && zzSize <=30){
+				else if(zzSizeAbs > 22 && zzSizeAbs <=30){
 					ZZ_Count_22_30 ++;
-					Print(idx.ToString() + "- " + Time[CurrentBar-idx].ToString() + ", zzSize=" + zzSize);
+					Print(idx.ToString() + " - zzSize=" + zzSize + "  [" + Time[CurrentBar-lastZZIdx].ToString() + "--" + Time[CurrentBar-idx].ToString() + "]" );
 				}
-				else if(zzSize > 30){
+				else if(zzSizeAbs > 30){
 					ZZ_Count_30_ ++;
-					Print(idx.ToString() + "- " + Time[CurrentBar-idx].ToString() + ", zzSize=" + zzSize);
+					Print(idx.ToString() + " - zzSize=" + zzSize + "  [" + Time[CurrentBar-lastZZIdx].ToString() + "--" + Time[CurrentBar-idx].ToString() + "]" );
+				}
+				if(zzSize != 0) {
+					lastZZIdx = idx;
+					Print(idx.ToString() + " - ZZSize=" + zzSize);
 				}
 			}
 			ZZ_Count = ZZ_Count_0_6 + ZZ_Count_6_10 + ZZ_Count_10_16 + ZZ_Count_16_22 + ZZ_Count_22_30 + ZZ_Count_30_ ;
