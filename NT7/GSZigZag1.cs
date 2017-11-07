@@ -41,10 +41,13 @@ namespace NinjaTrader.Strategy
         protected override void Initialize()
         {
 			Add(GIZigZag(NinjaTrader.Data.DeviationType.Points, 4, true));
-            SetProfitTarget("EnST1", CalculationMode.Ticks, ProfitTargetAmt);
-            SetStopLoss("EnST1", CalculationMode.Ticks, StopLossAmt, false);
-			SetProfitTarget("EnLN1", CalculationMode.Ticks, ProfitTargetAmt);
-            SetStopLoss("EnLN1", CalculationMode.Ticks, StopLossAmt, false);
+//            SetProfitTarget("EnST1", CalculationMode.Ticks, ProfitTargetAmt);
+//            SetStopLoss("EnST1", CalculationMode.Ticks, StopLossAmt, false);
+//			SetProfitTarget("EnLN1", CalculationMode.Ticks, ProfitTargetAmt);
+//            SetStopLoss("EnLN1", CalculationMode.Ticks, StopLossAmt, false);
+			
+			SetProfitTarget(CalculationMode.Ticks, ProfitTargetAmt);
+            SetStopLoss(CalculationMode.Ticks, StopLossAmt);
 
             CalculateOnBarClose = true;
         }
@@ -54,23 +57,26 @@ namespace NinjaTrader.Strategy
         /// </summary>
         protected override void OnBarUpdate()
         {
+			if(CurrentBar < BarsRequired+2) return;
 			int bsx = BarsSinceExit();
 			double gap = GIZigZag(DeviationType.Points, 4, true).ZigZagGap[0];
 			double gapAbs = Math.Abs(gap);
 			Print("gap=" + gap + "," + Position.MarketPosition.ToString() + "=" + Position.Quantity.ToString()+ ", price=" + Position.AvgPrice + ", BarsSinceExit=" + bsx);
-			//if(ToTime(Time[0]) >= TimeStart && ToTime(Time[0]) <= TimeEnd && Position.Quantity == 0 && (bsx == -1 || bsx > barsSincePtSl)) {
+			if(ToTime(Time[0]) >= TimeStart && ToTime(Time[0]) <= TimeEnd && Position.Quantity == 0 && (bsx == -1 || bsx > barsSincePtSl)) {
 
 				if ( gap < 0 && gapAbs >= enSwingMinPnts && gapAbs < enSwingMaxPnts)
 				{
 					Print(CurrentBar + ", EnterLongLimit called");
-					EnterLongLimit(DefaultQuantity, Low[0]-EnOffsetPnts, "EnLN1");
+					EnterShort();
+					//EnterLongLimit(DefaultQuantity, Low[0]-EnOffsetPnts, "EnLN1");
 				} 
 				else if ( gap > 0 && gapAbs >= enSwingMinPnts && gapAbs < enSwingMaxPnts)
 				{
 					Print(CurrentBar + ", EnterShortLimit called");
-					EnterShortLimit(DefaultQuantity, High[0]+EnOffsetPnts, "EnST1");
+					EnterLong();
+					//EnterShortLimit(DefaultQuantity, High[0]+EnOffsetPnts, "EnST1");
 				}
-			//}
+			}
         }
 		
 protected override void OnExecution(IExecution execution)
