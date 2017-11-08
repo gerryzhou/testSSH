@@ -43,6 +43,10 @@ namespace NinjaTrader.Indicator
 		private int				trendDir			= 0; // 1 = trend up, -1 = trend down, init = 0
 		private bool			useHighLow			= true;
 		private ArrayList  zzSizeArray;// = new ArrayList();
+		private bool printOut = false;       
+		private bool drawTxt = false;
+		private bool drawZZTxt = true; // User defined variables (add any user defined variables below)
+        
 
         /// <summary>
         /// This method is used to configure the indicator and is called once before any bar data is loaded.
@@ -180,6 +184,7 @@ namespace NinjaTrader.Indicator
 			{
 				Print(idx.ToString() + " - ZZSizeSeries=" + zigZagSizeSeries.Get(idx));
 				Print(idx.ToString() + " - ZZSize=" + zigZagSizeZigZag.Get(idx));
+				DrawZZSizeText(idx, "txt-");
 			}
 		}
 
@@ -214,7 +219,8 @@ namespace NinjaTrader.Indicator
 
 			Update();
 			return 0.0;
-			Print(barNo.ToString() + " getLastZZHighLow1 called");
+			if(printOut)
+				Print(barNo.ToString() + " getLastZZHighLow1 called");
 
 			for (int idx = barNo - 1; idx >= barNo - 1 - lookBackPeriod; idx--)
 			{
@@ -265,7 +271,8 @@ namespace NinjaTrader.Indicator
 			else if (barNo >= Count)
 				throw new Exception(GetType().Name + ".getLastZZHighLow: barNo out of valid range 0 through " + (Count - 1) + ", was " + barNo + ".");
 
-			Print(barNo.ToString() + " getLastZZHighLow2 called");
+			if(printOut)
+				Print(barNo.ToString() + " getLastZZHighLow2 called");
 			idx_hilo = -1;
 			if(barNo < BarsRequired) return -1;
 			
@@ -311,7 +318,8 @@ namespace NinjaTrader.Indicator
 		public double GetZigZagPoint(int barNo)
 		{
 			Update();
-			Print(CurrentBar.ToString() + "," + barNo.ToString() + " getZZPoint called");
+			if(printOut)
+				Print(CurrentBar.ToString() + "," + barNo.ToString() + " getZZPoint called");
 			if(zigZagLowZigZags.Get(CurrentBar-1) >0)
 				return zigZagLowSeries.Get(CurrentBar-1) - zigZagHighSeries.Get(CurrentBar-1);
 			else if(zigZagHighZigZags.Get(CurrentBar-1)>0)
@@ -378,7 +386,8 @@ namespace NinjaTrader.Indicator
 		public bool GetZigZag(out DataSeries zZSizeSeries, out DataSeries zZSize)
 		{
 			Update();
-			Print(CurrentBar.ToString() + ", GetZigZag called");
+			if(printOut)
+				Print(CurrentBar.ToString() + ", GetZigZag called");
 			zZSizeSeries = zigZagSizeSeries;
 			zZSize = zigZagSizeZigZag;
 			return true;
@@ -398,7 +407,8 @@ namespace NinjaTrader.Indicator
 				throw new Exception(GetType().Name + ".getLastZZHighLow: barNo out of valid range 0 through " + (Count - 1) + ", was " + barNo + ".");
 
 			Update();
-			Print(barNo.ToString() + " SetZigZagSize1 called");
+			if(printOut)
+				Print(barNo.ToString() + " SetZigZagSize1 called");
 			
 			zzSizeArray = new ArrayList();
 			for (int idx = barNo - 1; idx >= BarsRequired; idx--)
@@ -429,7 +439,8 @@ namespace NinjaTrader.Indicator
 				if(zzS*zzSize < 0){
 					zigZagSizeZigZag.Set(CurrentBar-idx, zigZagSizeSeries.Get(idx));
 				}
-				Print(CurrentBar+" zigZagSizeSeries="+zigZagSizeSeries.Get(CurrentBar)+","+(CurrentBar-idx).ToString()+" zigZagSizeZigZag="+zigZagSizeZigZag.Get(CurrentBar-idx));
+				if(printOut)
+					Print(CurrentBar+" zigZagSizeSeries="+zigZagSizeSeries.Get(CurrentBar)+","+(CurrentBar-idx).ToString()+" zigZagSizeZigZag="+zigZagSizeZigZag.Get(CurrentBar-idx));
 				return zzS;
 			}
 
@@ -448,7 +459,8 @@ namespace NinjaTrader.Indicator
 		{
 			int idx_lo, idx_hi; // the last ZZ hi or ZZ lo index;
 			Update();
-			Print(CurrentBar + " SetZigZagSize2 called");
+			if(printOut)
+				Print(CurrentBar + " SetZigZagSize2 called");
 			double zzhi = getLastZZHighLow(CurrentBar, 1, out idx_hi); //zigZagHighZigZags.Get(idx);
 			double zzlo = getLastZZHighLow(CurrentBar, -1, out idx_lo); // zigZagLowZigZags.Get(idx);
 			
@@ -485,10 +497,14 @@ namespace NinjaTrader.Indicator
 				}
 				SetZigZagSize(1, idx_hi);
 			}
-			Print(CurrentBar+ " || trendDir=" + trendDir +" || addHi, addLo, updHi, updLo="+addHi + "," + addLo + "," + updHi + "," + updLo);
-			Print(CurrentBar+" || idx_hi,idx_lo="+idx_hi + "," + idx_lo + " || zzhi,zzlo="+zzhi + "," + zzlo + " ||zzS,zzSize=" + zzS + "," + zzSize);
-			DrawZZSizeText(idx_lo, "txt-");
-			DrawZZSizeText(idx_hi, "txt-");
+			if(printOut)
+				Print(CurrentBar+ " || trendDir=" + trendDir +" || addHi, addLo, updHi, updLo="+addHi + "," + addLo + "," + updHi + "," + updLo);
+			if(printOut)
+				Print(CurrentBar+" || idx_hi,idx_lo="+idx_hi + "," + idx_lo + " || zzhi,zzlo="+zzhi + "," + zzlo + " ||zzS,zzSize=" + zzS + "," + zzSize);
+			if(drawZZTxt) {
+				DrawZZSizeText(idx_lo, "txt-");
+				DrawZZSizeText(idx_hi, "txt-");
+			}
 			return zzSize;
 		}
 		
@@ -502,7 +518,8 @@ namespace NinjaTrader.Indicator
 		{
 			int idx_hilo = -1; // the last ZZ hi or ZZ lo index;
 			Update();
-			Print(CurrentBar + " SetZigZagSize3 called");
+			if(printOut)
+				Print(CurrentBar + " SetZigZagSize3 called");
 //			double zzhi = getLastZZHighLow(CurrentBar, 1, out idx_hi); //zigZagHighZigZags.Get(idx);
 //			double zzlo = getLastZZHighLow(CurrentBar, -1, out idx_lo); // zigZagLowZigZags.Get(idx);
 			
@@ -518,8 +535,10 @@ namespace NinjaTrader.Indicator
 					break;
 				}
 			}
-			Print(CurrentBar+ " || trendDir=" + trendDir +" || isOverHighDeviation, isOverLowDeviation="+isOverHighDeviation + "," + isOverLowDeviation);
-			Print(CurrentBar+" ||idx_hilo="+idx_hilo + " ||zzS,zzSize=" + zzS + "," + zzSize);
+			if(printOut)
+				Print(CurrentBar+ " || trendDir=" + trendDir +" || isOverHighDeviation, isOverLowDeviation="+isOverHighDeviation + "," + isOverLowDeviation);
+			if(printOut)
+				Print(CurrentBar+" ||idx_hilo="+idx_hilo + " ||zzS,zzSize=" + zzS + "," + zzSize);
 				//zigZagSizeSeries.Set(zzS);
 				
 //				if(zzS*zzSize < 0){
@@ -539,7 +558,8 @@ namespace NinjaTrader.Indicator
 		{
 			int idx_hilo = -1; // the last ZZ hi or ZZ lo index;
 			Update();
-			Print(CurrentBar + " SetZigZagSize4 called");
+			if(printOut)
+				Print(CurrentBar + " SetZigZagSize4 called");
 //			double zzhi = getLastZZHighLow(CurrentBar, 1, out idx_hi); //zigZagHighZigZags.Get(idx);
 //			double zzlo = getLastZZHighLow(CurrentBar, -1, out idx_lo); // zigZagLowZigZags.Get(idx);
 			
@@ -558,7 +578,8 @@ namespace NinjaTrader.Indicator
 					zigZagSizeZigZag.Set(CurrentBar-idx, 0);
 				}
 			}
-			Print(barNo+ " || up_down=" + up_down+" || idx_hilo="+idx_hilo + " || zzSize=" + zzSize);
+			if(printOut)
+				Print(barNo+ " || up_down=" + up_down+" || idx_hilo="+idx_hilo + " || zzSize=" + zzSize);
 			return zzSize;
 		}
 
@@ -599,7 +620,8 @@ namespace NinjaTrader.Indicator
 			}
 			
 			zigZagSizeSeries.Set(zzS);
-			Print(CurrentBar + " SetZigZagSize5 called || lo_ago,hi_ago=" + (CurrentBar-lo_ago) + "," + (CurrentBar-hi_ago) + " || lo_ago_prc,hi_ago_prc=" + lo_ago_price + "," + hi_ago_price 
+			if(printOut)
+				Print(CurrentBar + " SetZigZagSize5 called || lo_ago,hi_ago=" + (CurrentBar-lo_ago) + "," + (CurrentBar-hi_ago) + " || lo_ago_prc,hi_ago_prc=" + lo_ago_price + "," + hi_ago_price 
 			+ "\r\n zzS=" + zzS + "||Low[0]=" + Low[0]+ "||High[0]=" + High[0]);
 			for (int idx = barNo - 1; idx >= BarsRequired; idx--)
 			{
@@ -629,33 +651,39 @@ namespace NinjaTrader.Indicator
 		{
 			int idx_hilo = -1; // the last ZZ hi or ZZ lo index;
 			//Update();
-			Print(barNo + " DrawZZSizeText called");
+			if(printOut)
+				Print(barNo + " DrawZZSizeText called");
 //			double zzhi = getLastZZHighLow(CurrentBar, 1, out idx_hi); //zigZagHighZigZags.Get(idx);
 //			double zzlo = getLastZZHighLow(CurrentBar, -1, out idx_lo); // zigZagLowZigZags.Get(idx);
 			
 			double zzSize = zigZagSizeZigZag.Get(barNo);//the previous zz size
+			IText it = null;
 			if(zzSize < 0) {
-				DrawText(tag+barNo.ToString(), Time[CurrentBar-barNo].ToString().Substring(10)+"\r\n"+barNo.ToString()+":"+zzSize, CurrentBar-barNo, double.Parse(High[CurrentBar-barNo].ToString())+0.5, Color.Red);
+				it = DrawText(tag+barNo.ToString(), Time[CurrentBar-barNo].ToString().Substring(10)+"\r\n"+barNo.ToString()+":"+zzSize, CurrentBar-barNo, double.Parse(High[CurrentBar-barNo].ToString())+0.5, Color.Red);
 			}
 			if(zzSize > 0) {
-				DrawText(tag+barNo.ToString(), Time[CurrentBar-barNo].ToString().Substring(10)+"\r\n"+barNo.ToString()+":"+zzSize, CurrentBar-barNo, double.Parse(Low[CurrentBar-barNo].ToString())-0.5, Color.Green);
+				it = DrawText(tag+barNo.ToString(), Time[CurrentBar-barNo].ToString().Substring(10)+"\r\n"+barNo.ToString()+":"+zzSize, CurrentBar-barNo, double.Parse(Low[CurrentBar-barNo].ToString())-0.5, Color.Green);
 			}
+			//it.Locked = false;
 			
 			for (int idx = barNo-1; idx >= BarsRequired; idx--)
 			{
 				zzSize = zigZagSizeZigZag.Get(idx);
 				if(zzSize < 0) {
 					idx_hilo = idx;
-					Print(idx + " DrawZZSize called");
-					DrawText(tag+idx.ToString(), Time[CurrentBar-idx].ToString().Substring(10)+"\r\n"+idx.ToString()+":"+zzSize, CurrentBar-idx, double.Parse(High[CurrentBar-idx].ToString())+0.5, Color.Red);
+					if(printOut)
+						Print(idx + " DrawZZSize called");
+					it = DrawText(tag+idx.ToString(), Time[CurrentBar-idx].ToString().Substring(10)+"\r\n"+idx.ToString()+":"+zzSize, CurrentBar-idx, double.Parse(High[CurrentBar-idx].ToString())+0.5, Color.Red);
 					break;
 				}
 				if(zzSize > 0) {
 					idx_hilo = idx;
-					Print(idx + " DrawZZSize called");
-					DrawText(tag+idx.ToString(), Time[CurrentBar-idx].ToString().Substring(10)+"\r\n"+idx.ToString()+":"+zzSize, CurrentBar-idx, double.Parse(Low[CurrentBar-idx].ToString())-0.5, Color.Green);
+					if(printOut)
+						Print(idx + " DrawZZSize called");
+					it = DrawText(tag+idx.ToString(), Time[CurrentBar-idx].ToString().Substring(10)+"\r\n"+idx.ToString()+":"+zzSize, CurrentBar-idx, double.Parse(Low[CurrentBar-idx].ToString())-0.5, Color.Green);
 					break;
 				}
+				//it.Locked = false;
 			}
 			return true; 
 		}
@@ -670,7 +698,8 @@ namespace NinjaTrader.Indicator
 		{
 			RemoveDrawObject(tag);
 			Update();
-			Print(tag + " was removed from chart");
+			if(printOut)
+				Print(tag + " was removed from chart");
 			return true; 
 		}
 		
@@ -685,7 +714,7 @@ namespace NinjaTrader.Indicator
 			if(IsLastBarOnChart() > 0) {
 				Print(ToTime(Time[0]).ToString() + "-Last Bar:"+ CurrentBar + ", Close[0]=" + Close[0].ToString() + ", Close[-1]=" + Close[-1].ToString() + ", High[-1]=" + High[-1].ToString() + ", Low[-1]=" + Low[-1].ToString());// + ", Close[-4]=" + Close[-4].ToString() + ", High[-4]=" + High[-4].ToString() + ", Low[-4]=" + Low[-4].ToString());
 				Print("this.ChartControl.LastBarPainted=" + this.ChartControl.LastBarPainted + ", Input.count=" + IsLastBarOnChart());
-				//PrintZZSize();
+				PrintZZSize();
 				//PrintZZHiLo();
 			}
 			//Print(CurrentBar+ " BarsRequired=" + BarsRequired);		
@@ -695,8 +724,8 @@ namespace NinjaTrader.Indicator
 //			Print("this.ChartControl.BarsPainted=" + this.ChartControl.BarsPainted);
 //			Print("zigZagSizeSeries.count=" + zigZagSizeSeries.Count);
 //			Print("zigZagSizeZigZag.count=" + zigZagSizeZigZag.Count+ ", Historical=" + Historical);
-			
-			DrawText("txt-"+CurrentBar.ToString(), Time.ToString().Substring(10)+"-"+CurrentBar.ToString()+":"+lastSwingIdx.ToString(), 0, double.Parse(Low.ToString())-0.5, Color.Black);
+			if(drawTxt)
+				DrawText("txt-"+CurrentBar.ToString(), Time.ToString().Substring(10)+"-"+CurrentBar.ToString()+":"+lastSwingIdx.ToString(), 0, double.Parse(Low.ToString())-0.5, Color.Black);
 			if (CurrentBar < 2) // need 3 bars to calculate Low/High
 			{
 				zigZagHighSeries.Set(0);
@@ -736,7 +765,8 @@ namespace NinjaTrader.Indicator
 			bool isOverLowDeviation		= (deviationType == DeviationType.Percent && IsPriceGreater(lastSwingPrice * (1.0 - deviationValue * 0.01), lowSeries[1]))
 										|| (deviationType == DeviationType.Points && IsPriceGreater(lastSwingPrice - deviationValue, lowSeries[1]));
 
-			Print(CurrentBar.ToString() + ": lastSwingPrice, lastSwingIdx=" + lastSwingPrice + ", " + lastSwingIdx + ",isOverHighDeviation=" + isOverHighDeviation + ",isOverLowDeviation=" + isOverLowDeviation);
+			if(printOut)
+				Print(CurrentBar.ToString() + ": lastSwingPrice, lastSwingIdx=" + lastSwingPrice + ", " + lastSwingIdx + ",isOverHighDeviation=" + isOverHighDeviation + ",isOverLowDeviation=" + isOverLowDeviation);
 			
 			double	saveValue	= 0.0;
 			bool	addHigh		= false; 
@@ -787,10 +817,12 @@ namespace NinjaTrader.Indicator
 
 			if (CurrentBar > BarsRequired && lastZigZagIdx > 0)
 			{
-				Print(CurrentBar + ": zigZagSizeZigZag.Get(lastZigZagIdx)=" + zigZagSizeZigZag.Get(lastZigZagIdx) + " , lastZigZagIdx, lastSwingIdx=" + lastZigZagIdx + ", " + lastSwingIdx);
+				if(printOut)
+					Print(CurrentBar + ": zigZagSizeZigZag.Get(lastZigZagIdx)=" + zigZagSizeZigZag.Get(lastZigZagIdx) + " , lastZigZagIdx, lastSwingIdx=" + lastZigZagIdx + ", " + lastSwingIdx);
 				if(zigZagSizeZigZag.Get(lastZigZagIdx)>0) 
 				{
-					Print(CurrentBar.ToString() + " - lastZigZagIdx, lastSwingIdx=" + lastZigZagIdx + ", " + lastSwingIdx + ",isOverHighDeviation=" + isOverHighDeviation + ",zigZagSizeZigZag=" + zigZagSizeZigZag.Get(lastZigZagIdx) + ",lastZigZagPrice=" + lastZigZagPrice);
+					if(printOut)
+						Print(CurrentBar.ToString() + " - lastZigZagIdx, lastSwingIdx=" + lastZigZagIdx + ", " + lastSwingIdx + ",isOverHighDeviation=" + isOverHighDeviation + ",zigZagSizeZigZag=" + zigZagSizeZigZag.Get(lastZigZagIdx) + ",lastZigZagPrice=" + lastZigZagPrice);
 					if(isOverHighDeviation) //Find the ZigZag low point
 					{
 						zigZagSizeZigZag.Set(CurrentBar-lastSwingIdx, lastSwingPrice-lastZigZagPrice);
@@ -809,7 +841,8 @@ namespace NinjaTrader.Indicator
 				}
 				else if(zigZagSizeZigZag.Get(lastZigZagIdx)<0) 
 				{
-					Print(CurrentBar.ToString() + " - lastZigZagIdx, lastSwingIdx=" + lastZigZagIdx + ", " + lastSwingIdx + ",isOverLowDeviation=" + isOverLowDeviation + ",zigZagSizeZigZag=" + zigZagSizeZigZag.Get(lastZigZagIdx) + ",lastZigZagPrice=" + lastZigZagPrice);
+					if(printOut)
+						Print(CurrentBar.ToString() + " - lastZigZagIdx, lastSwingIdx=" + lastZigZagIdx + ", " + lastSwingIdx + ",isOverLowDeviation=" + isOverLowDeviation + ",zigZagSizeZigZag=" + zigZagSizeZigZag.Get(lastZigZagIdx) + ",lastZigZagPrice=" + lastZigZagPrice);
 					if(isOverLowDeviation) //Find the ZigZag high point
 					{
 						zigZagSizeZigZag.Set(CurrentBar-lastSwingIdx, lastSwingPrice-lastZigZagPrice);
@@ -830,7 +863,8 @@ namespace NinjaTrader.Indicator
 
 			if (!isSwingHigh && !isSwingLow)
 			{
-				Print(CurrentBar.ToString() + " not swing hi/lo - lastZigZagIdx, lastSwingIdx=" + lastZigZagIdx + ", " + lastSwingIdx);
+				if(printOut)
+					Print(CurrentBar.ToString() + " not swing hi/lo - lastZigZagIdx, lastSwingIdx=" + lastZigZagIdx + ", " + lastSwingIdx);
 				zigZagHighSeries.Set(currentZigZagHigh);
 				zigZagLowSeries.Set(currentZigZagLow);
 				//SetZigZagSize( CurrentBar, lastSwingIdx, lastSwingPrice);
@@ -870,13 +904,15 @@ namespace NinjaTrader.Indicator
 				{
 					zigZagHighZigZags.Set(CurrentBar - lastSwingIdx, 0);
 					Value.Reset(CurrentBar - lastSwingIdx);
-					Print(CurrentBar+ ":" + " zigZagHighZigZags(" + lastSwingIdx.ToString() + ")=0");
+					if(printOut)
+						Print(CurrentBar+ ":" + " zigZagHighZigZags(" + lastSwingIdx.ToString() + ")=0");
 				}
 				else if (updateLow && lastSwingIdx >= 0)
 				{
 					zigZagLowZigZags.Set(CurrentBar - lastSwingIdx, 0);
 					Value.Reset(CurrentBar - lastSwingIdx);
-					Print(CurrentBar+ ":" + " zigZagLowZigZags(" + lastSwingIdx.ToString() + ")=0");
+					if(printOut)
+						Print(CurrentBar+ ":" + " zigZagLowZigZags(" + lastSwingIdx.ToString() + ")=0");
 				}
 
 				if (addHigh || updateHigh)
@@ -887,7 +923,8 @@ namespace NinjaTrader.Indicator
 					currentZigZagHigh = saveValue;
 					zigZagHighSeries.Set(1, currentZigZagHigh);
 					Value.Set(1, currentZigZagHigh);
-					Print(CurrentBar+ ":" + " zigZagHighZigZags(" + (CurrentBar-1).ToString() + ")=" + saveValue + ", zigZagHighSeries(" + (CurrentBar-1).ToString() + ")=" + currentZigZagHigh + " || addHigh, updateHigh=" + addHigh + "," + updateHigh);
+					if(printOut)
+						Print(CurrentBar+ ":" + " zigZagHighZigZags(" + (CurrentBar-1).ToString() + ")=" + saveValue + ", zigZagHighSeries(" + (CurrentBar-1).ToString() + ")=" + currentZigZagHigh + " || addHigh, updateHigh=" + addHigh + "," + updateHigh);
 					
 				}
 				else if (addLow || updateLow) 
@@ -898,7 +935,8 @@ namespace NinjaTrader.Indicator
 					currentZigZagLow = saveValue;
 					zigZagLowSeries.Set(1, currentZigZagLow);
 					Value.Set(1, currentZigZagLow);
-					Print(CurrentBar+ ":" + " zigZagLowZigZags(" + (CurrentBar-1).ToString() + ")=" + saveValue + ", zigZagLowSeries(" + (CurrentBar-1).ToString() + ")=" + currentZigZagLow + " || addLow, updateLow=" + addLow + "," + updateLow);
+					if(printOut)
+						Print(CurrentBar+ ":" + " zigZagLowZigZags(" + (CurrentBar-1).ToString() + ")=" + saveValue + ", zigZagLowSeries(" + (CurrentBar-1).ToString() + ")=" + currentZigZagLow + " || addLow, updateLow=" + addLow + "," + updateLow);
 				}
 
 				lastSwingIdx	= CurrentBar - 1;

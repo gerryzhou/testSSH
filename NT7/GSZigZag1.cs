@@ -32,7 +32,8 @@ namespace NinjaTrader.Strategy
         private int barsSincePtSl = 1; // Default setting for BarsSincePtSl
         private double enSwingMinPnts = 6; // Default setting for EnSwingMinPnts
         private double enSwingMaxPnts = 10; // Default setting for EnSwingMaxPnts
-        // User defined variables (add any user defined variables below)
+		private bool printOut = false;
+		private bool drawTxt = false; // User defined variables (add any user defined variables below)
         #endregion
 
         /// <summary>
@@ -61,18 +62,21 @@ namespace NinjaTrader.Strategy
 			int bsx = BarsSinceExit();
 			double gap = GIZigZag(DeviationType.Points, 4, true).ZigZagGap[0];
 			double gapAbs = Math.Abs(gap);
-			Print("gap=" + gap + "," + Position.MarketPosition.ToString() + "=" + Position.Quantity.ToString()+ ", price=" + Position.AvgPrice + ", BarsSinceExit=" + bsx);
+			if(printOut)
+				Print("gap=" + gap + "," + Position.MarketPosition.ToString() + "=" + Position.Quantity.ToString()+ ", price=" + Position.AvgPrice + ", BarsSinceExit=" + bsx);
 			if(ToTime(Time[0]) >= TimeStart && ToTime(Time[0]) <= TimeEnd && Position.Quantity == 0 && (bsx == -1 || bsx > barsSincePtSl)) {
 
 				if ( gap < 0 && gapAbs >= enSwingMinPnts && gapAbs < enSwingMaxPnts)
 				{
-					Print(CurrentBar + ", EnterLongLimit called");
+					if(printOut)
+						Print(CurrentBar + ", EnterLongLimit called");
 					EnterShort();
 					//EnterLongLimit(DefaultQuantity, Low[0]-EnOffsetPnts, "EnLN1");
 				} 
 				else if ( gap > 0 && gapAbs >= enSwingMinPnts && gapAbs < enSwingMaxPnts)
 				{
-					Print(CurrentBar + ", EnterShortLimit called");
+					if(printOut)
+						Print(CurrentBar + ", EnterShortLimit called");
 					EnterLong();
 					//EnterShortLimit(DefaultQuantity, High[0]+EnOffsetPnts, "EnST1");
 				}
@@ -83,9 +87,12 @@ protected override void OnExecution(IExecution execution)
 {
     // Remember to check the underlying IOrder object for null before trying to access its properties
     if (execution.Order != null && execution.Order.OrderState == OrderState.Filled) {
-		Print(execution.Name + ",Price=" + execution.Price + "," + execution.Time.ToShortTimeString());
-		IText it = DrawText(CurrentBar.ToString()+Time[0].ToShortTimeString(), Time[0].ToString().Substring(10)+"\r\n"+execution.Name+":"+execution.Price, 0, execution.Price, Color.Red);
-		it.Locked = false;
+		if(printOut)
+			Print(execution.Name + ",Price=" + execution.Price + "," + execution.Time.ToShortTimeString());
+		if(drawTxt) {
+			IText it = DrawText(CurrentBar.ToString()+Time[0].ToShortTimeString(), Time[0].ToString().Substring(10)+"\r\n"+execution.Name+":"+execution.Price, 0, execution.Price, Color.Red);
+			it.Locked = false;
+		}
 	}
 }
 
