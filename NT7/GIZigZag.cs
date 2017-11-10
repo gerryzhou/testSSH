@@ -178,14 +178,21 @@ namespace NinjaTrader.Indicator
 		public void PrintZZSize()
 		{
 			Update();
-			Print(CurrentBar + " PrintZZSize called");			
+			Print(CurrentBar + " GI-PrintZZSize called");			
 
+			int idx_prev = -1;
+			double zzS = 0;
+			double zzSize = 0;
+			
 			for (int idx = BarsRequired; idx <= Input.Count; idx++)
 			{
-				Print(idx.ToString() + " - ZZSizeSeries=" + zigZagSizeSeries.Get(idx));
-				Print(idx.ToString() + " - ZZSize=" + zigZagSizeZigZag.Get(idx));
+				zzS= zigZagSizeSeries.Get(idx);
+				zzSize = zigZagSizeZigZag.Get(idx);
+				Print(idx.ToString() + " -GI ZZSizeSeries=" + zzS);
+				Print(idx.ToString() + " -GI ZZSize=" + zzSize);
 				DrawZZSizeText(idx, "txt-");
 			}
+			
 		}
 
 		/// <summary>
@@ -664,7 +671,7 @@ namespace NinjaTrader.Indicator
 			if(zzSize > 0) {
 				it = DrawText(tag+barNo.ToString(), Time[CurrentBar-barNo].ToString().Substring(10)+"\r\n"+barNo.ToString()+":"+zzSize, CurrentBar-barNo, double.Parse(Low[CurrentBar-barNo].ToString())-0.5, Color.Green);
 			}
-			//it.Locked = false;
+//			it.Locked = false;
 			
 			for (int idx = barNo-1; idx >= BarsRequired; idx--)
 			{
@@ -714,7 +721,7 @@ namespace NinjaTrader.Indicator
 			if(IsLastBarOnChart() > 0) {
 				Print(ToTime(Time[0]).ToString() + "-Last Bar:"+ CurrentBar + ", Close[0]=" + Close[0].ToString() + ", Close[-1]=" + Close[-1].ToString() + ", High[-1]=" + High[-1].ToString() + ", Low[-1]=" + Low[-1].ToString());// + ", Close[-4]=" + Close[-4].ToString() + ", High[-4]=" + High[-4].ToString() + ", Low[-4]=" + Low[-4].ToString());
 				Print("this.ChartControl.LastBarPainted=" + this.ChartControl.LastBarPainted + ", Input.count=" + IsLastBarOnChart());
-				PrintZZSize();
+				//PrintZZSize();
 				//PrintZZHiLo();
 			}
 			//Print(CurrentBar+ " BarsRequired=" + BarsRequired);		
@@ -1171,6 +1178,13 @@ namespace NinjaTrader.Indicator
 		
 		#endregion
     }
+	
+//	public class GIZZSwing : DataSeries
+//    {
+//		private double			ZigZagSize	= 0;
+//		private DateTime			StartTime ;
+//		private DateTime			EndTime ;
+//	}
 }
 
 #region NinjaScript generated code. Neither change nor remove.
