@@ -1,0 +1,369 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <meta charset='UTF-8'>
+  
+  <title>Responsive Table</title>
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  
+  <style>
+  * { 
+    margin: 0; 
+    padding: 0; 
+  }
+  body { 
+    font: 14px/1.4 Georgia, Serif; 
+  }
+  
+  /* 
+  Generic Styling, for Desktops/Laptops 
+  */
+  table { 
+    width: 100%; 
+    border-collapse: collapse; 
+  }
+  /* Zebra striping */
+  tr:nth-of-type(odd) { 
+    background: #eee; 
+  }
+  th { 
+    background: #333; 
+    color: white; 
+    font-weight: bold; 
+  }
+  td, th { 
+    padding: 6px; 
+    border: 1px solid #9B9B9B; 
+    text-align: left; 
+  }
+  @media 
+  only screen and (max-width: 760px),
+  (min-device-width: 768px) and (max-device-width: 1024px)  {
+    table, thead, tbody, th, td, tr { display: block; }
+    thead tr { position: absolute;top: -9999px;left: -9999px;}
+    tr { border: 1px solid #9B9B9B; }
+    td { border: none;border-bottom: 1px solid #9B9B9B; position: relative;padding-left: 50%; }
+    
+    td:before { position: absolute;top: 6px;left: 6px;width: 45%; padding-right: 10px; white-space: nowrap;}
+    
+    /*
+    Label the data
+    */
+td:nth-of-type(0):before { content: "COMPOUND_CODE"; }
+td:nth-of-type(1):before { content: "ID"; }
+td:nth-of-type(2):before { content: "NCTR_ID"; }
+td:nth-of-type(3):before { content: "COMPOUND_NAME"; }
+td:nth-of-type(4):before { content: "FMLA"; }
+td:nth-of-type(5):before { content: "MOLECULAR_WEIGHT"; }
+td:nth-of-type(6):before { content: "CAS_NUMBER"; }
+td:nth-of-type(7):before { content: "KOWLOGP"; }
+td:nth-of-type(8):before { content: "STRUCTURECATEGORY"; }
+td:nth-of-type(9):before { content: "SMILES"; }
+td:nth-of-type(10):before { content: "TITLE"; }
+td:nth-of-type(11):before { content: "LAB_UNIVERSITY"; }
+td:nth-of-type(12):before { content: "AUTHORS"; }
+td:nth-of-type(13):before { content: "JOURNAL"; }
+td:nth-of-type(14):before { content: "PUBLICATION_DATE"; }
+td:nth-of-type(15):before { content: "START_PAGE"; }
+td:nth-of-type(16):before { content: "VOLUME_NUMBER"; }
+td:nth-of-type(17):before { content: "ASSAY_CLASS_NAME"; }
+td:nth-of-type(18):before { content: "ASSAY_NAME"; }
+td:nth-of-type(19):before { content: "ROUTE_OF_COMPOUND"; }
+td:nth-of-type(20):before { content: "SPECIES_STRAIN"; }
+td:nth-of-type(21):before { content: "ENDPOINT_NAME"; }
+td:nth-of-type(22):before { content: "ENDPOINT_VALUE"; }
+td:nth-of-type(23):before { content: "ACTIVITY_CATEGORY"; }
+td:nth-of-type(24):before { content: "REFERENCE_CHEMICAL"; }
+  }
+  
+  /* Smartphones (portrait and landscape) ----------- */
+  @media only screen
+  and (min-device-width : 320px)
+  and (max-device-width : 480px) {
+    body { 
+      padding: 0; 
+      margin: 0; 
+      width: 320px; }
+    }
+  
+  /* iPads (portrait and landscape) ----------- */
+  @media only screen and (min-device-width: 768px) and (max-device-width: 1024px) {
+    body { 
+      width: 495px; 
+    }
+  }
+  
+  </style>
+  <!--<![endif]-->
+<script type="text/javascript">
+
+lsearch = function(){
+  //this.term = document.getElementById('S').value.toUpperCase();
+  var s = document.getElementById('search').value.toLowerCase();
+  rows = document.getElementById('data').getElementsByTagName('TR');
+  for(var i=0;i<rows.length;i++){
+    if (s =="" ){
+      rows[i].style.display ='';
+    } else if ( rows[i].innerText.toLowerCase().indexOf(s) != -1 ) {
+      rows[i].style.display ='';
+    } else {
+      rows[i].style.display ='none';
+    }
+  }
+  this.time = false;
+}
+
+</script>
+</head>
+
+<body>
+<div><input type="text" size="30" maxlength="1000" value="" id="search" onkeyup="lsearch();" /><input type="button" value="Go" onclick="lsearch();"/> </div>
+<table><thead><tr>	<th>COMPOUND_CODE</th>
+	<th>ID</th>
+	<th>NCTR_ID</th>
+	<th>COMPOUND_NAME</th>
+	<th>FMLA</th>
+	<th>MOLECULAR_WEIGHT</th>
+	<th>CAS_NUMBER</th>
+	<th>KOWLOGP</th>
+	<th>STRUCTURECATEGORY</th>
+	<th>SMILES</th>
+	<th>TITLE</th>
+	<th>LAB_UNIVERSITY</th>
+	<th>AUTHORS</th>
+	<th>JOURNAL</th>
+	<th>PUBLICATION_DATE</th>
+	<th>START_PAGE</th>
+	<th>VOLUME_NUMBER</th>
+	<th>ASSAY_CLASS_NAME</th>
+	<th>ASSAY_NAME</th>
+	<th>ROUTE_OF_COMPOUND</th>
+	<th>SPECIES_STRAIN</th>
+	<th>ENDPOINT_NAME</th>
+	<th>ENDPOINT_VALUE</th>
+	<th>ACTIVITY_CATEGORY</th>
+	<th>REFERENCE_CHEMICAL</th>
+</tr></thead>
+<tbody id="data">
+
+	<tr>
+<td align="right">1</td>
+<td align="right">1</td>
+<td align="right">1</td>
+<td>2-tert-butylphenol</td>
+<td>C10H14O</td>
+<td align="right">150.22</td>
+<td>88-18-6</td>
+<td align="right">&nbsp;</td>
+<td>&nbsp;</td>
+<td>CC(C)(C)c1ccccc1(O)</td>
+<td>Estrogenic Activities of 517 chemicals by Yeast Two-Hybrid assay</td>
+<td>&nbsp;</td>
+<td>Tsutomu Nishihara, Jun-ichi Nishikawa, Tomohiko Kanayama, Hideo Utsumi, Fumi Dakeyama, Koichi Saito, Masayoshi Imagawa, Satoshi Takatori, Yoko Kitagawa, Shinjiro Hori</td>
+<td>&nbsp;</td>
+<td>2000</td>
+<td>282-298</td>
+<td>46(4)</td>
+<td>in Vitro</td>
+<td>ER Gene (Reporter Gene Assay)</td>
+<td>&nbsp;</td>
+<td>&nbsp;</td>
+<td>LogRP</td>
+<td align="right">-10000</td>
+<td>&nbsp;</td>
+<td>estradiol</td>
+	</tr>
+	<tr>
+<td align="right">2</td>
+<td align="right">2</td>
+<td align="right">10</td>
+<td>Genistein</td>
+<td>C15H10O5</td>
+<td align="right">270.24</td>
+<td>446-72-0</td>
+<td align="right">2.84</td>
+<td>Phyto</td>
+<td>Oc1ccc(cc1)C2=COc3cc(O)cc(O)c3(C2(=O))</td>
+<td>The E-SCREEN Assay as a Tool to Identify Estrogens: an update on Estrogenic Environmental Pollutants</td>
+<td>&nbsp;</td>
+<td>Soto, A.M. ; Sonnenschein, C. ; Chung, K.L. ; Fernandez, M.F. ; Olea, N. ; Serrano, F.O.</td>
+<td>Environmental Health Perspectives</td>
+<td>1995</td>
+<td>113-22</td>
+<td>103 Suppl 7</td>
+<td>in Vitro</td>
+<td>Escreen (Cell Proliferation Assay)</td>
+<td>&nbsp;</td>
+<td>Human</td>
+<td>LogRPP</td>
+<td align="right">-1.85</td>
+<td>&nbsp;</td>
+<td>estradiol</td>
+	</tr>
+	<tr>
+<td align="right">2</td>
+<td align="right">2</td>
+<td align="right">10</td>
+<td>Genistein</td>
+<td>C15H10O5</td>
+<td align="right">270.24</td>
+<td>446-72-0</td>
+<td align="right">2.84</td>
+<td>Phyto</td>
+<td>Oc1ccc(cc1)C2=COc3cc(O)cc(O)c3(C2(=O))</td>
+<td>Estrogenic Activities of 517 chemicals by Yeast Two-Hybrid assay</td>
+<td>&nbsp;</td>
+<td>Tsutomu Nishihara, Jun-ichi Nishikawa, Tomohiko Kanayama, Hideo Utsumi, Fumi Dakeyama, Koichi Saito, Masayoshi Imagawa, Satoshi Takatori, Yoko Kitagawa, Shinjiro Hori</td>
+<td>&nbsp;</td>
+<td>2000</td>
+<td>282-298</td>
+<td>46(4)</td>
+<td>in Vitro</td>
+<td>ER Gene (Reporter Gene Assay)</td>
+<td>&nbsp;</td>
+<td>&nbsp;</td>
+<td>LogRP</td>
+<td align="right">-0.52</td>
+<td>&nbsp;</td>
+<td>estradiol</td>
+	</tr>
+	<tr>
+<td align="right">2</td>
+<td align="right">2</td>
+<td align="right">10</td>
+<td>Genistein</td>
+<td>C15H10O5</td>
+<td align="right">270.24</td>
+<td>446-72-0</td>
+<td align="right">2.84</td>
+<td>Phyto</td>
+<td>Oc1ccc(cc1)C2=COc3cc(O)cc(O)c3(C2(=O))</td>
+<td>Evaluation of a recombinant yeast cell estrogen screening assay</td>
+<td>&nbsp;</td>
+<td>Coldham, N.G. ; Dave, M. ; Sivapathasundaram, S. ; McDonnell, D.P. ; Connor, C. ; Sauer, M.J.</td>
+<td>Environmental Health Perspectives</td>
+<td>1997</td>
+<td>734-42</td>
+<td>105</td>
+<td>in Vitro</td>
+<td>ER Gene (Reporter Gene Assay)</td>
+<td>&nbsp;</td>
+<td>&nbsp;</td>
+<td>LogRP</td>
+<td align="right">-1.31</td>
+<td>&nbsp;</td>
+<td>estradiol</td>
+	</tr>
+	<tr>
+<td align="right">2</td>
+<td align="right">2</td>
+<td align="right">10</td>
+<td>Genistein</td>
+<td>C15H10O5</td>
+<td align="right">270.24</td>
+<td>446-72-0</td>
+<td align="right">2.84</td>
+<td>Phyto</td>
+<td>Oc1ccc(cc1)C2=COc3cc(O)cc(O)c3(C2(=O))</td>
+<td>Quantitative Comparison of in vitro assays for Estrogenic Activity</td>
+<td>&nbsp;</td>
+<td>Fang, H. ; Tong, W. ; Perkins, R. ; Soto, A. ; Prechtl, N. ; Sheehan, D.M.</td>
+<td>Environmental Health Perspectives</td>
+<td>&nbsp;</td>
+<td>&nbsp;</td>
+<td>108</td>
+<td>in Vitro</td>
+<td>Escreen (Cell Proliferation Assay)</td>
+<td>&nbsp;</td>
+<td>Human</td>
+<td>LogRPP</td>
+<td align="right">-1.85</td>
+<td>&nbsp;</td>
+<td>estradiol</td>
+	</tr>
+	<tr>
+<td align="right">2</td>
+<td align="right">2</td>
+<td align="right">10</td>
+<td>Genistein</td>
+<td>C15H10O5</td>
+<td align="right">270.24</td>
+<td>446-72-0</td>
+<td align="right">2.84</td>
+<td>Phyto</td>
+<td>Oc1ccc(cc1)C2=COc3cc(O)cc(O)c3(C2(=O))</td>
+<td>Structure-Activity Relationships of 202 Natural, Synthetic and Enviromental Chemicals Binding to Androgen Receptors</td>
+<td>&nbsp;</td>
+<td>Fang, H. ; Tong, W.; Branham, W.S. ; Hong, H.; Xie, Q.; Moland, C.L. ; Dial, S.L. ; Perkins, R. ; Owens, W.; Sheehan, D.M.</td>
+<td>Chemical Research Toxicology</td>
+<td>2003</td>
+<td>1338-58</td>
+<td>16(10)</td>
+<td>in Vitro</td>
+<td>AR Binding (Receptor Binding Assay)</td>
+<td>&nbsp;</td>
+<td>Rat</td>
+<td>LogRBA</td>
+<td align="right">-2.44</td>
+<td>&nbsp;</td>
+<td>&nbsp;</td>
+	</tr>
+	<tr>
+<td align="right">2</td>
+<td align="right">2</td>
+<td align="right">10</td>
+<td>Genistein</td>
+<td>C15H10O5</td>
+<td align="right">270.24</td>
+<td>446-72-0</td>
+<td align="right">2.84</td>
+<td>Phyto</td>
+<td>Oc1ccc(cc1)C2=COc3cc(O)cc(O)c3(C2(=O))</td>
+<td>Comparison of the ligand binding specificity and transcript tissue distribution of estrogen receptors alpha and beta</td>
+<td>&nbsp;</td>
+<td>Kuiper, G.G. ; Carlsson, B. ; Grandien, K. ; Enmark, E. ; Haggblad, J. ; Nilsson, S. ; Gustafsson, J.A.</td>
+<td>Endocrinology</td>
+<td>1997</td>
+<td>863-70</td>
+<td>138</td>
+<td>in Vitro</td>
+<td>ER Binding (Receptor Binding Assay)</td>
+<td>&nbsp;</td>
+<td>Human</td>
+<td>LogRBA</td>
+<td align="right">0.7</td>
+<td>&nbsp;</td>
+<td>estradiol</td>
+	</tr>	
+	<tr>
+<td align="right">19</td>
+<td align="right">19</td>
+<td align="right">116</td>
+<td>"4,4'-Methylenebis(N,N-dimethylaniline)"</td>
+<td>C17H22N2</td>
+<td align="right">254.38</td>
+<td>101-61-1</td>
+<td align="right">4.37</td>
+<td>DDT</td>
+<td>CN(C)c1ccc(cc1)Cc2ccc(cc2)N(C)C</td>
+<td>Estrogen Receptor Relative Binding Affinities of 188  Natural and Xenochemicals: Structural Diversity of Ligands</td>
+<td>&nbsp;</td>
+<td>Blair, R. ; Fang, H. ; Branham, W.S. ; Hass, B. ; Dial, S.L. ; Moland, C.L. ; Tong, W. ; Shi, L. ; Perkins, R. ; Sheehan, D.M.</td>
+<td>Toxicological science</td>
+<td>2000</td>
+<td>138-153</td>
+<td>54</td>
+<td>in Vitro</td>
+<td>ER Binding (Receptor Binding Assay)</td>
+<td>&nbsp;</td>
+<td>Rat</td>
+<td>LogRBA</td>
+<td align="right">-10000</td>
+<td>&nbsp;</td>
+<td>estradiol</td>
+	</tr>
+</tbody></table><!-- SQL:
+select * from ekb_view where id<20--></body></html>
