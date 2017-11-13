@@ -23,5 +23,11 @@ namespace NinjaTrader.Strategy
 				return -1;
 			}
 		}
+		
+		public string GetTimeDate(String str_timedate, int time_date) {
+			char[] delimiterChars = { ' '};
+			string[] str_arr = str_timedate.Split(delimiterChars);
+			return str_arr[time_date];
+		}
     }
 }

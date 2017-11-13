@@ -17,6 +17,9 @@ namespace NinjaTrader.Strategy
 {
     /// <summary>
     /// Enter the description of your strategy here
+	/// Two questions: 
+	/// 1) the volality of the current market
+	/// 2) counter swing/trend or follow swing/trend? (Trending, Reversal or Range)
     /// </summary>
     [Description("Enter the description of your strategy here")]
     public class GSZigZag1 : Strategy
@@ -74,6 +77,8 @@ namespace NinjaTrader.Strategy
 		/// </summary>
 		public void PrintZZSize()
 		{
+			String str_Plus = " + + + + +";
+			String str_Minus = " - - - - -";
 			//Update();
 			Print(CurrentBar + " PrintZZSize called from GS");			
 			double zzSize = 0;
@@ -85,8 +90,11 @@ namespace NinjaTrader.Strategy
 				zzS = zigZagSizeSeries.Get(idx);
 				zzSize = zigZagSizeZigZag.Get(idx);
 				zzSizeAbs = Math.Abs(zzSize);
+				String str_suffix = "";
 				//Print(idx.ToString() + " - ZZSizeSeries=" + zzS);
-
+				if(zzSize>0) str_suffix = str_Plus;
+				else if(zzSize<0) str_suffix = str_Minus;
+				
 				if(zzSizeAbs > 0 && zzSizeAbs <6){
 					ZZ_Count_0_6 ++;
 				}
@@ -95,25 +103,25 @@ namespace NinjaTrader.Strategy
 				}
 				else if(zzSizeAbs >= 10 && zzSizeAbs <16){
 					ZZ_Count_10_16 ++;
-					Print(idx.ToString() + " - zzSize=" + zzSize + "  [" + Time[CurrentBar-lastZZIdx].ToString() + "--" + Time[CurrentBar-idx].ToString() + "]" );
+					Print(idx.ToString() + " - ZZSize=" + zzSize + "  [" + Time[CurrentBar-lastZZIdx].ToString() + "--" + Time[CurrentBar-idx].ToString() + "] >=10" + str_suffix);
 				}
 				else if(zzSizeAbs >= 16 && zzSizeAbs <22){
 					ZZ_Count_16_22 ++;
-					Print(idx.ToString() + " - zzSize=" + zzSize + "  [" + Time[CurrentBar-lastZZIdx].ToString() + "--" + Time[CurrentBar-idx].ToString() + "]" );
+					Print(idx.ToString() + " - ZZSize=" + zzSize + "  [" + Time[CurrentBar-lastZZIdx].ToString() + "--" + Time[CurrentBar-idx].ToString() + "] >=16" + str_suffix );
 				}
 				else if(zzSizeAbs >= 22 && zzSizeAbs <30){
 					ZZ_Count_22_30 ++;
-					Print(idx.ToString() + " - zzSize=" + zzSize + "  [" + Time[CurrentBar-lastZZIdx].ToString() + "--" + Time[CurrentBar-idx].ToString() + "]" );
+					Print(idx.ToString() + " - ZZSize=" + zzSize + "  [" + Time[CurrentBar-lastZZIdx].ToString() + "--" + Time[CurrentBar-idx].ToString() + "] >=22" + str_suffix );
 				}
 				else if(zzSizeAbs >= 30){
 					ZZ_Count_30_ ++;
-					Print(idx.ToString() + " - zzSize=" + zzSize + "  [" + Time[CurrentBar-lastZZIdx].ToString() + "--" + Time[CurrentBar-idx].ToString() + "]" );
+					Print(idx.ToString() + " - ZZSize=" + zzSize + "  [" + Time[CurrentBar-lastZZIdx].ToString() + "--" + Time[CurrentBar-idx].ToString() + "] >=30" + str_suffix);
 				}
 				if(zzSize != 0) {
 					lastZZIdx = idx;
 					DrawZZSizeText(idx, "txt-");
 					if(zzSizeAbs < 10)
-						Print(idx.ToString() + " - ZZSize=" + zzSize);
+						Print(idx.ToString() + " - zzSize=" + zzSize + "  [" + Time[CurrentBar-lastZZIdx].ToString() + "--" + Time[CurrentBar-idx].ToString() + "]" );
 				}
 			}
 			ZZ_Count = ZZ_Count_0_6 + ZZ_Count_6_10 + ZZ_Count_10_16 + ZZ_Count_16_22 + ZZ_Count_22_30 + ZZ_Count_30_ ;
@@ -144,11 +152,11 @@ namespace NinjaTrader.Strategy
 			IText it = null;
 			if(zzSize < 0) {
 				if(zzSizeAbs >= 10) draw_color = dn_color;
-				it = DrawText(tag+barNo.ToString(), Time[CurrentBar-barNo].ToString().Substring(10)+"\r\n"+barNo.ToString()+":"+zzSize, CurrentBar-barNo, double.Parse(High[CurrentBar-barNo].ToString())+2.5, draw_color);
+				it = DrawText(tag+barNo.ToString(), GetTimeDate(Time[CurrentBar-barNo].ToString(), 1)+"\r\n#"+barNo.ToString()+"\r\n"+zzSize, CurrentBar-barNo, double.Parse(High[CurrentBar-barNo].ToString())+2.5, draw_color);
 			}
 			if(zzSize > 0) {
 				if(zzSizeAbs >= 10) draw_color = up_color;
-				it = DrawText(tag+barNo.ToString(), Time[CurrentBar-barNo].ToString().Substring(10)+"\r\n"+barNo.ToString()+":"+zzSize, CurrentBar-barNo, double.Parse(Low[CurrentBar-barNo].ToString())-2.5, draw_color);
+				it = DrawText(tag+barNo.ToString(), GetTimeDate(Time[CurrentBar-barNo].ToString(), 1)+"\r\n#"+barNo.ToString()+"\r\n"+zzSize, CurrentBar-barNo, double.Parse(Low[CurrentBar-barNo].ToString())-2.5, draw_color);
 			}
 			it.Locked = false;
 			
@@ -162,7 +170,7 @@ namespace NinjaTrader.Strategy
 					if(printOut)
 						Print(idx + " DrawZZSize called");
 					if(zzSizeAbs >= 10) draw_color = dn_color;
-					it = DrawText(tag+idx.ToString(), Time[CurrentBar-idx].ToString().Substring(10)+"\r\n"+idx.ToString()+":"+zzSize, CurrentBar-idx, double.Parse(High[CurrentBar-idx].ToString())+2.5, draw_color);
+					it = DrawText(tag+idx.ToString(), GetTimeDate(Time[CurrentBar-idx].ToString(), 1)+"\r\n#"+idx.ToString()+"\r\n"+zzSize, CurrentBar-idx, double.Parse(High[CurrentBar-idx].ToString())+2.5, draw_color);
 					break;
 				}
 				if(zzSize > 0) {
@@ -170,7 +178,7 @@ namespace NinjaTrader.Strategy
 					if(printOut)
 						Print(idx + " DrawZZSize called");
 					if(zzSizeAbs >= 10) draw_color = up_color;
-					it = DrawText(tag+idx.ToString(), Time[CurrentBar-idx].ToString().Substring(10)+"\r\n"+idx.ToString()+":"+zzSize, CurrentBar-idx, double.Parse(Low[CurrentBar-idx].ToString())-2.5, draw_color);
+					it = DrawText(tag+idx.ToString(), GetTimeDate(Time[CurrentBar-idx].ToString(), 1)+"\r\n#"+idx.ToString()+"\r\n"+zzSize, CurrentBar-idx, double.Parse(Low[CurrentBar-idx].ToString())-2.5, draw_color);
 					break;
 				}
 				it.Locked = false;
