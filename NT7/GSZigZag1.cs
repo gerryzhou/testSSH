@@ -152,11 +152,11 @@ namespace NinjaTrader.Strategy
 			IText it = null;
 			if(zzSize < 0) {
 				if(zzSizeAbs >= 10) draw_color = dn_color;
-				it = DrawText(tag+barNo.ToString(), GetTimeDate(Time[CurrentBar-barNo].ToString(), 1)+"\r\n#"+barNo.ToString()+"\r\n"+zzSize, CurrentBar-barNo, double.Parse(High[CurrentBar-barNo].ToString())+2.5, draw_color);
+				it = DrawText(tag+barNo.ToString(), GetTimeDate(Time[CurrentBar-barNo], 1)+"\r\n#"+barNo.ToString()+"\r\n"+zzSize, CurrentBar-barNo, double.Parse(High[CurrentBar-barNo].ToString())+2.5, draw_color);
 			}
 			if(zzSize > 0) {
 				if(zzSizeAbs >= 10) draw_color = up_color;
-				it = DrawText(tag+barNo.ToString(), GetTimeDate(Time[CurrentBar-barNo].ToString(), 1)+"\r\n#"+barNo.ToString()+"\r\n"+zzSize, CurrentBar-barNo, double.Parse(Low[CurrentBar-barNo].ToString())-2.5, draw_color);
+				it = DrawText(tag+barNo.ToString(), GetTimeDate(Time[CurrentBar-barNo], 1)+"\r\n#"+barNo.ToString()+"\r\n"+zzSize, CurrentBar-barNo, double.Parse(Low[CurrentBar-barNo].ToString())-2.5, draw_color);
 			}
 			it.Locked = false;
 			
@@ -170,7 +170,7 @@ namespace NinjaTrader.Strategy
 					if(printOut)
 						Print(idx + " DrawZZSize called");
 					if(zzSizeAbs >= 10) draw_color = dn_color;
-					it = DrawText(tag+idx.ToString(), GetTimeDate(Time[CurrentBar-idx].ToString(), 1)+"\r\n#"+idx.ToString()+"\r\n"+zzSize, CurrentBar-idx, double.Parse(High[CurrentBar-idx].ToString())+2.5, draw_color);
+					it = DrawText(tag+idx.ToString(), GetTimeDate(Time[CurrentBar-idx], 1)+"\r\n#"+idx.ToString()+"\r\n"+zzSize, CurrentBar-idx, double.Parse(High[CurrentBar-idx].ToString())+2.5, draw_color);
 					break;
 				}
 				if(zzSize > 0) {
@@ -178,7 +178,7 @@ namespace NinjaTrader.Strategy
 					if(printOut)
 						Print(idx + " DrawZZSize called");
 					if(zzSizeAbs >= 10) draw_color = up_color;
-					it = DrawText(tag+idx.ToString(), GetTimeDate(Time[CurrentBar-idx].ToString(), 1)+"\r\n#"+idx.ToString()+"\r\n"+zzSize, CurrentBar-idx, double.Parse(Low[CurrentBar-idx].ToString())-2.5, draw_color);
+					it = DrawText(tag+idx.ToString(), GetTimeDate(Time[CurrentBar-idx], 1)+"\r\n#"+idx.ToString()+"\r\n"+zzSize, CurrentBar-idx, double.Parse(Low[CurrentBar-idx].ToString())-2.5, draw_color);
 					break;
 				}
 				it.Locked = false;

@@ -2,6 +2,7 @@
 using System;
 using System.ComponentModel;
 using System.Drawing;
+
 using NinjaTrader.Cbi;
 using NinjaTrader.Data;
 using NinjaTrader.Indicator;
@@ -27,6 +28,13 @@ namespace NinjaTrader.Strategy
 		public string GetTimeDate(String str_timedate, int time_date) {
 			char[] delimiterChars = { ' '};
 			string[] str_arr = str_timedate.Split(delimiterChars);
+			return str_arr[time_date];
+		}
+		
+		public string GetTimeDate(DateTime dt, int time_date) {
+			string str_dt = dt.ToString("MMddyyyy HH:mm:ss");
+			char[] delimiterChars = {' '};
+			string[] str_arr = str_dt.Split(delimiterChars);
 			return str_arr[time_date];
 		}
     }
