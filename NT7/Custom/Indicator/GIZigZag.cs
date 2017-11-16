@@ -718,6 +718,7 @@ namespace NinjaTrader.Indicator
 //			if(double.IsNaN(Close[-1])) {
 //				Print("Last Bar:"+ CurrentBar);
 //			}
+			if(!Historical) Print(CurrentBar + ": GIZZ OnBarUpdate - " + Time[0].ToShortTimeString());
 			if(IsLastBarOnChart() > 0) {
 				Print(ToTime(Time[0]).ToString() + "-Last Bar:"+ CurrentBar + ", Close[0]=" + Close[0].ToString() + ", Close[-1]=" + Close[-1].ToString() + ", High[-1]=" + High[-1].ToString() + ", Low[-1]=" + Low[-1].ToString());// + ", Close[-4]=" + Close[-4].ToString() + ", High[-4]=" + High[-4].ToString() + ", Low[-4]=" + Low[-4].ToString());
 				Print("this.ChartControl.LastBarPainted=" + this.ChartControl.LastBarPainted + ", Input.count=" + IsLastBarOnChart());

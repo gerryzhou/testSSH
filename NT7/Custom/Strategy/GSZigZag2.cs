@@ -22,21 +22,21 @@ namespace NinjaTrader.Strategy
 	/// 2) counter swing/trend or follow swing/trend? (Trending, Reversal or Range)
     /// </summary>
     [Description("Enter the description of your strategy here")]
-    public class GSZigZag1 : Strategy
+    public class GSZigZag2 : Strategy
     {
         #region Variables
         // Wizard generated variables
         private double retracePnts = 4; // Default setting for RetracePnts
-//        private int profitTargetAmt = 36 //Default setting for ProfitTargetAmt
-//        private int stopLossAmt = 16 //Default setting for StopLossAmt
-		private double profitTargetAmt = 75; //36 Default setting for ProfitTargetAmt
-        private double stopLossAmt = 37.5; //16 Default setting for StopLossAmt
+        private int profitTargetAmt = 6; //36 Default setting for ProfitTargetAmt
+        private int stopLossAmt = 3; //16 Default setting for StopLossAmt
 		private double EnOffsetPnts = 1;//the price offset for entry
         private int timeStart = 93300; // Default setting for TimeStart
         private int timeEnd = 124500; // Default setting for TimeEnd
         private int barsSincePtSl = 1; // Default setting for BarsSincePtSl
         private double enSwingMinPnts = 1; //6 Default setting for EnSwingMinPnts
         private double enSwingMaxPnts = 20; //10 Default setting for EnSwingMaxPnts
+		private int strategyType = 0; // 0-Range; 1=trend following; 2=reversal; 3=breakout;
+		private int tradeDirection = 0; // -1=short; 0-both; 1=long;
 		private bool printOut = false;
 		private bool drawTxt = false; // User defined variables (add any user defined variables below)
 
@@ -67,10 +67,8 @@ namespace NinjaTrader.Strategy
 			zigZagSizeSeries = new DataSeries(this, MaximumBarsLookBack.Infinite);
 			zigZagSizeZigZag = new DataSeries(this, MaximumBarsLookBack.Infinite);
 			
-//			SetProfitTarget(CalculationMode.Ticks, ProfitTargetAmt);
-//            SetStopLoss(CalculationMode.Ticks, StopLossAmt);
-			SetProfitTarget(ProfitTargetAmt);
-            SetStopLoss(StopLossAmt);
+			SetProfitTarget(CalculationMode.Ticks, ProfitTargetAmt);
+            SetStopLoss(CalculationMode.Ticks, StopLossAmt);
 
             CalculateOnBarClose = true;
         }
@@ -107,34 +105,29 @@ namespace NinjaTrader.Strategy
 				}
 				else if(zzSizeAbs >= 10 && zzSizeAbs <16){
 					ZZ_Count_10_16 ++;
-					if(printOut)
-						Print(idx.ToString() + " - ZZSize=" + zzSize + "  [" + Time[CurrentBar-lastZZIdx].ToString() + "--" + Time[CurrentBar-idx].ToString() + "] >=10" + str_suffix + GetTimeDiff(Time[CurrentBar-lastZZIdx], Time[CurrentBar-idx]));
+					Print(idx.ToString() + " - ZZSize=" + zzSize + "  [" + Time[CurrentBar-lastZZIdx].ToString() + "--" + Time[CurrentBar-idx].ToString() + "] >=10" + str_suffix + GetTimeDiff(Time[CurrentBar-lastZZIdx], Time[CurrentBar-idx]));
 				}
 				else if(zzSizeAbs >= 16 && zzSizeAbs <22){
 					ZZ_Count_16_22 ++;
-					if(printOut)
-						Print(idx.ToString() + " - ZZSize=" + zzSize + "  [" + Time[CurrentBar-lastZZIdx].ToString() + "--" + Time[CurrentBar-idx].ToString() + "] >=16" + str_suffix + GetTimeDiff(Time[CurrentBar-lastZZIdx], Time[CurrentBar-idx]));
+					Print(idx.ToString() + " - ZZSize=" + zzSize + "  [" + Time[CurrentBar-lastZZIdx].ToString() + "--" + Time[CurrentBar-idx].ToString() + "] >=16" + str_suffix + GetTimeDiff(Time[CurrentBar-lastZZIdx], Time[CurrentBar-idx]));
 				}
 				else if(zzSizeAbs >= 22 && zzSizeAbs <30){
 					ZZ_Count_22_30 ++;
-					if(printOut)
-						Print(idx.ToString() + " - ZZSize=" + zzSize + "  [" + Time[CurrentBar-lastZZIdx].ToString() + "--" + Time[CurrentBar-idx].ToString() + "] >=22" + str_suffix + GetTimeDiff(Time[CurrentBar-lastZZIdx], Time[CurrentBar-idx]));
+					Print(idx.ToString() + " - ZZSize=" + zzSize + "  [" + Time[CurrentBar-lastZZIdx].ToString() + "--" + Time[CurrentBar-idx].ToString() + "] >=22" + str_suffix + GetTimeDiff(Time[CurrentBar-lastZZIdx], Time[CurrentBar-idx]));
 				}
 				else if(zzSizeAbs >= 30){
 					ZZ_Count_30_ ++;
-					if(printOut)
-						Print(idx.ToString() + " - ZZSize=" + zzSize + "  [" + Time[CurrentBar-lastZZIdx].ToString() + "--" + Time[CurrentBar-idx].ToString() + "] >=30" + str_suffix + GetTimeDiff(Time[CurrentBar-lastZZIdx], Time[CurrentBar-idx]));
+					Print(idx.ToString() + " - ZZSize=" + zzSize + "  [" + Time[CurrentBar-lastZZIdx].ToString() + "--" + Time[CurrentBar-idx].ToString() + "] >=30" + str_suffix + GetTimeDiff(Time[CurrentBar-lastZZIdx], Time[CurrentBar-idx]));
 				}
 				if(zzSize != 0) {
-					DrawZZSizeText(idx, "txt-");
-					if(zzSizeAbs < 10 && printOut)
-						Print(idx.ToString() + " - zzSize=" + zzSize + "  [" + Time[CurrentBar-lastZZIdx].ToString() + "--" + Time[CurrentBar-idx].ToString() + "]" );
 					lastZZIdx = idx;
+					DrawZZSizeText(idx, "txt-");
+					if(zzSizeAbs < 10)
+						Print(idx.ToString() + " - zzSize=" + zzSize + "  [" + Time[CurrentBar-lastZZIdx].ToString() + "--" + Time[CurrentBar-idx].ToString() + "]" );
 				}
 			}
 			ZZ_Count = ZZ_Count_0_6 + ZZ_Count_6_10 + ZZ_Count_10_16 + ZZ_Count_16_22 + ZZ_Count_22_30 + ZZ_Count_30_ ;
-			if(printOut)
-				Print(CurrentBar + "\r\n ZZ_Count=" + ZZ_Count + "\r\n ZZ_Count_0_6=" + ZZ_Count_0_6 + "\r\n ZZ_Count_6_10=" + ZZ_Count_6_10 + "\r\n ZZ_Count_10_16=" + ZZ_Count_10_16 + "\r\n ZZ_Count_16_22=" + ZZ_Count_16_22 + "\r\n ZZ_Count_22_30=" + ZZ_Count_22_30 + "\r\n ZZ_Count_30_=" + ZZ_Count_30_);
+			Print(CurrentBar + "\r\n ZZ_Count=" + ZZ_Count + "\r\n ZZ_Count_0_6=" + ZZ_Count_0_6 + "\r\n ZZ_Count_6_10=" + ZZ_Count_6_10 + "\r\n ZZ_Count_10_16=" + ZZ_Count_10_16 + "\r\n ZZ_Count_16_22=" + ZZ_Count_16_22 + "\r\n ZZ_Count_22_30=" + ZZ_Count_22_30 + "\r\n ZZ_Count_30_=" + ZZ_Count_30_);
 		}
 
 		/// <summary>
@@ -251,31 +244,28 @@ namespace NinjaTrader.Strategy
 			if(CurrentBar < BarsRequired+2) return;
 			int bsx = BarsSinceExit();
 			double gap = GIZigZag(DeviationType.Points, 4, true).ZigZagGap[0];
-			
-			//if(printOut)
-				Print("GI gap=" + gap + "," + Position.MarketPosition.ToString() + "=" + Position.Quantity.ToString()+ ", price=" + Position.AvgPrice + ", BarsSinceExit=" + bsx);
-			
-			DrawGapText(gap, "gap-");
 			double gapAbs = Math.Abs(gap);
+			//if(printOut)
+				Print("gap=" + gap + "," + Position.MarketPosition.ToString() + "=" + Position.Quantity.ToString()+ ", price=" + Position.AvgPrice + ", BarsSinceExit=" + bsx);
+			DrawGapText(gap, "gap-");
 			//if(ToTime(Time[0]) >= TimeStart && ToTime(Time[0]) <= TimeEnd && Position.Quantity == 0 && (bsx == -1 || bsx > barsSincePtSl)) {
 			if(!Historical && Position.Quantity == 0 && (bsx == -1 || bsx > barsSincePtSl)) {
 
 				if ( gap < 0 && gapAbs >= enSwingMinPnts && gapAbs < enSwingMaxPnts)
 				{
-					EnterShort();
 					//if(printOut)
 						Print(CurrentBar + ", EnterLongLimit called-" + Time[0].ToString());
+					EnterShort();
 					//EnterLongLimit(DefaultQuantity, Low[0]-EnOffsetPnts, "EnLN1");
 				} 
 				else if ( gap > 0 && gapAbs >= enSwingMinPnts && gapAbs < enSwingMaxPnts)
 				{
-					EnterLong();
 					//if(printOut)
 						Print(CurrentBar + ", EnterShortLimit called-" + Time[0].ToString());
+					EnterLong();
 					//EnterShortLimit(DefaultQuantity, High[0]+EnOffsetPnts, "EnST1");
 				}
 			}
-
 			if(IsLastBarOnChart() > 0) {
 				bool GIZZ = GIZigZag(DeviationType.Points, 4, true).GetZigZag(out zigZagSizeSeries, out zigZagSizeZigZag);
 				PrintZZSize();
@@ -306,9 +296,6 @@ protected override void OnOrderUpdate(IOrder order)
 //              entryOrder = null;
 //         }
 //    }
-	if (order.OrderState == OrderState.Accepted || order.OrderState == OrderState.Working) {
-		Print(CurrentBar + ": order - " + order.ToString());
-	}              
 }
 
 protected override void OnPositionUpdate(IPosition position)
@@ -318,10 +305,6 @@ protected override void OnPositionUpdate(IPosition position)
     {
          // Do something like reset some variables here
     }
-	else 
-	{
-		
-	}
 }
 
         #region Properties
@@ -335,7 +318,7 @@ protected override void OnPositionUpdate(IPosition position)
 
         [Description("Tick amount of profit target")]
         [GridCategory("Parameters")]
-        public double ProfitTargetAmt
+        public int ProfitTargetAmt
         {
             get { return profitTargetAmt; }
             set { profitTargetAmt = Math.Max(8, value); }
@@ -343,7 +326,7 @@ protected override void OnPositionUpdate(IPosition position)
 
         [Description("Tick amount of stop loss")]
         [GridCategory("Parameters")]
-        public double StopLossAmt
+        public int StopLossAmt
         {
             get { return stopLossAmt; }
             set { stopLossAmt = Math.Max(8, value); }
