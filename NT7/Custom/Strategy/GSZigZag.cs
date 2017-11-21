@@ -54,7 +54,7 @@ namespace NinjaTrader.Strategy
         protected override void Initialize()
         {
             //Add(ZigZag(High, NinjaTrader.Data.DeviationType.Points, 4, true));
-            Add(GIZigZag(NinjaTrader.Data.DeviationType.Points, 4, true));
+            Add(GIZigZag(NinjaTrader.Data.DeviationType.Points, 4, false, false, false, true));
 			//zzHighValue = new DataSeries(this, MaximumBarsLookBack.Infinite);
 			//zzLowValue = new DataSeries(this, MaximumBarsLookBack.Infinite);
 			
@@ -141,7 +141,7 @@ namespace NinjaTrader.Strategy
 			if (CurrentBar > BarsRequired)
 			{
 				if(IsLastBarOnChart() > 0) {
-					bool GIZZ = GIZigZag(DeviationType.Points, 4, true).GetZigZag(out zigZagSizeSeries, out zigZagSizeZigZag);
+					bool GIZZ = GIZigZag(DeviationType.Points, 4, false, false, false, true).GetZigZag(out zigZagSizeSeries, out zigZagSizeZigZag);
 					PrintZZSize();
 				}
 				//double zzSize = GIZigZag(DeviationType.Points, 4, true).GetZigZagSize(CurrentBar,CurrentBar-BarsRequired, 0, true);

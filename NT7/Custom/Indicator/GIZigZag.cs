@@ -1092,6 +1092,36 @@ namespace NinjaTrader.Indicator
             set { useHighLow = value; }
         }
 
+        [Description("If true, print out the console.")]
+        [GridCategory("Parameters")]
+		[Gui.Design.DisplayName("Print out console")]
+		[RefreshProperties(RefreshProperties.All)]
+        public bool PrintOut
+        {
+            get { return printOut; }
+            set { printOut = value; }
+        }
+		
+		[Description("If true, draw text on chart.")]
+        [GridCategory("Parameters")]
+		[Gui.Design.DisplayName("Draw Text")]
+		[RefreshProperties(RefreshProperties.All)]
+        public bool DrawTxt
+        {
+            get { return drawTxt; }
+            set { drawTxt = value; }
+        }
+		
+		[Description("If true, draw ZigZag Text.")]
+        [GridCategory("Parameters")]
+		[Gui.Design.DisplayName("Draw ZigZag Text")]
+		[RefreshProperties(RefreshProperties.All)]
+        public bool DrawZZTxt
+        {
+            get { return drawZZTxt; }
+            set { drawZZTxt = value; }
+        }
+		
 		/// <summary>
 		/// Gets the GIZigZag high points.
 		/// </summary>
@@ -1202,20 +1232,20 @@ namespace NinjaTrader.Indicator
         /// The GIZigZag indicator shows trend lines filtering out changes below a defined level. 
         /// </summary>
         /// <returns></returns>
-        public GIZigZag GIZigZag(DeviationType deviationType, double deviationValue, bool useHighLow)
+        public GIZigZag GIZigZag(DeviationType deviationType, double deviationValue, bool drawTxt, bool drawZZTxt, bool printOut, bool useHighLow)
         {
-            return GIZigZag(Input, deviationType, deviationValue, useHighLow);
+            return GIZigZag(Input, deviationType, deviationValue, drawTxt, drawZZTxt, printOut, useHighLow);
         }
 
         /// <summary>
         /// The GIZigZag indicator shows trend lines filtering out changes below a defined level. 
         /// </summary>
         /// <returns></returns>
-        public GIZigZag GIZigZag(Data.IDataSeries input, DeviationType deviationType, double deviationValue, bool useHighLow)
+        public GIZigZag GIZigZag(Data.IDataSeries input, DeviationType deviationType, double deviationValue, bool drawTxt, bool drawZZTxt, bool printOut, bool useHighLow)
         {
             if (cacheGIZigZag != null)
                 for (int idx = 0; idx < cacheGIZigZag.Length; idx++)
-                    if (cacheGIZigZag[idx].DeviationType == deviationType && Math.Abs(cacheGIZigZag[idx].DeviationValue - deviationValue) <= double.Epsilon && cacheGIZigZag[idx].UseHighLow == useHighLow && cacheGIZigZag[idx].EqualsInput(input))
+                    if (cacheGIZigZag[idx].DeviationType == deviationType && Math.Abs(cacheGIZigZag[idx].DeviationValue - deviationValue) <= double.Epsilon && cacheGIZigZag[idx].DrawTxt == drawTxt && cacheGIZigZag[idx].DrawZZTxt == drawZZTxt && cacheGIZigZag[idx].PrintOut == printOut && cacheGIZigZag[idx].UseHighLow == useHighLow && cacheGIZigZag[idx].EqualsInput(input))
                         return cacheGIZigZag[idx];
 
             lock (checkGIZigZag)
@@ -1224,12 +1254,18 @@ namespace NinjaTrader.Indicator
                 deviationType = checkGIZigZag.DeviationType;
                 checkGIZigZag.DeviationValue = deviationValue;
                 deviationValue = checkGIZigZag.DeviationValue;
+                checkGIZigZag.DrawTxt = drawTxt;
+                drawTxt = checkGIZigZag.DrawTxt;
+                checkGIZigZag.DrawZZTxt = drawZZTxt;
+                drawZZTxt = checkGIZigZag.DrawZZTxt;
+                checkGIZigZag.PrintOut = printOut;
+                printOut = checkGIZigZag.PrintOut;
                 checkGIZigZag.UseHighLow = useHighLow;
                 useHighLow = checkGIZigZag.UseHighLow;
 
                 if (cacheGIZigZag != null)
                     for (int idx = 0; idx < cacheGIZigZag.Length; idx++)
-                        if (cacheGIZigZag[idx].DeviationType == deviationType && Math.Abs(cacheGIZigZag[idx].DeviationValue - deviationValue) <= double.Epsilon && cacheGIZigZag[idx].UseHighLow == useHighLow && cacheGIZigZag[idx].EqualsInput(input))
+                        if (cacheGIZigZag[idx].DeviationType == deviationType && Math.Abs(cacheGIZigZag[idx].DeviationValue - deviationValue) <= double.Epsilon && cacheGIZigZag[idx].DrawTxt == drawTxt && cacheGIZigZag[idx].DrawZZTxt == drawZZTxt && cacheGIZigZag[idx].PrintOut == printOut && cacheGIZigZag[idx].UseHighLow == useHighLow && cacheGIZigZag[idx].EqualsInput(input))
                             return cacheGIZigZag[idx];
 
                 GIZigZag indicator = new GIZigZag();
@@ -1242,6 +1278,9 @@ namespace NinjaTrader.Indicator
                 indicator.Input = input;
                 indicator.DeviationType = deviationType;
                 indicator.DeviationValue = deviationValue;
+                indicator.DrawTxt = drawTxt;
+                indicator.DrawZZTxt = drawZZTxt;
+                indicator.PrintOut = printOut;
                 indicator.UseHighLow = useHighLow;
                 Indicators.Add(indicator);
                 indicator.SetUp();
@@ -1267,18 +1306,18 @@ namespace NinjaTrader.MarketAnalyzer
         /// </summary>
         /// <returns></returns>
         [Gui.Design.WizardCondition("Indicator")]
-        public Indicator.GIZigZag GIZigZag(DeviationType deviationType, double deviationValue, bool useHighLow)
+        public Indicator.GIZigZag GIZigZag(DeviationType deviationType, double deviationValue, bool drawTxt, bool drawZZTxt, bool printOut, bool useHighLow)
         {
-            return _indicator.GIZigZag(Input, deviationType, deviationValue, useHighLow);
+            return _indicator.GIZigZag(Input, deviationType, deviationValue, drawTxt, drawZZTxt, printOut, useHighLow);
         }
 
         /// <summary>
         /// The GIZigZag indicator shows trend lines filtering out changes below a defined level. 
         /// </summary>
         /// <returns></returns>
-        public Indicator.GIZigZag GIZigZag(Data.IDataSeries input, DeviationType deviationType, double deviationValue, bool useHighLow)
+        public Indicator.GIZigZag GIZigZag(Data.IDataSeries input, DeviationType deviationType, double deviationValue, bool drawTxt, bool drawZZTxt, bool printOut, bool useHighLow)
         {
-            return _indicator.GIZigZag(input, deviationType, deviationValue, useHighLow);
+            return _indicator.GIZigZag(input, deviationType, deviationValue, drawTxt, drawZZTxt, printOut, useHighLow);
         }
     }
 }
@@ -1293,21 +1332,21 @@ namespace NinjaTrader.Strategy
         /// </summary>
         /// <returns></returns>
         [Gui.Design.WizardCondition("Indicator")]
-        public Indicator.GIZigZag GIZigZag(DeviationType deviationType, double deviationValue, bool useHighLow)
+        public Indicator.GIZigZag GIZigZag(DeviationType deviationType, double deviationValue, bool drawTxt, bool drawZZTxt, bool printOut, bool useHighLow)
         {
-            return _indicator.GIZigZag(Input, deviationType, deviationValue, useHighLow);
+            return _indicator.GIZigZag(Input, deviationType, deviationValue, drawTxt, drawZZTxt, printOut, useHighLow);
         }
 
         /// <summary>
         /// The GIZigZag indicator shows trend lines filtering out changes below a defined level. 
         /// </summary>
         /// <returns></returns>
-        public Indicator.GIZigZag GIZigZag(Data.IDataSeries input, DeviationType deviationType, double deviationValue, bool useHighLow)
+        public Indicator.GIZigZag GIZigZag(Data.IDataSeries input, DeviationType deviationType, double deviationValue, bool drawTxt, bool drawZZTxt, bool printOut, bool useHighLow)
         {
             if (InInitialize && input == null)
                 throw new ArgumentException("You only can access an indicator with the default input/bar series from within the 'Initialize()' method");
 
-            return _indicator.GIZigZag(input, deviationType, deviationValue, useHighLow);
+            return _indicator.GIZigZag(input, deviationType, deviationValue, drawTxt, drawZZTxt, printOut, useHighLow);
         }
     }
 }

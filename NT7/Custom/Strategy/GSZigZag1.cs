@@ -31,14 +31,16 @@ namespace NinjaTrader.Strategy
 //        private int stopLossAmt = 16 //Default setting for StopLossAmt
 		private double profitTargetAmt = 75; //36 Default setting for ProfitTargetAmt
         private double stopLossAmt = 37.5; //16 Default setting for StopLossAmt
-		private double EnOffsetPnts = 1;//the price offset for entry
+		private double EnOffsetPnts = 0.5;//the price offset for entry
         private int timeStart = 93300; // Default setting for TimeStart
         private int timeEnd = 124500; // Default setting for TimeEnd
         private int barsSincePtSl = 1; // Default setting for BarsSincePtSl
         private double enSwingMinPnts = 1; //6 Default setting for EnSwingMinPnts
         private double enSwingMaxPnts = 20; //10 Default setting for EnSwingMaxPnts
+		private int tradeDirection = 0; // -1=short; 0-both; 1=long;
 		private bool printOut = false;
 		private bool drawTxt = false; // User defined variables (add any user defined variables below)
+		private IText it_gap = null; //the Text draw for gap on current bar
 
 		private IDataSeries zzHighValue;
 		private IDataSeries zzLowValue;
@@ -59,7 +61,7 @@ namespace NinjaTrader.Strategy
         /// </summary>
         protected override void Initialize()
         {
-			Add(GIZigZag(NinjaTrader.Data.DeviationType.Points, 4, true));
+			Add(GIZigZag(NinjaTrader.Data.DeviationType.Points, 4, false, false, false, true));
 //            SetProfitTarget("EnST1", CalculationMode.Ticks, ProfitTargetAmt);
 //            SetStopLoss("EnST1", CalculationMode.Ticks, StopLossAmt, false);
 //			SetProfitTarget("EnLN1", CalculationMode.Ticks, ProfitTargetAmt);
@@ -69,8 +71,8 @@ namespace NinjaTrader.Strategy
 			
 //			SetProfitTarget(CalculationMode.Ticks, ProfitTargetAmt);
 //            SetStopLoss(CalculationMode.Ticks, StopLossAmt);
-			SetProfitTarget(ProfitTargetAmt);
             SetStopLoss(StopLossAmt);
+			SetProfitTarget(ProfitTargetAmt);
 
             CalculateOnBarClose = true;
         }
@@ -212,10 +214,10 @@ namespace NinjaTrader.Strategy
 				Print(CurrentBar + " DrawGapText called");
 //			double zzhi = getLastZZHighLow(CurrentBar, 1, out idx_hi); //zigZagHighZigZags.Get(idx);
 //			double zzlo = getLastZZHighLow(CurrentBar, -1, out idx_lo); // zigZagLowZigZags.Get(idx);
-			
+			if(it_gap != null) RemoveDrawObject(it_gap);
 			double zzSize = zigZagSizeZigZag.Get(CurrentBar);//the previous zz size
 			//double zzSizeAbs = Math.Abs(zzSize);
-			IText it = null;
+			//IText it = null;
 			for (int idx = CurrentBar -1; idx >= BarsRequired; idx--)
 			{
 				//zzS = zigZagSizeSeries.Get(idx);
@@ -227,17 +229,17 @@ namespace NinjaTrader.Strategy
 				else if(zzSize>0) {
 					gap = Low[0] - High[CurrentBar-idx];
 					draw_color = dn_color;
-					it = DrawText(tag+CurrentBar.ToString(), GetTimeDate(Time[0], 1)+"\r\n#"+gap+":"+zzGap, 0, double.Parse(Low[0].ToString())-2, draw_color);
+					it_gap = DrawText(tag+CurrentBar.ToString(), GetTimeDate(Time[0], 1)+"\r\n#"+gap+":"+zzGap, 0, double.Parse(Low[0].ToString())-1, draw_color);
 					break;
 				}
 				else if(zzSize<0) {
 					gap = High[0] - Low[CurrentBar-idx];
 					draw_color = up_color;
-					it = DrawText(tag+CurrentBar.ToString(), GetTimeDate(Time[0], 1)+"\r\n#"+gap+":"+zzGap, 0, double.Parse(High[0].ToString())+2, draw_color);
+					it_gap = DrawText(tag+CurrentBar.ToString(), GetTimeDate(Time[0], 1)+"\r\n#"+gap+":"+zzGap, 0, double.Parse(High[0].ToString())+1, draw_color);
 					break;
 				}
 			}
-			if(it != null) it.Locked = false;
+			if(it_gap != null) it_gap.Locked = false;
 			Print(CurrentBar + " GaP= " + gap + " - " + Time[0].ToShortTimeString());
 			return gap; 
 		}
@@ -250,10 +252,12 @@ namespace NinjaTrader.Strategy
 			if(!Historical) Print(CurrentBar + "- GSZZ1 OnBarUpdate - " + Time[0].ToShortTimeString());
 			if(CurrentBar < BarsRequired+2) return;
 			int bsx = BarsSinceExit();
-			double gap = GIZigZag(DeviationType.Points, 4, true).ZigZagGap[0];
+			int bse = BarsSinceEntry();
+			
+			double gap = GIZigZag(DeviationType.Points, 4, false, false, false, true).ZigZagGap[0];
 			
 			//if(printOut)
-				Print("GI gap=" + gap + "," + Position.MarketPosition.ToString() + "=" + Position.Quantity.ToString()+ ", price=" + Position.AvgPrice + ", BarsSinceExit=" + bsx);
+				Print("GI gap=" + gap + "," + Position.MarketPosition.ToString() + "=" + Position.Quantity.ToString()+ ", price=" + Position.AvgPrice + ", BarsSinceEx=" + bsx + ", BarsSinceEn=" + bse);
 			
 			DrawGapText(gap, "gap-");
 			double gapAbs = Math.Abs(gap);
@@ -262,22 +266,24 @@ namespace NinjaTrader.Strategy
 
 				if ( gap < 0 && gapAbs >= enSwingMinPnts && gapAbs < enSwingMaxPnts)
 				{
-					EnterShort();
+					//EnterShort();
+					EnterShortLimit(DefaultQuantity, High[0]+EnOffsetPnts);
 					//if(printOut)
 						Print(CurrentBar + ", EnterLongLimit called-" + Time[0].ToString());
 					//EnterLongLimit(DefaultQuantity, Low[0]-EnOffsetPnts, "EnLN1");
 				} 
 				else if ( gap > 0 && gapAbs >= enSwingMinPnts && gapAbs < enSwingMaxPnts)
 				{
-					EnterLong();
+					//EnterLong();
+					EnterLongLimit(DefaultQuantity, Low[0]-EnOffsetPnts);
 					//if(printOut)
 						Print(CurrentBar + ", EnterShortLimit called-" + Time[0].ToString());
-					//EnterShortLimit(DefaultQuantity, High[0]+EnOffsetPnts, "EnST1");
+					//EnterShortLimit((DefaultQuantity, High[0]+EnOffsetPnts, "EnST1");
 				}
 			}
 
 			if(IsLastBarOnChart() > 0) {
-				bool GIZZ = GIZigZag(DeviationType.Points, 4, true).GetZigZag(out zigZagSizeSeries, out zigZagSizeZigZag);
+				bool GIZZ = GIZigZag(DeviationType.Points, 4, false, false, false, true).GetZigZag(out zigZagSizeSeries, out zigZagSizeZigZag);
 				PrintZZSize();
 			}
         }
@@ -286,8 +292,8 @@ protected override void OnExecution(IExecution execution)
 {
     // Remember to check the underlying IOrder object for null before trying to access its properties
     if (execution.Order != null && execution.Order.OrderState == OrderState.Filled) {
-		if(printOut)
-			Print(execution.Name + ",Price=" + execution.Price + "," + execution.Time.ToShortTimeString());
+		//if(printOut)
+			Print(CurrentBar + " Exe=" + execution.Name + ",Price=" + execution.Price + "," + execution.Time.ToShortTimeString());
 		if(drawTxt) {
 			IText it = DrawText(CurrentBar.ToString()+Time[0].ToShortTimeString(), Time[0].ToString().Substring(10)+"\r\n"+execution.Name+":"+execution.Price, 0, execution.Price, Color.Red);
 			it.Locked = false;
@@ -306,8 +312,8 @@ protected override void OnOrderUpdate(IOrder order)
 //              entryOrder = null;
 //         }
 //    }
-	if (order.OrderState == OrderState.Accepted || order.OrderState == OrderState.Working) {
-		Print(CurrentBar + ": order - " + order.ToString());
+	if (order.OrderState == OrderState.Accepted) {
+		Print(CurrentBar + ":" + order.ToString());
 	}              
 }
 
@@ -338,7 +344,7 @@ protected override void OnPositionUpdate(IPosition position)
         public double ProfitTargetAmt
         {
             get { return profitTargetAmt; }
-            set { profitTargetAmt = Math.Max(8, value); }
+            set { profitTargetAmt = value; }
         }
 
         [Description("Tick amount of stop loss")]
@@ -346,7 +352,7 @@ protected override void OnPositionUpdate(IPosition position)
         public double StopLossAmt
         {
             get { return stopLossAmt; }
-            set { stopLossAmt = Math.Max(8, value); }
+            set { stopLossAmt = value; }
         }
 
         [Description("Time start")]
@@ -378,7 +384,7 @@ protected override void OnPositionUpdate(IPosition position)
         public double EnSwingMinPnts
         {
             get { return enSwingMinPnts; }
-            set { enSwingMinPnts = Math.Max(4, value); }
+            set { enSwingMinPnts = Math.Max(1, value); }
         }
 
         [Description("Max swing size for entry")]
@@ -388,6 +394,15 @@ protected override void OnPositionUpdate(IPosition position)
             get { return enSwingMaxPnts; }
             set { enSwingMaxPnts = Math.Max(4, value); }
         }
+		
+        [Description("Short, Long or both direction for entry")]
+        [GridCategory("Parameters")]
+        public int TradeDirection
+        {
+            get { return tradeDirection; }
+            set { tradeDirection = value; }
+        }		
+		
         #endregion
     }
 }

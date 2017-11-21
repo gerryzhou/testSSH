@@ -59,7 +59,7 @@ namespace NinjaTrader.Strategy
         /// </summary>
         protected override void Initialize()
         {
-			Add(GIZigZag(NinjaTrader.Data.DeviationType.Points, 4, true));
+			Add(GIZigZag(NinjaTrader.Data.DeviationType.Points, 4, false, false, false, true));
 //            SetProfitTarget("EnST1", CalculationMode.Ticks, ProfitTargetAmt);
 //            SetStopLoss("EnST1", CalculationMode.Ticks, StopLossAmt, false);
 //			SetProfitTarget("EnLN1", CalculationMode.Ticks, ProfitTargetAmt);
@@ -243,7 +243,7 @@ namespace NinjaTrader.Strategy
 			if(!Historical) Print(CurrentBar + "- GSZZ1 OnBarUpdate - " + Time[0].ToShortTimeString());
 			if(CurrentBar < BarsRequired+2) return;
 			int bsx = BarsSinceExit();
-			double gap = GIZigZag(DeviationType.Points, 4, true).ZigZagGap[0];
+			double gap = GIZigZag(DeviationType.Points, 4, false, false, false, true).ZigZagGap[0];
 			double gapAbs = Math.Abs(gap);
 			//if(printOut)
 				Print("gap=" + gap + "," + Position.MarketPosition.ToString() + "=" + Position.Quantity.ToString()+ ", price=" + Position.AvgPrice + ", BarsSinceExit=" + bsx);
@@ -267,7 +267,7 @@ namespace NinjaTrader.Strategy
 				}
 			}
 			if(IsLastBarOnChart() > 0) {
-				bool GIZZ = GIZigZag(DeviationType.Points, 4, true).GetZigZag(out zigZagSizeSeries, out zigZagSizeZigZag);
+				bool GIZZ = GIZigZag(DeviationType.Points, 4, false, false, false, true).GetZigZag(out zigZagSizeSeries, out zigZagSizeZigZag);
 				PrintZZSize();
 			}
         }
