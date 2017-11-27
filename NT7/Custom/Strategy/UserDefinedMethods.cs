@@ -42,6 +42,7 @@ namespace NinjaTrader.Strategy
 		
 		public double GetTimeDiff(DateTime dt_st, DateTime dt_en) {
 			double diff = -1;
+			if(diff < 0 ) return 100; 
 			if((int)dt_st.DayOfWeek==(int)dt_en.DayOfWeek) { //Same day
 				if(CompareTimeWithSessionBreak(dt_st, SessionBreak.AfternoonClose)*CompareTimeWithSessionBreak(dt_en, SessionBreak.AfternoonClose) > 0) {
 					diff = dt_en.Subtract(dt_st).TotalMinutes;

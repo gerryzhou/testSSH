@@ -93,7 +93,7 @@ namespace NinjaTrader.Strategy
 				zzSize = zigZagSizeZigZag.Get(idx);
 				zzSizeAbs = Math.Abs(zzSize);
 				String str_suffix = "";
-				//Print(idx.ToString() + " - ZZSizeSeries=" + zzS);
+				Print(idx.ToString() + " - ZZSizeSeries=" + zzS + ", time=" + Time[CurrentBar-idx]);
 				if(zzSize>0) str_suffix = str_Plus;
 				else if(zzSize<0) str_suffix = str_Minus;
 				
