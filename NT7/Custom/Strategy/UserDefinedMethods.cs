@@ -42,7 +42,9 @@ namespace NinjaTrader.Strategy
 		
 		public double GetTimeDiff(DateTime dt_st, DateTime dt_en) {
 			double diff = -1;
-			if(diff < 0 ) return 100; 
+			//if(diff < 0 ) return 100; 
+			try {
+			
 			if((int)dt_st.DayOfWeek==(int)dt_en.DayOfWeek) { //Same day
 				if(CompareTimeWithSessionBreak(dt_st, SessionBreak.AfternoonClose)*CompareTimeWithSessionBreak(dt_en, SessionBreak.AfternoonClose) > 0) {
 					diff = dt_en.Subtract(dt_st).TotalMinutes;
@@ -65,56 +67,90 @@ namespace NinjaTrader.Strategy
 			else {
 				diff = dt_en.Subtract(dt_st).TotalMinutes;
 			}
+			} catch(Exception ex) {
+				Print("GetTimeDiff ex:" + dt_st.ToString() + "--" + dt_en.ToString() + "--" + ex.Message);
+				diff = 100;
+			}
 			return Math.Round(diff, 2);
 		}
 		
 		public int CompareTimeWithSessionBreak(DateTime dt_st, SessionBreak sb) {
-			DateTime dt;
+			DateTime dt = DateTime.Now;
+			try {
 			switch(sb) {
 				case SessionBreak.AfternoonClose:
-					dt = new DateTime(dt_st.Year,dt_st.Month,dt_st.Day,16,0,0);
+					dt = GetNewDateTime(dt_st.Year,dt_st.Month,dt_st.Day,16,0,0);
 					break;
 				case SessionBreak.EveningOpen:
 					if(dt_st.Hour < 16)
-						dt = new DateTime(dt_st.Year,dt_st.Month,dt_st.Day-1,17,0,0);
+						dt = GetNewDateTime(dt_st.Year,dt_st.Month,dt_st.Day-1,17,0,0);
 					//if(dt_st.Hour >= 17)
-					else dt = new DateTime(dt_st.Year,dt_st.Month,dt_st.Day,16,0,0);
+					else dt = GetNewDateTime(dt_st.Year,dt_st.Month,dt_st.Day,16,0,0);
 					break;
 				default:
-					dt = new DateTime(dt_st.Year,dt_st.Month,dt_st.Day,16,0,0);
+					dt = GetNewDateTime(dt_st.Year,dt_st.Month,dt_st.Day,16,0,0);
 					break;
+			}
+			} catch(Exception ex) {
+				Print("CompareTimeWithSessionBreak ex:" + dt_st.ToString() + "--" + sb.ToString() + "--" + ex.Message);
 			}
 			return dt_st.CompareTo(dt);
 		}
 
 		public double GetTimeDiffSession(DateTime dt_st, SessionBreak sb) {			
-			DateTime dt_session;
-			TimeSpan ts;
+			DateTime dt_session = DateTime.Now;
+			TimeSpan ts = dt_session.Subtract(dt_st);
+			double diff = 100;
+			try{
 			switch(sb) {
 				case SessionBreak.AfternoonClose:
-					dt_session = new DateTime(dt_st.Year, dt_st.Month, dt_st.Day, 16, 0, 0);
+					dt_session = GetNewDateTime(dt_st.Year, dt_st.Month, dt_st.Day, 16, 0, 0);
 					ts = dt_session.Subtract(dt_st);
 					break;
 				case SessionBreak.EveningOpen:
 					if(dt_st.Hour < 16)
-						dt_session = new DateTime(dt_st.Year,dt_st.Month,dt_st.Day-1,17,0,0);
+						dt_session = GetNewDateTime(dt_st.Year,dt_st.Month,dt_st.Day-1,17,0,0);
 					else 
-						dt_session = new DateTime(dt_st.Year, dt_st.Month, dt_st.Day, 17, 0, 0);
+						dt_session = GetNewDateTime(dt_st.Year, dt_st.Month, dt_st.Day, 17, 0, 0);
 					ts = dt_st.Subtract(dt_session);
 					break;
 				case SessionBreak.NextDay:
-					dt_session = new DateTime(dt_st.Year, dt_st.Month, dt_st.Day-1, 17, 0, 0);
+					dt_session = GetNewDateTime(dt_st.Year, dt_st.Month, dt_st.Day-1, 17, 0, 0);
 					ts = dt_st.Subtract(dt_session);
 					break;
 				default:
-					dt_session = new DateTime(dt_st.Year, dt_st.Month, dt_st.Day-1, 17, 0, 0);
+					dt_session = GetNewDateTime(dt_st.Year, dt_st.Month, dt_st.Day-1, 17, 0, 0);
 					ts = dt_st.Subtract(dt_session);
 					break;
 			}
-
-			double diff = ts.TotalMinutes;
+			diff = ts.TotalMinutes;
+			} catch(Exception ex) {
+				Print("GetTimeDiffSession ex:" + dt_st.ToString() + "--" + sb.ToString() + "--" + ex.Message);
+			}
+			
 			return Math.Round(diff, 2);
 		}
 		
+		public DateTime GetNewDateTime(int year, int month, int day, int hr, int min, int sec) {
+			//DateTime(dt_st.Year,dt_st.Month,dt_st.Day,16,0,0);
+			if(day == 0) {
+				if(month == 1) {
+					year = year-1;
+					month = 12;
+					day = 31;
+				}
+				else if (month == 3) {
+					month = 2;
+					day = 28;
+				}
+				else {
+					month--;
+					if(month == 1 || month == 3 || month == 5 || month == 7 || month == 8 || month == 10)
+						day = 31;
+					else day = 30;
+				}
+			}
+			return new DateTime(year, month, day, hr, min, sec);
+		}		
     }
 }

@@ -31,11 +31,11 @@ namespace NinjaTrader.Strategy
 //        private int stopLossAmt = 16 //Default setting for StopLossAmt
 		private double profitTargetAmt = 75; //36 Default setting for ProfitTargetAmt
         private double stopLossAmt = 37.5; //16 Default setting for StopLossAmt
-		private double EnOffsetPnts = 0.5;//the price offset for entry
+		private double enOffsetPnts = 0.5;//the price offset for entry
         private int timeStart = 93300; // Default setting for TimeStart
         private int timeEnd = 124500; // Default setting for TimeEnd
         private int barsSincePtSl = 1; // Default setting for BarsSincePtSl
-        private double enSwingMinPnts = 1; //6 Default setting for EnSwingMinPnts
+        private double enSwingMinPnts = 2.5; //6 Default setting for EnSwingMinPnts
         private double enSwingMaxPnts = 20; //10 Default setting for EnSwingMaxPnts
 		private int tradeDirection = 0; // -1=short; 0-both; 1=long;
 		private bool printOut = false;
@@ -240,7 +240,7 @@ namespace NinjaTrader.Strategy
 				}
 			}
 			if(it_gap != null) it_gap.Locked = false;
-			Print(CurrentBar + " GaP= " + gap + " - " + Time[0].ToShortTimeString());
+			Print(CurrentBar + "::" + this.ToString() + " GaP= " + gap + " - " + Time[0].ToShortTimeString());
 			return gap; 
 		}
 		
@@ -261,23 +261,27 @@ namespace NinjaTrader.Strategy
 			
 			DrawGapText(gap, "gap-");
 			double gapAbs = Math.Abs(gap);
-			//if(ToTime(Time[0]) >= TimeStart && ToTime(Time[0]) <= TimeEnd && Position.Quantity == 0 && (bsx == -1 || bsx > barsSincePtSl)) {
-			if(!Historical && Position.Quantity == 0 && (bsx == -1 || bsx > barsSincePtSl)) {
+			if(!Historical && ToTime(Time[0]) >= TimeStart && ToTime(Time[0]) <= TimeEnd && Position.Quantity == 0 && (bsx == -1 || bsx > barsSincePtSl)) {
+//			if(!Historical && Position.Quantity == 0 && (bsx == -1 || bsx > barsSincePtSl)) {
 
-				if ( gap < 0 && gapAbs >= enSwingMinPnts && gapAbs < enSwingMaxPnts)
+				if ( gap > 0 && gapAbs >= enSwingMinPnts && gapAbs < enSwingMaxPnts)
 				{
 					//EnterShort();
-					EnterShortLimit(DefaultQuantity, High[0]+EnOffsetPnts);
-					//if(printOut)
-						Print(CurrentBar + ", EnterLongLimit called-" + Time[0].ToString());
+					if(tradeDirection <= 0) {
+						EnterShortLimit(DefaultQuantity, High[0]+EnOffsetPnts);
+						//if(printOut)
+						Print(CurrentBar + ", EnterShortLimit called-" + Time[0].ToString());
+					}
 					//EnterLongLimit(DefaultQuantity, Low[0]-EnOffsetPnts, "EnLN1");
-				} 
-				else if ( gap > 0 && gapAbs >= enSwingMinPnts && gapAbs < enSwingMaxPnts)
+				}
+				else if ( gap < 0 && gapAbs >= enSwingMinPnts && gapAbs < enSwingMaxPnts)
 				{
 					//EnterLong();
-					EnterLongLimit(DefaultQuantity, Low[0]-EnOffsetPnts);
+					if(tradeDirection >= 0) {
+						EnterLongLimit(DefaultQuantity, Low[0]-EnOffsetPnts);
 					//if(printOut)
-						Print(CurrentBar + ", EnterShortLimit called-" + Time[0].ToString());
+						Print(CurrentBar + ", EnterLongLimit called-" + Time[0].ToString());
+					}
 					//EnterShortLimit((DefaultQuantity, High[0]+EnOffsetPnts, "EnST1");
 				}
 			}
@@ -394,6 +398,14 @@ protected override void OnPositionUpdate(IPosition position)
             get { return enSwingMaxPnts; }
             set { enSwingMaxPnts = Math.Max(4, value); }
         }
+
+        [Description("Offeset points for limit price entry")]
+        [GridCategory("Parameters")]
+        public double EnOffsetPnts
+        {
+            get { return enOffsetPnts; }
+            set { enOffsetPnts = Math.Max(0, value); }
+        }		
 		
         [Description("Short, Long or both direction for entry")]
         [GridCategory("Parameters")]

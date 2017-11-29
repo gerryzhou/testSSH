@@ -93,7 +93,7 @@ namespace NinjaTrader.Strategy
 				zzSize = zigZagSizeZigZag.Get(idx);
 				zzSizeAbs = Math.Abs(zzSize);
 				String str_suffix = "";
-				Print(idx.ToString() + " - ZZSizeSeries=" + zzS + ", time=" + Time[CurrentBar-idx]);
+				//Print(idx.ToString() + " - ZZSizeSeries=" + zzS + ", time=" + Time[CurrentBar-idx]);
 				if(zzSize>0) str_suffix = str_Plus;
 				else if(zzSize<0) str_suffix = str_Minus;
 				
@@ -119,11 +119,11 @@ namespace NinjaTrader.Strategy
 					ZZ_Count_30_ ++;
 					Print(idx.ToString() + " - ZZSize=" + zzSize + "  [" + Time[CurrentBar-lastZZIdx].ToString() + "--" + Time[CurrentBar-idx].ToString() + "] >=30" + str_suffix + GetTimeDiff(Time[CurrentBar-lastZZIdx], Time[CurrentBar-idx]));
 				}
-				if(zzSize != 0) {
-					lastZZIdx = idx;
+				if(zzSize != 0) {					
 					DrawZZSizeText(idx, "txt-");
 					if(zzSizeAbs < 10)
 						Print(idx.ToString() + " - zzSize=" + zzSize + "  [" + Time[CurrentBar-lastZZIdx].ToString() + "--" + Time[CurrentBar-idx].ToString() + "]" );
+					lastZZIdx = idx;
 				}
 			}
 			ZZ_Count = ZZ_Count_0_6 + ZZ_Count_6_10 + ZZ_Count_10_16 + ZZ_Count_16_22 + ZZ_Count_22_30 + ZZ_Count_30_ ;
