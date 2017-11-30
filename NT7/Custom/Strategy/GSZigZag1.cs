@@ -47,6 +47,12 @@ namespace NinjaTrader.Strategy
 		private DataSeries		zigZagSizeSeries;
 		private DataSeries		zigZagSizeZigZag;
 		
+		/// <summary>
+		/// Order handling
+		/// </summary>
+		private IOrder entryOrder = null;
+		private string zzEntrySignal = "ZZEntry";
+
 		private int ZZ_Count_0_6 = 0;
 		private int ZZ_Count_6_10 = 0;
 		private int ZZ_Count_10_16 = 0;
@@ -73,8 +79,11 @@ namespace NinjaTrader.Strategy
 //            SetStopLoss(CalculationMode.Ticks, StopLossAmt);
             SetStopLoss(StopLossAmt);
 			SetProfitTarget(ProfitTargetAmt);
-
+			DefaultQuantity = 1;
             CalculateOnBarClose = true;
+			// Triggers the exit on close function 30 seconds prior to session end
+			ExitOnClose = true;
+			ExitOnCloseSeconds = 30;
         }
 		
 
@@ -267,8 +276,8 @@ namespace NinjaTrader.Strategy
 				if ( gap > 0 && gapAbs >= enSwingMinPnts && gapAbs < enSwingMaxPnts)
 				{
 					//EnterShort();
-					if(tradeDirection <= 0) {
-						EnterShortLimit(DefaultQuantity, High[0]+EnOffsetPnts);
+					if(tradeDirection <= 0 && NewOrderAllowed()) {
+						entryOrder = EnterShortLimit(0, true, DefaultQuantity, High[0]+EnOffsetPnts, zzEntrySignal);
 						//if(printOut)
 						Print(CurrentBar + ", EnterShortLimit called-" + Time[0].ToString());
 					}
@@ -277,8 +286,8 @@ namespace NinjaTrader.Strategy
 				else if ( gap < 0 && gapAbs >= enSwingMinPnts && gapAbs < enSwingMaxPnts)
 				{
 					//EnterLong();
-					if(tradeDirection >= 0) {
-						EnterLongLimit(DefaultQuantity, Low[0]-EnOffsetPnts);
+					if(tradeDirection >= 0 && NewOrderAllowed()) {
+						entryOrder = EnterLongLimit(0, true, DefaultQuantity, Low[0]-EnOffsetPnts, zzEntrySignal);
 					//if(printOut)
 						Print(CurrentBar + ", EnterLongLimit called-" + Time[0].ToString());
 					}
@@ -291,48 +300,57 @@ namespace NinjaTrader.Strategy
 				PrintZZSize();
 			}
         }
-		
-protected override void OnExecution(IExecution execution)
-{
-    // Remember to check the underlying IOrder object for null before trying to access its properties
-    if (execution.Order != null && execution.Order.OrderState == OrderState.Filled) {
-		//if(printOut)
-			Print(CurrentBar + " Exe=" + execution.Name + ",Price=" + execution.Price + "," + execution.Time.ToShortTimeString());
-		if(drawTxt) {
-			IText it = DrawText(CurrentBar.ToString()+Time[0].ToShortTimeString(), Time[0].ToString().Substring(10)+"\r\n"+execution.Name+":"+execution.Price, 0, execution.Price, Color.Red);
-			it.Locked = false;
+
+		protected bool NewOrderAllowed()
+		{
+			// Remember to check the underlying IOrder object for null before trying to access its properties
+			if (entryOrder == null || entryOrder.OrderState != OrderState.Working) {
+				return true;
+			}
+			return false;
 		}
-	}
-}
 
-protected override void OnOrderUpdate(IOrder order)
-{
-//    if (entryOrder != null && entryOrder == order)
-//    {
-        //Print(order.ToString() + "--" + order.OrderState);
-//        if (order.OrderState == OrderState.Cancelled)
-//         {
-//              // Do something here
-//              entryOrder = null;
-//         }
-//    }
-	if (order.OrderState == OrderState.Accepted) {
-		Print(CurrentBar + ":" + order.ToString());
-	}              
-}
+		protected override void OnExecution(IExecution execution)
+		{
+			// Remember to check the underlying IOrder object for null before trying to access its properties
+			if (execution.Order != null && execution.Order.OrderState == OrderState.Filled) {
+				//if(printOut)
+					Print(CurrentBar + " Exe=" + execution.Name + ",Price=" + execution.Price + "," + execution.Time.ToShortTimeString());
+				if(drawTxt) {
+					IText it = DrawText(CurrentBar.ToString()+Time[0].ToShortTimeString(), Time[0].ToString().Substring(10)+"\r\n"+execution.Name+":"+execution.Price, 0, execution.Price, Color.Red);
+					it.Locked = false;
+				}
+			}
+		}
 
-protected override void OnPositionUpdate(IPosition position)
-{
-	//Print(position.ToString() + "--MarketPosition=" + position.MarketPosition);
-    if (position.MarketPosition == MarketPosition.Flat)
-    {
-         // Do something like reset some variables here
-    }
-	else 
-	{
-		
-	}
-}
+		protected override void OnOrderUpdate(IOrder order)
+		{
+		//    if (entryOrder != null && entryOrder == order)
+		//    {
+				//Print(order.ToString() + "--" + order.OrderState);
+		//        if (order.OrderState == OrderState.Cancelled)
+		//         {
+		//              // Do something here
+		//              entryOrder = null;
+		//         }
+		//    }
+			if (order.OrderState == OrderState.Accepted) {
+				Print(CurrentBar + ":" + order.ToString());
+			}              
+		}
+
+		protected override void OnPositionUpdate(IPosition position)
+		{
+			//Print(position.ToString() + "--MarketPosition=" + position.MarketPosition);
+			if (position.MarketPosition == MarketPosition.Flat)
+			{
+				// Do something like reset some variables here
+			}
+			else 
+			{
+				
+			}
+		}
 
         #region Properties
         [Description("ZigZag retrace points")]
