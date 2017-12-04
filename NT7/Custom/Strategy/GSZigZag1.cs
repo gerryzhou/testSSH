@@ -31,6 +31,7 @@ namespace NinjaTrader.Strategy
 //        private int stopLossAmt = 16 //Default setting for StopLossAmt
 		private double profitTargetAmt = 75; //36 Default setting for ProfitTargetAmt
         private double stopLossAmt = 37.5; //16 Default setting for StopLossAmt
+		private double breakEvenAmt = 150; //16 Default setting for StopLossAmt
 		private double enOffsetPnts = 0.5;//the price offset for entry
         private int timeStart = 93300; // Default setting for TimeStart
         private int timeEnd = 124500; // Default setting for TimeEnd
@@ -310,6 +311,20 @@ namespace NinjaTrader.Strategy
 			return false;
 		}
 
+		protected bool ChangeSLPT()
+		{
+			double pl = Position.GetProfitLoss(Close[0], PerformanceUnit.Currency);
+			 // If not flat print our unrealized PnL
+    		if (Position.MarketPosition != MarketPosition.Flat) {
+         		Print("Open PnL: " + pl);
+			} else {
+				SetStopLoss(StopLossAmt);
+				SetProfitTarget(ProfitTargetAmt);
+			}
+
+			return false;
+		}
+		
 		protected override void OnExecution(IExecution execution)
 		{
 			// Remember to check the underlying IOrder object for null before trying to access its properties
