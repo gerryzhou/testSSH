@@ -29,18 +29,20 @@ namespace NinjaTrader.Strategy
         private double retracePnts = 4; // Default setting for RetracePnts
 //        private int profitTargetAmt = 36 //Default setting for ProfitTargetAmt
 //        private int stopLossAmt = 16 //Default setting for StopLossAmt
-		private double profitTargetAmt = 75; //36 Default setting for ProfitTargetAmt
-        private double stopLossAmt = 37.5; //16 Default setting for StopLossAmt
+		private double profitTargetAmt = 450; //36 Default setting for ProfitTargetAmt
+        private double stopLossAmt = 200; //16 Default setting for StopLossAmt
 		private double breakEvenAmt = 150; //150 the profits amount to trigger setting breakeven order
-		private double enOffsetPnts = 0.5;//the price offset for entry
-        private int timeStart = 93300; // Default setting for TimeStart
-        private int timeEnd = 124500; // Default setting for TimeEnd
+		private double dailyLossLmt = -400; //-400 the daily loss limit amount
+		private double enOffsetPnts = 1;//the price offset for entry
+        private int timeStart = 0; //93300 Default setting for TimeStart
+        private int timeEnd = 235900; // Default setting for TimeEnd
         private int barsSincePtSl = 1; // Default setting for BarsSincePtSl
 		private int barsToCheckPL = 2; // Number of Bars to check P&L since the entry
-        private double enSwingMinPnts = 2.5; //6 Default setting for EnSwingMinPnts
-        private double enSwingMaxPnts = 20; //10 Default setting for EnSwingMaxPnts
+        private double enSwingMinPnts = 10; //6 Default setting for EnSwingMinPnts
+        private double enSwingMaxPnts = 15; //10 Default setting for EnSwingMaxPnts
 		private int tradeDirection = 0; // -1=short; 0-both; 1=long;
-		private int tradeStyle = 1; // -1=counter trend; 0-scalp; 1=trend following;
+		private int tradeStyle = 1; // -1=counter trend; 1=trend following;
+		private bool backTest = false; //if it runs for backtesting;
 		private bool printOut = false;
 		private bool drawTxt = false; // User defined variables (add any user defined variables below)
 		private IText it_gap = null; //the Text draw for gap on current bar
@@ -84,6 +86,7 @@ namespace NinjaTrader.Strategy
 			SetProfitTarget(ProfitTargetAmt);
 			DefaultQuantity = 1;
             CalculateOnBarClose = true;
+			IncludeCommission = true;
 			// Triggers the exit on close function 30 seconds prior to session end
 			ExitOnClose = true;
 			ExitOnCloseSeconds = 30;
@@ -222,7 +225,7 @@ namespace NinjaTrader.Strategy
 			Color sm_color = Color.Black;
 			Color draw_color = sm_color;
 			//Update();
-			//if(printOut)
+			if(printOut)
 				Print(CurrentBar + " DrawGapText called");
 //			double zzhi = getLastZZHighLow(CurrentBar, 1, out idx_hi); //zigZagHighZigZags.Get(idx);
 //			double zzlo = getLastZZHighLow(CurrentBar, -1, out idx_lo); // zigZagLowZigZags.Get(idx);
@@ -268,47 +271,96 @@ namespace NinjaTrader.Strategy
 			
 			double gap = GIZigZag(DeviationType.Points, 4, false, false, false, true).ZigZagGap[0];
 			CheckPerformance();
+			ChangeSLPT();
 			//if(printOut)
 				Print("GI gap=" + gap + "," + Position.MarketPosition.ToString() + "=" + Position.Quantity.ToString()+ ", price=" + Position.AvgPrice + ", BarsSinceEx=" + bsx + ", BarsSinceEn=" + bse);
 			
 			DrawGapText(gap, "gap-");
 			double gapAbs = Math.Abs(gap);
-			if(!Historical && ToTime(Time[0]) >= TimeStart && ToTime(Time[0]) <= TimeEnd && Position.Quantity == 0 && (bsx == -1 || bsx > barsSincePtSl)) {
+			if(NewOrderAllowed()) 
+			{
 //			if(!Historical && Position.Quantity == 0 && (bsx == -1 || bsx > barsSincePtSl)) {
-
+//-1, 0, 1 vs -1, 0, 1
 				if ( gap > 0 && gapAbs >= enSwingMinPnts && gapAbs < enSwingMaxPnts)
 				{
-					//EnterShort();
-					if(tradeDirection <= 0 && NewOrderAllowed()) {
-						entryOrder = EnterShortLimit(0, true, DefaultQuantity, High[0]+EnOffsetPnts, zzEntrySignal);
-						//if(printOut)
-						Print(CurrentBar + ", EnterShortLimit called-" + Time[0].ToString());
+					if (tradeStyle < 0 && tradeDirection <= 0) { //counter trend trade on bull swing
+						NewShortLimitOrder();
 					}
+					else if(tradeDirection >= 0) { //trend following trade on bull swing
+						NewLongLimitOrder();
+					}
+					//EnterShort();
+//					if(tradeDirection <= 0 && NewOrderAllowed()) {
+//						entryOrder = EnterShortLimit(0, true, DefaultQuantity, High[0]+EnOffsetPnts, zzEntrySignal);
+//						//if(printOut)
+//						Print(CurrentBar + ", EnterShortLimit called-" + Time[0].ToString());
+//					}
 					//EnterLongLimit(DefaultQuantity, Low[0]-EnOffsetPnts, "EnLN1");
 				}
 				else if ( gap < 0 && gapAbs >= enSwingMinPnts && gapAbs < enSwingMaxPnts)
 				{
 					//EnterLong();
-					if(tradeDirection >= 0 && NewOrderAllowed()) {
-						entryOrder = EnterLongLimit(0, true, DefaultQuantity, Low[0]-EnOffsetPnts, zzEntrySignal);
-					//if(printOut)
-						Print(CurrentBar + ", EnterLongLimit called-" + Time[0].ToString());
+					if (tradeStyle < 0 && tradeDirection >= 0) { //counter trend trade on bear swing
+						NewLongLimitOrder();
 					}
+					else if(tradeDirection <= 0) { //trend following trade on bear swing
+						NewShortLimitOrder();
+					}
+					
+//						entryOrder = EnterLongLimit(0, true, DefaultQuantity, Low[0]-EnOffsetPnts, zzEntrySignal);
+					//if(printOut)
+//						Print(CurrentBar + ", EnterLongLimit called-" + Time[0].ToString());
+					
 					//EnterShortLimit((DefaultQuantity, High[0]+EnOffsetPnts, "EnST1");
 				}
 			}
 
 			if(IsLastBarOnChart() > 0) {
 				bool GIZZ = GIZigZag(DeviationType.Points, 4, false, false, false, true).GetZigZag(out zigZagSizeSeries, out zigZagSizeZigZag);
-				PrintZZSize();
+				//PrintZZSize();
 			}
         }
-
+		
+		protected void NewShortLimitOrder()
+		{
+			double prc = High[0]+EnOffsetPnts;
+			entryOrder = EnterShortLimit(0, true, DefaultQuantity, prc, zzEntrySignal);
+			//AccountItem.RealizedProfitLoss;
+			
+			//if(printOut)
+			Print(CurrentBar + ", EnterShortLimit called short price=" + prc + "--" + Time[0].ToString());			
+		}
+		
+		protected void NewLongLimitOrder()
+		{
+			double prc = Low[0]-EnOffsetPnts;
+			entryOrder = EnterLongLimit(0, true, DefaultQuantity, prc, zzEntrySignal);
+			//if(printOut)
+			Print(CurrentBar + ", EnterLongLimit called buy price= " + prc + " -- " + Time[0].ToString());		
+		}
+		
 		protected bool NewOrderAllowed()
 		{
-			// Remember to check the underlying IOrder object for null before trying to access its properties
-			if (entryOrder == null || entryOrder.OrderState != OrderState.Working) {
-				return true;
+			int bsx = BarsSinceExit();
+			int bse = BarsSinceEntry();
+			double pnl = GetAccountValue(AccountItem.RealizedProfitLoss);
+			double plrt = Performance.RealtimeTrades.TradesPerformance.Currency.CumProfit;
+			Print(CurrentBar + ", GetAccountValue(AccountItem.RealizedProfitLoss)= " + pnl + " -- " + Time[0].ToString());	
+
+			if((backTest && !Historical) || (!backTest && Historical))
+				return false;
+			if(!backTest && plrt <= dailyLossLmt) 
+				return false;
+		
+			if (ToTime(Time[0]) >= TimeStart && ToTime(Time[0]) <= TimeEnd && Position.Quantity == 0)
+			{
+				if (entryOrder == null || entryOrder.OrderState != OrderState.Working)
+				{
+					if(bsx == -1 || bsx > barsSincePtSl)
+					{
+						return true;
+					}
+				}
 			}
 			return false;
 		}
@@ -404,7 +456,23 @@ namespace NinjaTrader.Strategy
             get { return stopLossAmt; }
             set { stopLossAmt = value; }
         }
+		
+        [Description("Break Even amount")]
+        [GridCategory("Parameters")]
+        public double BreakEvenAmt
+        {
+            get { return breakEvenAmt; }
+            set { breakEvenAmt = Math.Max(0, value); }
+        }
 
+		[Description("Daily Loss Limit amount")]
+        [GridCategory("Parameters")]
+        public double DailyLossLmt
+        {
+            get { return dailyLossLmt; }
+            set { dailyLossLmt = Math.Min(-100, value); }
+        }
+		
         [Description("Time start")]
         [GridCategory("Parameters")]
         public int TimeStart
@@ -476,6 +544,15 @@ namespace NinjaTrader.Strategy
             get { return tradeStyle; }
             set { tradeStyle = value; }
         }
+		
+		[Description("If it runs for backtesting")]
+        [GridCategory("Parameters")]
+        public bool BackTest
+        {
+            get { return backTest; }
+            set { backTest = value; }
+        }
+		
 		
         #endregion
     }
