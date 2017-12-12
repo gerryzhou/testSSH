@@ -438,7 +438,7 @@ namespace NinjaTrader.Strategy
         public double RetracePnts
         {
             get { return retracePnts; }
-            set { retracePnts = Math.Max(4, value); }
+            set { retracePnts = Math.Max(1, value); }
         }
 
         [Description("Money amount of profit target")]
