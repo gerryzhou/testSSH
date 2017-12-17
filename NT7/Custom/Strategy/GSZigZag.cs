@@ -40,6 +40,8 @@ namespace NinjaTrader.Strategy
 		private int barsToCheckPL = 2; // Number of Bars to check P&L since the entry
         private double enSwingMinPnts = 10; //6 Default setting for EnSwingMinPnts
         private double enSwingMaxPnts = 15; //10 Default setting for EnSwingMaxPnts
+		private double enPullbackMinPnts = 5; //6 Default setting for EnPullbackMinPnts
+        private double enPullbackMaxPnts = 9; //10 Default setting for EnPullbackMaxPnts
 		private int tradeDirection = 0; // -1=short; 0-both; 1=long;
 		private int tradeStyle = 1; // -1=counter trend; 1=trend following;
 		private bool backTest = false; //if it runs for backtesting;
@@ -281,14 +283,54 @@ namespace NinjaTrader.Strategy
 			{
 //			if(!Historical && Position.Quantity == 0 && (bsx == -1 || bsx > barsSincePtSl)) {
 //-1, 0, 1 vs -1, 0, 1
-				if ( gap > 0 && gapAbs >= enSwingMinPnts && gapAbs < enSwingMaxPnts)
+				if(tradeStyle == 0) // scalping, counter trade the pullbackMinPnts
 				{
-					if (tradeStyle < 0 && tradeDirection <= 0) { //counter trend trade on bull swing
-						NewShortLimitOrder();
+					if(tradeDirection >= 0) //1=long only, 0 is for both;
+					{
+						if(gap < 0 && gapAbs >= enPullbackMinPnts && gapAbs < enPullbackMaxPnts)
+							NewLongLimitOrder("scalping long");
 					}
-					else if(tradeDirection >= 0) { //trend following trade on bull swing
-						NewLongLimitOrder();
+					else if(tradeDirection <= 0) //-1=short only, 0 is for both;
+					{
+						if(gap > 0 && gapAbs >= enPullbackMinPnts && gapAbs < enPullbackMaxPnts)
+							NewShortLimitOrder("scalping short");
 					}
+				}
+				else if(tradeStyle < 0) //counter trend trade, , counter trade the swingMinPnts
+				{
+					if(tradeDirection >= 0) //1=long only, 0 is for both;
+					{
+						if(gap < 0 && gapAbs >= enSwingMinPnts && gapAbs < enSwingMaxPnts)
+							NewLongLimitOrder("counter trade long");
+					}
+					else if(tradeDirection <= 0) //-1=short only, 0 is for both;
+					{
+						if(gap > 0 && gapAbs >= enSwingMinPnts && gapAbs < enSwingMaxPnts)
+							NewShortLimitOrder("counter trade short");
+					}
+				}
+				else //trend following
+				{
+					if(tradeDirection >= 0) //1=long only, 0 is for both;
+					{
+						if((gap > 0 && gapAbs >= enSwingMinPnts && gapAbs < enSwingMaxPnts) || (gap < 0 && gapAbs >= enPullbackMinPnts && gapAbs < enPullbackMaxPnts))
+							NewLongLimitOrder("trend follow long");
+					}
+					else if(tradeDirection <= 0) //-1=short only, 0 is for both;
+					{
+						if((gap < 0 && gapAbs >= enSwingMinPnts && gapAbs < enSwingMaxPnts) || (gap > 0 && gapAbs >= enPullbackMinPnts && gapAbs < enPullbackMaxPnts))
+							NewShortLimitOrder("trend follow short");
+					}
+				}
+//				
+//				if ( gap > 0 && gapAbs >= enSwingMinPnts && gapAbs < enSwingMaxPnts)
+//				{
+//					if (tradeStyle < 0 && tradeDirection <= 0) { //counter trend trade on bull swing
+//						NewShortLimitOrder();
+//					}
+//					else if(tradeDirection >= 0) { //trend following trade on bull swing
+//						NewLongLimitOrder();
+//					}
 					//EnterShort();
 //					if(tradeDirection <= 0 && NewOrderAllowed()) {
 //						entryOrder = EnterShortLimit(0, true, DefaultQuantity, High[0]+EnOffsetPnts, zzEntrySignal);
@@ -296,23 +338,23 @@ namespace NinjaTrader.Strategy
 //						Print(CurrentBar + ", EnterShortLimit called-" + Time[0].ToString());
 //					}
 					//EnterLongLimit(DefaultQuantity, Low[0]-EnOffsetPnts, "EnLN1");
-				}
-				else if ( gap < 0 && gapAbs >= enSwingMinPnts && gapAbs < enSwingMaxPnts)
-				{
-					//EnterLong();
-					if (tradeStyle < 0 && tradeDirection >= 0) { //counter trend trade on bear swing
-						NewLongLimitOrder();
-					}
-					else if(tradeDirection <= 0) { //trend following trade on bear swing
-						NewShortLimitOrder();
-					}
+//				}
+//				else if ( gap < 0 && gapAbs >= enSwingMinPnts && gapAbs < enSwingMaxPnts)
+//				{
+//					//EnterLong();
+//					if (tradeStyle < 0 && tradeDirection >= 0) { //counter trend trade on bear swing
+//						NewLongLimitOrder();
+//					}
+//					else if(tradeDirection <= 0) { //trend following trade on bear swing
+//						NewShortLimitOrder();
+//					}
 					
 //						entryOrder = EnterLongLimit(0, true, DefaultQuantity, Low[0]-EnOffsetPnts, zzEntrySignal);
 					//if(printOut)
 //						Print(CurrentBar + ", EnterLongLimit called-" + Time[0].ToString());
 					
 					//EnterShortLimit((DefaultQuantity, High[0]+EnOffsetPnts, "EnST1");
-				}
+//				}
 			}
 
 			if(IsLastBarOnChart() > 0) {
@@ -321,22 +363,22 @@ namespace NinjaTrader.Strategy
 			}
         }
 		
-		protected void NewShortLimitOrder()
+		protected void NewShortLimitOrder(string msg)
 		{
 			double prc = High[0]+EnOffsetPnts;
 			entryOrder = EnterShortLimit(0, true, DefaultQuantity, prc, zzEntrySignal);
 			//AccountItem.RealizedProfitLoss;
 			
 			//if(printOut)
-			Print(CurrentBar + ", EnterShortLimit called short price=" + prc + "--" + Time[0].ToString());			
+			Print(CurrentBar + ":" + msg + ", EnterShortLimit called short price=" + prc + "--" + Time[0].ToString());			
 		}
 		
-		protected void NewLongLimitOrder()
+		protected void NewLongLimitOrder(string msg)
 		{
 			double prc = Low[0]-EnOffsetPnts;
 			entryOrder = EnterLongLimit(0, true, DefaultQuantity, prc, zzEntrySignal);
 			//if(printOut)
-			Print(CurrentBar + ", EnterLongLimit called buy price= " + prc + " -- " + Time[0].ToString());		
+			Print(CurrentBar + ":" + msg +  ", EnterLongLimit called buy price= " + prc + " -- " + Time[0].ToString());		
 		}
 		
 		protected bool NewOrderAllowed()
@@ -521,6 +563,22 @@ namespace NinjaTrader.Strategy
             set { enSwingMaxPnts = Math.Max(4, value); }
         }
 
+		[Description("Min pullback size for entry")]
+        [GridCategory("Parameters")]
+        public double EnPullbackMinPnts
+        {
+            get { return enPullbackMinPnts; }
+            set { enPullbackMinPnts = Math.Max(1, value); }
+        }
+
+        [Description("Max pullback size for entry")]
+        [GridCategory("Parameters")]
+        public double EnPullbackMaxPnts
+        {
+            get { return enPullbackMaxPnts; }
+            set { enPullbackMaxPnts = Math.Max(2, value); }
+        }
+		
         [Description("Offeset points for limit price entry")]
         [GridCategory("Parameters")]
         public double EnOffsetPnts
