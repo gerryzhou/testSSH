@@ -36,6 +36,7 @@ namespace NinjaTrader.Strategy
 		private double enOffsetPnts = 1;//the price offset for entry
         private int timeStart = 0; //93300 Default setting for TimeStart
         private int timeEnd = 235900; // Default setting for TimeEnd
+		private int minutesChkEnOrder = 60; //how long before checking an entry order filled or not
         private int barsSincePtSl = 1; // Default setting for BarsSincePtSl
 		private int barsToCheckPL = 2; // Number of Bars to check P&L since the entry
         private double enSwingMinPnts = 10; //6 Default setting for EnSwingMinPnts
@@ -274,6 +275,7 @@ namespace NinjaTrader.Strategy
 			double gap = GIZigZag(DeviationType.Points, 4, false, false, false, true).ZigZagGap[0];
 			CheckPerformance();
 			ChangeSLPT();
+			CheckEnOrder();
 			//if(printOut)
 				Print("GI gap=" + gap + "," + Position.MarketPosition.ToString() + "=" + Position.Quantity.ToString()+ ", price=" + Position.AvgPrice + ", BarsSinceEx=" + bsx + ", BarsSinceEn=" + bse);
 			
@@ -309,7 +311,7 @@ namespace NinjaTrader.Strategy
 							NewShortLimitOrder("counter trade short");
 					}
 				}
-				else //trend following
+				else // tradeStyle > 0, trend following
 				{
 					if(tradeDirection >= 0) //1=long only, 0 is for both;
 					{
@@ -370,7 +372,7 @@ namespace NinjaTrader.Strategy
 			//AccountItem.RealizedProfitLoss;
 			
 			//if(printOut)
-			Print(CurrentBar + ":" + msg + ", EnterShortLimit called short price=" + prc + "--" + Time[0].ToString());			
+			Print(CurrentBar + "-" + Account.Name + ":" + msg + ", EnterShortLimit called short price=" + prc + "--" + Time[0].ToString());			
 		}
 		
 		protected void NewLongLimitOrder(string msg)
@@ -378,7 +380,7 @@ namespace NinjaTrader.Strategy
 			double prc = Low[0]-EnOffsetPnts;
 			entryOrder = EnterLongLimit(0, true, DefaultQuantity, prc, zzEntrySignal);
 			//if(printOut)
-			Print(CurrentBar + ":" + msg +  ", EnterLongLimit called buy price= " + prc + " -- " + Time[0].ToString());		
+			Print(CurrentBar + "-" + Account.Name + ":" + msg +  ", EnterLongLimit called buy price= " + prc + " -- " + Time[0].ToString());		
 		}
 		
 		protected bool NewOrderAllowed()
@@ -387,12 +389,15 @@ namespace NinjaTrader.Strategy
 			int bse = BarsSinceEntry();
 			double pnl = GetAccountValue(AccountItem.RealizedProfitLoss);
 			double plrt = Performance.RealtimeTrades.TradesPerformance.Currency.CumProfit;
-			Print(CurrentBar + ", GetAccountValue(AccountItem.RealizedProfitLoss)= " + pnl + " -- " + Time[0].ToString());	
+			Print(CurrentBar + "-" + Account.Name + ": GetAccountValue(AccountItem.RealizedProfitLoss)= " + pnl + " -- " + Time[0].ToString());	
 
 			if((backTest && !Historical) || (!backTest && Historical))
 				return false;
-			if(!backTest && plrt <= dailyLossLmt) 
+			if(!backTest && plrt <= dailyLossLmt)
+			{
+				Print(CurrentBar + "-" + Account.Name + ": dailyLossLmt reached = " + plrt);
 				return false;
+			}
 		
 			if (ToTime(Time[0]) >= TimeStart && ToTime(Time[0]) <= TimeEnd && Position.Quantity == 0)
 			{
@@ -412,7 +417,7 @@ namespace NinjaTrader.Strategy
 			double pl = Position.GetProfitLoss(Close[0], PerformanceUnit.Currency);
 			 // If not flat print our unrealized PnL
     		if (Position.MarketPosition != MarketPosition.Flat) {
-         		Print("Open PnL: " + pl);
+         		Print(Account.Name + " Open PnL: " + pl);
 				if(pl >= breakEvenAmt) { //setup breakeven order
 					SetStopLoss(0);
 				}
@@ -423,12 +428,27 @@ namespace NinjaTrader.Strategy
 
 			return false;
 		}
-	
+		
+		protected bool CheckEnOrder()
+		{
+			double min_en = -1;
+			
+			if(entryOrder != null && entryOrder.OrderState==OrderState.Working) 
+			{
+				min_en = GetTimeDiff(entryOrder.Time, DateTime.Now);
+				if(min_en >= minutesChkEnOrder ) {
+					CancelOrder(entryOrder);
+					Print("Order cancelled for " + Account.Name + ":" + min_en + " mins elapsed--" + entryOrder.ToString());
+					return true;
+				}
+			}
+			return false;
+		}
 		protected bool CheckPerformance()
 		{
 			double pl = Performance.AllTrades.TradesPerformance.Currency.CumProfit;
 			double plrt = Performance.RealtimeTrades.TradesPerformance.Currency.CumProfit;
-       		Print("Cum all PnL: " + pl + ", Cum runtime PnL: " + plrt);
+       		Print(Account.Name + " Cum all PnL: " + pl + ", Cum runtime PnL: " + plrt);
 			return false;
 		}
 				
@@ -437,7 +457,7 @@ namespace NinjaTrader.Strategy
 			// Remember to check the underlying IOrder object for null before trying to access its properties
 			if (execution.Order != null && execution.Order.OrderState == OrderState.Filled) {
 				//if(printOut)
-					Print(CurrentBar + " Exe=" + execution.Name + ",Price=" + execution.Price + "," + execution.Time.ToShortTimeString());
+					Print(CurrentBar + "-" + Account.Name + " Exe=" + execution.Name + ",Price=" + execution.Price + "," + execution.Time.ToShortTimeString());
 				if(drawTxt) {
 					IText it = DrawText(CurrentBar.ToString()+Time[0].ToShortTimeString(), Time[0].ToString().Substring(10)+"\r\n"+execution.Name+":"+execution.Price, 0, execution.Price, Color.Red);
 					it.Locked = false;
@@ -456,8 +476,8 @@ namespace NinjaTrader.Strategy
 		//              entryOrder = null;
 		//         }
 		//    }
-			if (order.OrderState == OrderState.Accepted) {
-				Print(CurrentBar + ":" + order.ToString());
+			if (order.OrderState == OrderState.Working) {
+				Print(CurrentBar + "-" + Account.Name + ":" + order.ToString());
 			}              
 		}
 
@@ -530,6 +550,14 @@ namespace NinjaTrader.Strategy
             get { return timeEnd; }
             set { timeEnd = Math.Max(0, value); }
         }
+		
+        [Description("How long to check entry order filled or not")]
+        [GridCategory("Parameters")]
+        public int MinutesChkEnOrder
+        {
+            get { return minutesChkEnOrder; }
+            set { minutesChkEnOrder = Math.Max(0, value); }
+        }		
 
         [Description("Bar count since last filled PT or SL")]
         [GridCategory("Parameters")]
