@@ -73,6 +73,13 @@ namespace NinjaTrader.Strategy
 			}
 			return Math.Round(diff, 2);
 		}
+
+		public double GetMinutesDiff(DateTime dt_st, DateTime dt_en) {
+			double diff = -1;
+			TimeSpan ts = dt_en.Subtract(dt_st);
+			diff = ts.TotalMinutes;
+			return Math.Round(diff, 2);
+		}
 		
 		public int CompareTimeWithSessionBreak(DateTime dt_st, SessionBreak sb) {
 			DateTime dt = DateTime.Now;
