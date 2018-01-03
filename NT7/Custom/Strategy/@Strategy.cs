@@ -26,9 +26,9 @@ namespace NinjaTrader.Strategy
 	{
 		private NinjaTrader.Indicator.ADX _indicator = new NinjaTrader.Indicator.ADX();
 
-		/// <summary>
-		/// </summary>
-		public Strategy()
+        /// <summary>
+        /// </summary>
+        public Strategy()
 		{
 			_indicator.Input	= Input;
 			_indicator.Strategy	= this;
@@ -80,6 +80,6 @@ namespace NinjaTrader.Strategy
 			get { return base.MaximumBarsLookBack; }
 			set { base.MaximumBarsLookBack = _indicator.MaximumBarsLookBack = value; }
 		}
-	}
+    }
 }
 			

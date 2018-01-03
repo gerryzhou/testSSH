@@ -22,7 +22,7 @@ namespace NinjaTrader.Strategy
 	/// 2) counter swing/trend or follow swing/trend? (Trending, Reversal or Range)
     /// </summary>
     [Description("Enter the description of your strategy here")]
-    public class GSZigZag : Strategy
+    public class GSZigZag : GSZigZagBase
     {
         #region Variables
         // Wizard generated variables
@@ -36,7 +36,7 @@ namespace NinjaTrader.Strategy
 		private double enOffsetPnts = 1;//the price offset for entry
         private int timeStart = 0; //93300 Default setting for TimeStart
         private int timeEnd = 235900; // Default setting for TimeEnd
-		private int minutesChkEnOrder = 60; //how long before checking an entry order filled or not
+		//private int minutesChkEnOrder = 60; //how long before checking an entry order filled or not
         private int barsSincePtSl = 1; // Default setting for BarsSincePtSl
 		private int barsToCheckPL = 2; // Number of Bars to check P&L since the entry
         private double enSwingMinPnts = 10; //6 Default setting for EnSwingMinPnts
@@ -58,7 +58,7 @@ namespace NinjaTrader.Strategy
 		/// <summary>
 		/// Order handling
 		/// </summary>
-		private IOrder entryOrder = null;
+
 		private string zzEntrySignal = "ZZEntry";
 
 		private int ZZ_Count_0_6 = 0;
@@ -75,6 +75,8 @@ namespace NinjaTrader.Strategy
         /// </summary>
         protected override void Initialize()
         {
+			base.Initialize();
+			
 			Add(GIZigZag(NinjaTrader.Data.DeviationType.Points, 4, false, false, false, true));
 //            SetProfitTarget("EnST1", CalculationMode.Ticks, ProfitTargetAmt);
 //            SetStopLoss("EnST1", CalculationMode.Ticks, StopLossAmt, false);
@@ -267,6 +269,8 @@ namespace NinjaTrader.Strategy
         /// </summary>
         protected override void OnBarUpdate()
         {
+			base.OnBarUpdate();
+			
 			if(!Historical) Print(CurrentBar + "- GSZZ1 OnBarUpdate - " + Time[0].ToShortTimeString());
 			if(CurrentBar < BarsRequired+2) return;
 			int bsx = BarsSinceExit();
@@ -428,7 +432,7 @@ namespace NinjaTrader.Strategy
 
 			return false;
 		}
-		
+		/*
 		protected bool CheckEnOrder()
 		{
 			double min_en = -1;
@@ -444,13 +448,14 @@ namespace NinjaTrader.Strategy
 			}
 			return false;
 		}
+
 		protected bool CheckPerformance()
 		{
 			double pl = Performance.AllTrades.TradesPerformance.Currency.CumProfit;
 			double plrt = Performance.RealtimeTrades.TradesPerformance.Currency.CumProfit;
        		Print(Account.Name + " Cum all PnL: " + pl + ", Cum runtime PnL: " + plrt);
 			return false;
-		}
+		} */
 				
 		protected override void OnExecution(IExecution execution)
 		{

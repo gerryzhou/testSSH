@@ -158,6 +158,26 @@ namespace NinjaTrader.Strategy
 				}
 			}
 			return new DateTime(year, month, day, hr, min, sec);
-		}		
+		}
+		
+		public double PrintAccPnL() {
+			double pnl = GetAccountValue(AccountItem.RealizedProfitLoss);
+			Print(CurrentBar + "-" + Account.Name + ": GetAccountValue(AccountItem.RealizedProfitLoss)= " + pnl + " -- " + Time[0].ToString());
+			return pnl;
+		}
+		
+		public double PrintAccCumProfit() {
+			double plrt = Performance.RealtimeTrades.TradesPerformance.Currency.CumProfit;
+			Print(CurrentBar + "-" + Account.Name + ": dailyLossLmt reached = " + plrt);
+			return plrt;
+		}
+		
+		public double CheckPerformance()
+		{
+			double pl = Performance.AllTrades.TradesPerformance.Currency.CumProfit;
+			double plrt = Performance.RealtimeTrades.TradesPerformance.Currency.CumProfit;
+			Print(Account.Name + " Cum all PnL: " + pl + ", Cum runtime PnL: " + plrt);
+			return plrt;
+		}
     }
 }

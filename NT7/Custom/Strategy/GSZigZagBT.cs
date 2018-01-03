@@ -22,7 +22,7 @@ namespace NinjaTrader.Strategy
 	/// 2) counter swing/trend or follow swing/trend? (Trending, Reversal or Range)
     /// </summary>
     [Description("GSZigZag BackTesting")]
-    public class GSZigZagBT : Strategy
+    public class GSZigZagBT : GSZigZagBase
     {
         #region Variables
         // Wizard generated variables
@@ -36,7 +36,7 @@ namespace NinjaTrader.Strategy
 		private double enOffsetPnts = 1;//the price offset for entry
         private int timeStart = 0; //93300 Default setting for TimeStart
         private int timeEnd = 235900; // Default setting for TimeEnd
-		private int minutesChkEnOrder = 60; //how long before checking an entry order filled or not
+		//private int minutesChkEnOrder = 60; //how long before checking an entry order filled or not
         private int barsSincePtSl = 1; // Default setting for BarsSincePtSl
 		private int barsToCheckPL = 2; // Number of Bars to check P&L since the entry
         private double enSwingMinPnts = 10; //6 Default setting for EnSwingMinPnts
@@ -46,7 +46,7 @@ namespace NinjaTrader.Strategy
 		private int tradeDirection = 0; // -1=short; 0-both; 1=long;
 		private int tradeStyle = 1; // -1=counter trend; 1=trend following;
 		private bool backTest = false; //if it runs for backtesting;
-		private bool printOut = false;
+		private int printOut = 1; //0,1,2,3 more print
 		private bool drawTxt = false; // User defined variables (add any user defined variables below)
 		private IText it_gap = null; //the Text draw for gap on current bar
 
@@ -58,7 +58,7 @@ namespace NinjaTrader.Strategy
 		/// <summary>
 		/// Order handling
 		/// </summary>
-		private IOrder entryOrder = null;
+		//private IOrder entryOrder = null;
 		private string zzEntrySignal = "ZZEntry";
 
 		private int ZZ_Count_0_6 = 0;
@@ -101,8 +101,9 @@ namespace NinjaTrader.Strategy
 		/// </summary>
 		public void PrintZZSize()
 		{
-			String str_Plus = " + + + ";
-			String str_Minus = " - - - ";
+			String str_Plus = " ++ ";
+			String str_Minus = " -- ";
+			String str_Minutes = "m";
 			//Update();
 			Print(CurrentBar + " PrintZZSize called from GS");			
 			double zzSize = 0;
@@ -127,35 +128,35 @@ namespace NinjaTrader.Strategy
 				}
 				else if(zzSizeAbs >= 10 && zzSizeAbs <16){
 					ZZ_Count_10_16 ++;
-					//if(printOut)
-						Print(idx.ToString() + " - ZZSize=" + zzSize + "  [" + Time[CurrentBar-lastZZIdx].ToString() + "--" + Time[CurrentBar-idx].ToString() + "] >=10" + str_suffix + GetTimeDiff(Time[CurrentBar-lastZZIdx], Time[CurrentBar-idx]));
+					if(PrintOut > 1)
+						Print(idx.ToString() + "-ZZ= " + zzSize + " [" + Time[CurrentBar-lastZZIdx].ToString() + "-" + Time[CurrentBar-idx].ToString() + "] >=10" + str_suffix + GetTimeDiff(Time[CurrentBar-lastZZIdx], Time[CurrentBar-idx]) + str_Minutes);
 				}
 				else if(zzSizeAbs >= 16 && zzSizeAbs <22){
 					ZZ_Count_16_22 ++;
-					//if(printOut)
-						Print(idx.ToString() + " - ZZSize=" + zzSize + "  [" + Time[CurrentBar-lastZZIdx].ToString() + "--" + Time[CurrentBar-idx].ToString() + "] >=16" + str_suffix + GetTimeDiff(Time[CurrentBar-lastZZIdx], Time[CurrentBar-idx]));
+					if(PrintOut > 1)
+						Print(idx.ToString() + "-ZZ= " + zzSize + " [" + Time[CurrentBar-lastZZIdx].ToString() + "-" + Time[CurrentBar-idx].ToString() + "] >=16" + str_suffix + GetTimeDiff(Time[CurrentBar-lastZZIdx], Time[CurrentBar-idx]) + str_Minutes);
 				}
 				else if(zzSizeAbs >= 22 && zzSizeAbs <30){
 					ZZ_Count_22_30 ++;
-					//if(printOut)
-						Print(idx.ToString() + " - ZZSize=" + zzSize + "  [" + Time[CurrentBar-lastZZIdx].ToString() + "--" + Time[CurrentBar-idx].ToString() + "] >=22" + str_suffix + GetTimeDiff(Time[CurrentBar-lastZZIdx], Time[CurrentBar-idx]));
+					if(PrintOut > 1)
+						Print(idx.ToString() + "-ZZ= " + zzSize + " [" + Time[CurrentBar-lastZZIdx].ToString() + "-" + Time[CurrentBar-idx].ToString() + "] >=22" + str_suffix + GetTimeDiff(Time[CurrentBar-lastZZIdx], Time[CurrentBar-idx]) + str_Minutes);
 				}
 				else if(zzSizeAbs >= 30){
 					ZZ_Count_30_ ++;
-					//if(printOut)
-						Print(idx.ToString() + " - ZZSize=" + zzSize + "  [" + Time[CurrentBar-lastZZIdx].ToString() + "--" + Time[CurrentBar-idx].ToString() + "] >=30" + str_suffix + GetTimeDiff(Time[CurrentBar-lastZZIdx], Time[CurrentBar-idx]));
+					if(PrintOut > 1)
+						Print(idx.ToString() + "-ZZ= " + zzSize + " [" + Time[CurrentBar-lastZZIdx].ToString() + "-" + Time[CurrentBar-idx].ToString() + "] >=30" + str_suffix + GetTimeDiff(Time[CurrentBar-lastZZIdx], Time[CurrentBar-idx]) + str_Minutes);
 				}
 				if(zzSize != 0) {
 					DrawZZSizeText(idx, "txt-");
 					if(zzSizeAbs < 10)
-						//if(printOut)
-							Print(idx.ToString() + " - zzSize=" + zzSize + "  [" + Time[CurrentBar-lastZZIdx].ToString() + "--" + Time[CurrentBar-idx].ToString() + "]" );
+						if(PrintOut > 2)
+							Print(idx.ToString() + "-zzS= " + zzSize + " [" + Time[CurrentBar-lastZZIdx].ToString() + "-" + Time[CurrentBar-idx].ToString() + "]" );
 					lastZZIdx = idx;
 				}
 			}
 			ZZ_Count = ZZ_Count_0_6 + ZZ_Count_6_10 + ZZ_Count_10_16 + ZZ_Count_16_22 + ZZ_Count_22_30 + ZZ_Count_30_ ;
-			//if(printOut)
-				Print(CurrentBar + "\r\n ZZ_Count=" + ZZ_Count + "\r\n ZZ_Count_0_6=" + ZZ_Count_0_6 + "\r\n ZZ_Count_6_10=" + ZZ_Count_6_10 + "\r\n ZZ_Count_10_16=" + ZZ_Count_10_16 + "\r\n ZZ_Count_16_22=" + ZZ_Count_16_22 + "\r\n ZZ_Count_22_30=" + ZZ_Count_22_30 + "\r\n ZZ_Count_30_=" + ZZ_Count_30_);
+			if(PrintOut > 2)
+				Print(CurrentBar + "\r\n ZZ_Count \t" + ZZ_Count + "\r\n ZZ_Count_0_6 \t" + ZZ_Count_0_6 + "\r\n ZZ_Count_6_10 \t" + ZZ_Count_6_10 + "\r\n ZZ_Count_10_16 \t" + ZZ_Count_10_16 + "\r\n ZZ_Count_16_22 \t" + ZZ_Count_16_22 + "\r\n ZZ_Count_22_30 \t" + ZZ_Count_22_30 + "\r\n ZZ_Count_30_ \t" + ZZ_Count_30_);
 		}
 
 		/// <summary>
@@ -172,7 +173,7 @@ namespace NinjaTrader.Strategy
 			Color sm_color = Color.Black;
 			Color draw_color = sm_color;
 			//Update();
-			if(printOut)
+			if(PrintOut > 3)
 				Print(barNo + " DrawZZSizeText called");
 //			double zzhi = getLastZZHighLow(CurrentBar, 1, out idx_hi); //zigZagHighZigZags.Get(idx);
 //			double zzlo = getLastZZHighLow(CurrentBar, -1, out idx_lo); // zigZagLowZigZags.Get(idx);
@@ -197,7 +198,7 @@ namespace NinjaTrader.Strategy
 				draw_color = sm_color;
 				if(zzSize < 0) {
 					idx_hilo = idx;
-					if(printOut)
+					if(PrintOut > 3)
 						Print(idx + " DrawZZSize called");
 					if(zzSizeAbs >= 10) draw_color = dn_color;
 					it = DrawText(tag+idx.ToString(), GetTimeDate(Time[CurrentBar-idx], 1)+"\r\n#"+idx.ToString()+"\r\n"+zzSize, CurrentBar-idx, double.Parse(High[CurrentBar-idx].ToString())+2.5, draw_color);
@@ -205,7 +206,7 @@ namespace NinjaTrader.Strategy
 				}
 				if(zzSize > 0) {
 					idx_hilo = idx;
-					if(printOut)
+					if(PrintOut > 3)
 						Print(idx + " DrawZZSize called");
 					if(zzSizeAbs >= 10) draw_color = up_color;
 					it = DrawText(tag+idx.ToString(), GetTimeDate(Time[CurrentBar-idx], 1)+"\r\n#"+idx.ToString()+"\r\n"+zzSize, CurrentBar-idx, double.Parse(Low[CurrentBar-idx].ToString())-2.5, draw_color);
@@ -229,7 +230,7 @@ namespace NinjaTrader.Strategy
 			Color sm_color = Color.Black;
 			Color draw_color = sm_color;
 			//Update();
-			if(printOut)
+			if(PrintOut > 3)
 				Print(CurrentBar + " DrawGapText called");
 //			double zzhi = getLastZZHighLow(CurrentBar, 1, out idx_hi); //zigZagHighZigZags.Get(idx);
 //			double zzlo = getLastZZHighLow(CurrentBar, -1, out idx_lo); // zigZagLowZigZags.Get(idx);
@@ -259,7 +260,7 @@ namespace NinjaTrader.Strategy
 				}
 			}
 			if(it_gap != null) it_gap.Locked = false;
-			if(printOut)
+			if(PrintOut > 0)
 				Print(CurrentBar + "::" + this.ToString() + " GaP= " + gap + " - " + Time[0].ToShortTimeString());
 			return gap; 
 		}
@@ -278,7 +279,7 @@ namespace NinjaTrader.Strategy
 			//CheckPerformance();
 			//ChangeSLPT();
 			//CheckEnOrder();
-			if(printOut)
+			if(PrintOut > 0)
 				Print("GI gap=" + gap + "," + Position.MarketPosition.ToString() + "=" + Position.Quantity.ToString()+ ", price=" + Position.AvgPrice + ", BarsSinceEx=" + bsx + ", BarsSinceEn=" + bse);
 			
 			DrawGapText(gap, "gap-");
@@ -340,7 +341,7 @@ namespace NinjaTrader.Strategy
 			entryOrder = EnterShortLimit(0, true, DefaultQuantity, prc, zzEntrySignal);
 			//AccountItem.RealizedProfitLoss;
 			
-			if(printOut)
+			if(PrintOut > -1)
 				Print(CurrentBar + "-" + Account.Name + ":" + msg + ", EnterShortLimit called short price=" + prc + "--" + Time[0].ToString());			
 		}
 		
@@ -348,7 +349,7 @@ namespace NinjaTrader.Strategy
 		{
 			double prc = Low[0]-EnOffsetPnts;
 			entryOrder = EnterLongLimit(0, true, DefaultQuantity, prc, zzEntrySignal);
-			if(printOut)
+			if(PrintOut > -1)
 				Print(CurrentBar + "-" + Account.Name + ":" + msg +  ", EnterLongLimit called buy price= " + prc + " -- " + Time[0].ToString());		
 		}
 		
@@ -358,15 +359,17 @@ namespace NinjaTrader.Strategy
 			int bse = BarsSinceEntry();
 			double pnl = GetAccountValue(AccountItem.RealizedProfitLoss);
 			double plrt = Performance.RealtimeTrades.TradesPerformance.Currency.CumProfit;
-			if(printOut)
-				Print(CurrentBar + "-" + Account.Name + ": GetAccountValue(AccountItem.RealizedProfitLoss)= " + pnl + " -- " + Time[0].ToString());	
+			if(PrintOut > -1)
+				PrintAccPnL();
+				//Print(CurrentBar + "-" + Account.Name + ": GetAccountValue(AccountItem.RealizedProfitLoss)= " + pnl + " -- " + Time[0].ToString());	
 
 			if((backTest && !Historical) || (!backTest && Historical))
 				return false;
 			if(!backTest && plrt <= dailyLossLmt)
 			{
-				if(printOut)
-					Print(CurrentBar + "-" + Account.Name + ": dailyLossLmt reached = " + plrt);
+				if(PrintOut > -1)
+					PrintAccCumProfit();
+					//Print(CurrentBar + "-" + Account.Name + ": dailyLossLmt reached = " + plrt);
 				return false;
 			}
 		
@@ -415,20 +418,12 @@ namespace NinjaTrader.Strategy
 			}
 			return false;
 		}
-		protected bool CheckPerformance()
-		{
-			double pl = Performance.AllTrades.TradesPerformance.Currency.CumProfit;
-			double plrt = Performance.RealtimeTrades.TradesPerformance.Currency.CumProfit;
-			if(printOut)
-				Print(Account.Name + " Cum all PnL: " + pl + ", Cum runtime PnL: " + plrt);
-			return false;
-		}
 				
 		protected override void OnExecution(IExecution execution)
 		{
 			// Remember to check the underlying IOrder object for null before trying to access its properties
 			if (execution.Order != null && execution.Order.OrderState == OrderState.Filled) {
-				if(printOut)
+				if(PrintOut > -1)
 					Print(CurrentBar + "-" + Account.Name + " Exe=" + execution.Name + ",Price=" + execution.Price + "," + execution.Time.ToShortTimeString());
 				if(drawTxt) {
 					IText it = DrawText(CurrentBar.ToString()+Time[0].ToShortTimeString(), Time[0].ToString().Substring(10)+"\r\n"+execution.Name+":"+execution.Price, 0, execution.Price, Color.Red);
@@ -449,7 +444,7 @@ namespace NinjaTrader.Strategy
 		//         }
 		//    }
 			if (order.OrderState == OrderState.Working) {
-				if(printOut)
+				if(PrintOut > -1)
 					Print(CurrentBar + "-" + Account.Name + ":" + order.ToString());
 			}              
 		}
@@ -612,6 +607,13 @@ namespace NinjaTrader.Strategy
             set { backTest = value; }
         }
 		
+		[Description("Print out level: large # print out more")]
+        [GridCategory("Parameters")]
+        public int PrintOut
+        {
+            get { return printOut; }
+            set { printOut = Math.Max(-1, value); }
+        }
 		
         #endregion
     }
