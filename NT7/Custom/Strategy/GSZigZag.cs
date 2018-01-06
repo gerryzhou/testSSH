@@ -26,6 +26,7 @@ namespace NinjaTrader.Strategy
     {
         #region Variables
         // Wizard generated variables
+		/*
         private double retracePnts = 4; // Default setting for RetracePnts
 //        private int profitTargetAmt = 36 //Default setting for ProfitTargetAmt
 //        private int stopLossAmt = 16 //Default setting for StopLossAmt
@@ -54,11 +55,11 @@ namespace NinjaTrader.Strategy
 		private IDataSeries zzLowValue;
 		private DataSeries		zigZagSizeSeries;
 		private DataSeries		zigZagSizeZigZag;
-		
+*/		
 		/// <summary>
 		/// Order handling
 		/// </summary>
-
+/*
 		private string zzEntrySignal = "ZZEntry";
 
 		private int ZZ_Count_0_6 = 0;
@@ -68,6 +69,7 @@ namespace NinjaTrader.Strategy
 		private int ZZ_Count_22_30 = 0;
 		private int ZZ_Count_30_ = 0;
 		private int ZZ_Count = 0;
+*/
 		#endregion
 
         /// <summary>
@@ -76,7 +78,7 @@ namespace NinjaTrader.Strategy
         protected override void Initialize()
         {
 			base.Initialize();
-			
+			/*
 			Add(GIZigZag(NinjaTrader.Data.DeviationType.Points, 4, false, false, false, true));
 //            SetProfitTarget("EnST1", CalculationMode.Ticks, ProfitTargetAmt);
 //            SetStopLoss("EnST1", CalculationMode.Ticks, StopLossAmt, false);
@@ -95,13 +97,14 @@ namespace NinjaTrader.Strategy
 			// Triggers the exit on close function 30 seconds prior to session end
 			ExitOnClose = true;
 			ExitOnCloseSeconds = 30;
+			*/
         }
 		
 
 		/// <summary>
 		/// Print zig zag size.
 		/// </summary>
-		public void PrintZZSize()
+/*		public void PrintZZSize()
 		{
 			String str_Plus = " + + + ";
 			String str_Minus = " - - - ";
@@ -263,7 +266,7 @@ namespace NinjaTrader.Strategy
 			Print(CurrentBar + "::" + this.ToString() + " GaP= " + gap + " - " + Time[0].ToShortTimeString());
 			return gap; 
 		}
-		
+*/		
         /// <summary>
         /// Called on each bar update event (incoming tick)
         /// </summary>
@@ -276,12 +279,12 @@ namespace NinjaTrader.Strategy
 			int bsx = BarsSinceExit();
 			int bse = BarsSinceEntry();
 			
-			double gap = GIZigZag(DeviationType.Points, 4, false, false, false, true).ZigZagGap[0];
+			double gap = GIZigZag(DeviationType.Points, retracePnts, false, false, false, true).ZigZagGap[0];
 			CheckPerformance();
 			ChangeSLPT();
 			CheckEnOrder();
-			//if(printOut)
-				Print("GI gap=" + gap + "," + Position.MarketPosition.ToString() + "=" + Position.Quantity.ToString()+ ", price=" + Position.AvgPrice + ", BarsSinceEx=" + bsx + ", BarsSinceEn=" + bse);
+			if(printOut > -1)
+				Print(CurrentBar + "-" + Account.Name + ":GI gap=" + gap + "," + Position.MarketPosition.ToString() + "=" + Position.Quantity.ToString()+ ", price=" + Position.AvgPrice + ", BarsSinceEx=" + bsx + ", BarsSinceEn=" + bse);
 			
 			DrawGapText(gap, "gap-");
 			double gapAbs = Math.Abs(gap);
@@ -364,11 +367,12 @@ namespace NinjaTrader.Strategy
 			}
 
 			if(IsLastBarOnChart() > 0) {
-				bool GIZZ = GIZigZag(DeviationType.Points, 4, false, false, false, true).GetZigZag(out zigZagSizeSeries, out zigZagSizeZigZag);
+				bool GIZZ = GIZigZag(DeviationType.Points, retracePnts, false, false, false, true).GetZigZag(out zigZagSizeSeries, out zigZagSizeZigZag);
 				//PrintZZSize();
 			}
         }
-		
+
+/*
 		protected void NewShortLimitOrder(string msg)
 		{
 			double prc = High[0]+EnOffsetPnts;
@@ -432,7 +436,7 @@ namespace NinjaTrader.Strategy
 
 			return false;
 		}
-		/*
+		
 		protected bool CheckEnOrder()
 		{
 			double min_en = -1;
@@ -455,7 +459,7 @@ namespace NinjaTrader.Strategy
 			double plrt = Performance.RealtimeTrades.TradesPerformance.Currency.CumProfit;
        		Print(Account.Name + " Cum all PnL: " + pl + ", Cum runtime PnL: " + plrt);
 			return false;
-		} */
+		}
 				
 		protected override void OnExecution(IExecution execution)
 		{
@@ -498,8 +502,9 @@ namespace NinjaTrader.Strategy
 				
 			}
 		}
-
+*/
         #region Properties
+		/*
         [Description("ZigZag retrace points")]
         [GridCategory("Parameters")]
         public double RetracePnts
@@ -644,7 +649,7 @@ namespace NinjaTrader.Strategy
             set { backTest = value; }
         }
 		
-		
+		*/
         #endregion
     }
 }
