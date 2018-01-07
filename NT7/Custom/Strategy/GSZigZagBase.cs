@@ -53,7 +53,7 @@ namespace NinjaTrader.Strategy
 		protected IDataSeries zzLowValue;
 		protected DataSeries		zigZagSizeSeries;
 		protected DataSeries		zigZagSizeZigZag;
-		
+		protected double[]			lastZZs; // the ZZ prior to cur bar
 		protected string zzEntrySignal = "ZZEntry";
 
 		protected int ZZ_Count_0_6 = 0;
@@ -272,11 +272,21 @@ namespace NinjaTrader.Strategy
 			int bse = BarsSinceEntry();
 			
 			double gap = GIZigZag(DeviationType.Points, retracePnts, false, false, false, true).ZigZagGap[0];
+			lastZZs = GIZigZag(DeviationType.Points, retracePnts, false, false, false, true).GetZigZag(CurrentBar, 3, retracePnts, 100);
+			//GIZigZag(DeviationType.Points, retracePnts, false, false, false, true).GetZigZag(out zigZagSizeSeries, out zigZagSizeZigZag);
+			if(printOut > 2)
+				for (int idx = 0; idx < 3; idx++)
+				{
+					double zzS = 0;//zigZagSizeSeries.Get(idx);
+					double zzSize = lastZZs[idx];
+					Print(CurrentBar + "-" + Account.Name + ":(zzSize,zzS)=" + zzSize + "," + zzS);
+				}
 			CheckPerformance();
 			ChangeSLPT();
 			CheckEnOrder();
-			if(printOut > -1)
+			if(printOut > -1) {				
 				Print(CurrentBar + "-" + Account.Name + ":GI gap=" + gap + "," + Position.MarketPosition.ToString() + "=" + Position.Quantity.ToString()+ ", price=" + Position.AvgPrice + ", BarsSinceEx=" + bsx + ", BarsSinceEn=" + bse);
+			}
 			
 			DrawGapText(gap, "gap-");
 			
@@ -285,14 +295,15 @@ namespace NinjaTrader.Strategy
 				PutTrade(gap);
 			}
 						
-			//if(backTest && IsLastBarOnChart() > 0) {
-				//bool GIZZ = GIZigZag(DeviationType.Points, retracePnts, false, false, false, true).GetZigZag(out zigZagSizeSeries, out zigZagSizeZigZag);
-				//PrintZZSize();
-			//}
+			if(backTest && IsLastBarOnChart() > 0) {
+				bool GIZZ = GIZigZag(DeviationType.Points, retracePnts, false, false, false, true).GetZigZag(out zigZagSizeSeries, out zigZagSizeZigZag);
+				PrintZZSize();
+			}
         }
 
 		protected void PutTrade(double gap) {
 			double gapAbs = Math.Abs(gap);
+			double lastZZAbs = Math.Abs(lastZZs[0]);
 			if(tradeStyle == 0) // scalping, counter trade the pullbackMinPnts
 			{
 				if(tradeDirection >= 0) //1=long only, 0 is for both;
@@ -337,12 +348,12 @@ namespace NinjaTrader.Strategy
 			{
 				if(tradeDirection >= 0) //1=long only, 0 is for both;
 				{
-					if(gap < 0 && gapAbs >= enPullbackMinPnts && gapAbs < enPullbackMaxPnts)
+					if(gap < 0 && gapAbs >= enPullbackMinPnts && gapAbs < enPullbackMaxPnts && lastZZs[0] > 0 && lastZZAbs >= enSwingMinPnts && lastZZAbs <= enSwingMaxPnts)
 						NewLongLimitOrder("trend follow long entry at pullback");
 				}
 				else if(tradeDirection <= 0) //-1=short only, 0 is for both;
 				{
-					if(gap > 0 && gapAbs >= enPullbackMinPnts && gapAbs < enPullbackMaxPnts)
+					if(gap > 0 && gapAbs >= enPullbackMinPnts && gapAbs < enPullbackMaxPnts && lastZZs[0] < 0 && lastZZAbs >= enSwingMinPnts && lastZZAbs <= enSwingMaxPnts)
 						NewShortLimitOrder("trend follow short entry at pullback");
 				}
 			}

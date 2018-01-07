@@ -401,6 +401,58 @@ namespace NinjaTrader.Indicator
 		}
 		
 		/// <summary>
+		/// Get the zig zag size of the swing before the barNo.
+		/// </summary>
+		/// <param name="barNo">before this bar</param>
+		/// <param name="zzCount">how many zzSize needed</param>
+		/// <returns>a list of the zz size</returns>
+		public double[] GetZigZag(int barNo, int zzCount)
+		{
+			double[] zzSize = new double[zzCount];
+			for(int i=0; i<zzCount; i++) {
+				zzSize[i] = 0;
+			}
+			int zzCnt = 0;
+			Update();
+			for(int idx = barNo-1; idx >= BarsRequired; idx--) {
+				if(zzCnt >= zzCount) break;
+				else if(zigZagSizeZigZag.Get(idx) != 0){
+					zzSize[zzCnt] = zigZagSizeZigZag.Get(idx);
+					zzCnt++;
+				}
+			}
+
+			return zzSize;
+		}
+		
+		/// <summary>
+		/// Get the zig zag size of the swing before the barNo.
+		/// </summary>
+		/// <param name="barNo">before this bar</param>
+		/// <param name="zzCount">how many zzSize needed</param>
+		/// <param name="zz_min">min size of the swing expected</param>
+		/// <param name="zz_max">max size of the swing expected</param>
+		/// <returns>a list of the zz size</returns>
+		public double[] GetZigZag(int barNo, int zzCount, double zz_min, double zz_max)
+		{
+			double[] zzSize = new double[zzCount];
+			for(int i=0; i<zzCount; i++) {
+				zzSize[i] = 0;
+			}
+			int zzCnt = 0;
+			Update();
+			for(int idx = barNo-1; idx >= BarsRequired; idx--) {
+				double zzS = Math.Abs(zigZagSizeZigZag.Get(idx));
+				if(zzCnt >= zzCount) break;
+				else if( zzS >= zz_min && zzS <= zz_max){
+					zzSize[zzCnt] = zigZagSizeZigZag.Get(idx);
+					zzCnt++;
+				}
+			}
+
+			return zzSize;
+		}				
+		/// <summary>
 		/// Set the latest zig zag size for the barNo.
 		/// </summary>
 		/// <param name="barNo"></param>
@@ -1163,7 +1215,20 @@ namespace NinjaTrader.Indicator
 				return zigZagSizeSeries;
 			}
 		}
-		
+
+		/// <summary>
+		/// Gets the GIZigZag ZZ size.
+		/// </summary>
+		[Browsable(false)]
+		[XmlIgnore()]
+		public DataSeries ZigZagSize
+		{
+			get 
+			{ 
+				Update();
+				return zigZagSizeZigZag;
+			}
+		}
         #endregion
 
 		#region Miscellaneous
