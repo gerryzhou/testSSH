@@ -47,6 +47,8 @@ namespace NinjaTrader.Strategy
         /// </summary>
         protected override void OnBarUpdate()
         {
+			base.OnBarUpdate();
+			/*
 			if(!Historical) Print(CurrentBar + "- GSZZ1 OnBarUpdate - " + Time[0].ToShortTimeString());
 			if(CurrentBar < BarsRequired+2) return;
 			int bsx = BarsSinceExit();
@@ -104,12 +106,7 @@ namespace NinjaTrader.Strategy
 							NewShortLimitOrder("trend follow short");
 					}
 				}
-			}
-
-			if(IsLastBarOnChart() > 0) {
-				bool GIZZ = GIZigZag(DeviationType.Points, retracePnts, false, false, false, true).GetZigZag(out zigZagSizeSeries, out zigZagSizeZigZag);
-				PrintZZSize();
-			}
+			} */
         }
 		
         #region Properties
