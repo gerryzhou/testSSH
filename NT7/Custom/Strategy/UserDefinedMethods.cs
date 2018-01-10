@@ -20,9 +20,15 @@ namespace NinjaTrader.Strategy
 	partial class Strategy
     {
 		public int IsLastBarOnChart() {
-			if(Input.Count - CurrentBar <= 2) {
-				return Input.Count;
-			} else {
+			try{
+				if(Input.Count - CurrentBar <= 2) {
+					return Input.Count;
+				} else {
+					return -1;
+				}
+			}
+			catch(Exception ex){
+				Print("IsLastBarOnChart:" + ex.Message);
 				return -1;
 			}
 		}

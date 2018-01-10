@@ -34,7 +34,7 @@ namespace NinjaTrader.Strategy
 		protected int minutesChkEnOrder = 60; //how long before checking an entry order filled or not
         protected int barsSincePtSl = 1; // Default setting for BarsSincePtSl
 		protected int barsToCheckPL = 2; // Number of Bars to check P&L since the entry
-        protected double enSwingMinPnts = 10; //6 Default setting for EnSwingMinPnts
+        protected double enSwingMinPnts = 11; //6 Default setting for EnSwingMinPnts
         protected double enSwingMaxPnts = 15; //10 Default setting for EnSwingMaxPnts
 		protected double enPullbackMinPnts = 5; //6 Default setting for EnPullbackMinPnts
         protected double enPullbackMaxPnts = 9; //10 Default setting for EnPullbackMaxPnts
@@ -290,12 +290,12 @@ namespace NinjaTrader.Strategy
 			
 			DrawGapText(gap, "gap-");
 			
-			if(NewOrderAllowed()) 
+			if(NewOrderAllowed())
 			{
 				PutTrade(gap);
 			}
 						
-			if(backTest && IsLastBarOnChart() > 0) {
+			if(printOut > 1 && backTest && IsLastBarOnChart() > 0) {
 				bool GIZZ = GIZigZag(DeviationType.Points, retracePnts, false, false, false, true).GetZigZag(out zigZagSizeSeries, out zigZagSizeZigZag);
 				PrintZZSize();
 			}
@@ -304,6 +304,7 @@ namespace NinjaTrader.Strategy
 		protected void PutTrade(double gap) {
 			double gapAbs = Math.Abs(gap);
 			double lastZZAbs = Math.Abs(lastZZs[0]);
+			Print(CurrentBar + "-" + Account.Name + ":PutOrder-(tradeStyle,tradeDirection,gap,enSwingMinPnts,enSwingMaxPnts,enPullbackMinPnts,enPullbackMaxPnts)= " + tradeStyle + "," + tradeDirection + "," + gap + "," + enSwingMinPnts + "," + enSwingMaxPnts + "," + enPullbackMinPnts + "," + enPullbackMaxPnts);
 			if(tradeStyle == 0) // scalping, counter trade the pullbackMinPnts
 			{
 				if(tradeDirection >= 0) //1=long only, 0 is for both;
@@ -357,22 +358,27 @@ namespace NinjaTrader.Strategy
 						NewShortLimitOrder("trend follow short entry at pullback");
 				}
 			}
+			else {
+				Print(CurrentBar + "-" + Account.Name + ":PutOrder no-(tradeStyle,tradeDirection,gap,enSwingMinPnts,enSwingMaxPnts,enPullbackMinPnts,enPullbackMaxPnts)= " + tradeStyle + "," + tradeDirection + "," + gap + "," + enSwingMinPnts + "," + enSwingMaxPnts + "," + enPullbackMinPnts + "," + enPullbackMaxPnts);
+			}
 		}
-		
+
 		protected void NewShortLimitOrder(string msg)
 		{
 			double prc = High[0]+EnOffsetPnts;
-			entryOrder = EnterShortLimit(0, true, DefaultQuantity, prc, zzEntrySignal);
 			if(PrintOut > -1)
 				Print(CurrentBar + "-" + Account.Name + ":" + msg + ", EnterShortLimit called short price=" + prc + "--" + Time[0].ToString());			
-		}
+		
+			entryOrder = EnterShortLimit(0, true, DefaultQuantity, prc, zzEntrySignal);
+			}
 		
 		protected void NewLongLimitOrder(string msg)
 		{
 			double prc = Low[0]-EnOffsetPnts;
-			entryOrder = EnterLongLimit(0, true, DefaultQuantity, prc, zzEntrySignal);
 			if(PrintOut > -1)
 				Print(CurrentBar + "-" + Account.Name + ":" + msg +  ", EnterLongLimit called buy price= " + prc + " -- " + Time[0].ToString());		
+		
+			entryOrder = EnterLongLimit(0, true, DefaultQuantity, prc, zzEntrySignal);
 		}
 		
 		protected bool NewOrderAllowed()
