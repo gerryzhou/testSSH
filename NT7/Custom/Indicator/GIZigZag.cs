@@ -433,24 +433,32 @@ namespace NinjaTrader.Indicator
 		/// <param name="zz_min">min size of the swing expected</param>
 		/// <param name="zz_max">max size of the swing expected</param>
 		/// <returns>a list of the zz size</returns>
-		public double[] GetZigZag(int barNo, int zzCount, double zz_min, double zz_max)
+		public ZigZagSwing[] GetZigZag(int barNo, int zzCount, double zz_min, double zz_max)
 		{
-			double[] zzSize = new double[zzCount];
+			ZigZagSwing[] ZZSW = new ZigZagSwing[zzCount];
+			//double[] zzSize = new double[zzCount];
 			for(int i=0; i<zzCount; i++) {
-				zzSize[i] = 0;
+				//zzSize[i] = 0;
+				ZZSW[i].Bar_Start = -1;
+				ZZSW[i].Bar_End = -1;
+				ZZSW[i].Size = 0;
 			}
+			
 			int zzCnt = 0;
 			Update();
 			for(int idx = barNo-1; idx >= BarsRequired; idx--) {
 				double zzS = Math.Abs(zigZagSizeZigZag.Get(idx));
 				if(zzCnt >= zzCount) break;
 				else if( zzS >= zz_min && zzS <= zz_max){
-					zzSize[zzCnt] = zigZagSizeZigZag.Get(idx);
+					//zzSize[zzCnt] = zigZagSizeZigZag.Get(idx);
+					//ZZSW[i].Bar_Start = -1;
+					ZZSW[zzCnt].Bar_End = idx;
+					ZZSW[zzCnt].Size = zigZagSizeZigZag.Get(idx);;
 					zzCnt++;
 				}
 			}
 
-			return zzSize;
+			return ZZSW;
 		}				
 		/// <summary>
 		/// Set the latest zig zag size for the barNo.
@@ -770,7 +778,8 @@ namespace NinjaTrader.Indicator
 //			if(double.IsNaN(Close[-1])) {
 //				Print("Last Bar:"+ CurrentBar);
 //			}
-			if(!Historical) Print(CurrentBar + ": GIZZ OnBarUpdate - " + Time[0].ToShortTimeString());
+//			if(!Historical) 
+//				Print(CurrentBar + ": GIZZ OnBarUpdate - " + Time[0].ToShortTimeString());
 			//if(IsLastBarOnChart() > 0) {
 				//Print(ToTime(Time[0]).ToString() + "-Last Bar:"+ CurrentBar + ", Close[0]=" + Close[0].ToString() + ", Close[-1]=" + Close[-1].ToString() + ", High[-1]=" + High[-1].ToString() + ", Low[-1]=" + Low[-1].ToString());// + ", Close[-4]=" + Close[-4].ToString() + ", High[-4]=" + High[-4].ToString() + ", Low[-4]=" + Low[-4].ToString());
 				//Print("this.ChartControl.LastBarPainted=" + this.ChartControl.LastBarPainted + ", Input.count=" + IsLastBarOnChart());
@@ -784,8 +793,8 @@ namespace NinjaTrader.Indicator
 //			Print("this.ChartControl.BarsPainted=" + this.ChartControl.BarsPainted);
 //			Print("zigZagSizeSeries.count=" + zigZagSizeSeries.Count);
 //			Print("zigZagSizeZigZag.count=" + zigZagSizeZigZag.Count+ ", Historical=" + Historical);
-			if(drawTxt)
-				DrawText("txt-"+CurrentBar.ToString(), Time.ToString().Substring(10)+"-"+CurrentBar.ToString()+":"+lastSwingIdx.ToString(), 0, double.Parse(Low.ToString())-0.5, Color.Black);
+//			if(drawTxt)
+//				DrawText("txt-"+CurrentBar.ToString(), Time.ToString().Substring(10)+"-"+CurrentBar.ToString()+":"+lastSwingIdx.ToString(), 0, double.Parse(Low.ToString())-0.5, Color.Black);
 			if (CurrentBar < 2) // need 3 bars to calculate Low/High
 			{
 				zigZagHighSeries.Set(0);

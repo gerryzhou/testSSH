@@ -2,7 +2,8 @@
 using System;
 using System.ComponentModel;
 using System.Drawing;
-
+using System.IO;
+using System.Net.Mail;
 using NinjaTrader.Cbi;
 using NinjaTrader.Data;
 using NinjaTrader.Indicator;
@@ -17,6 +18,7 @@ namespace NinjaTrader.Strategy
     /// </summary>
  
 	public enum SessionBreak {AfternoonClose, EveningOpen, MorningOpen, NextDay};
+	
 	partial class Strategy
     {
 		public int IsLastBarOnChart() {
@@ -165,5 +167,27 @@ namespace NinjaTrader.Strategy
 			}
 			return new DateTime(year, month, day, hr, min, sec);
 		}
+		
+		public String GetTsTAccName(String tst_acc) {
+			char[] delimiterChars = {'!'};
+			string[] words = tst_acc.Split(delimiterChars);
+			return words[0];
+		}
+		
+		public void FileTest(int barNo) {
+		 if(barNo > 0) return;
+         FileStream F = new FileStream("C:\\Users\\GZhou\\Documents\\NinjaTrader 7\\bin\\Custom\\Cmd\\" + barNo.ToString() + ".dat", FileMode.OpenOrCreate, 
+            FileAccess.ReadWrite);
+         
+         for (int i = 1; i <= 20; i++) {
+            F.WriteByte((byte)i);
+         }
+         F.Position = 0;
+         for (int i = 0; i <= 20; i++) {
+            Print(F.ReadByte() + " ");
+         }
+         F.Close();
+         //Console.ReadKey();
+      }
     }
 }

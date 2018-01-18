@@ -13,6 +13,13 @@ namespace NinjaTrader.Indicator
     /// <summary>
     /// This file holds all user defined indicator methods.
     /// </summary>
+		
+	public struct ZigZagSwing {
+		public int Bar_Start;
+		public int Bar_End;
+		public double Size;
+	}
+	
     partial class Indicator
     {
     }
