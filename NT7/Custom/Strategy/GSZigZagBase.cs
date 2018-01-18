@@ -14,6 +14,9 @@ using NinjaTrader.Strategy;
 #endregion
 
 // This namespace holds all strategies and is required. Do not change it.
+//Add trailing profits target: every hour trail certain amout profits up, and tight the range more and more;
+//Add retrieving the parameters from file;
+//Add WebAPI to read/write the parameters remotely;
 namespace NinjaTrader.Strategy
 {
     /// <summary>
@@ -26,13 +29,16 @@ namespace NinjaTrader.Strategy
 		
 		protected double retracePnts = 4; // Default setting for RetracePnts
 		protected double profitTargetAmt = 450; //36 Default setting for ProfitTargetAmt
+		protected double profitTgtIncAmt = 100; //36 Default setting for ProfitTargetAmt
         protected double stopLossAmt = 200; //16 Default setting for StopLossAmt
+		protected double stopLossIncAmt = 50; //16 Default setting for StopLossAmt
 		protected double breakEvenAmt = 150; //150 the profits amount to trigger setting breakeven order
 		protected double dailyLossLmt = -400; //-400 the daily loss limit amount
 		protected double enOffsetPnts = 1;//the price offset for entry
         protected int timeStart = 0; //93300 Default setting for TimeStart
         protected int timeEnd = 235900; // Default setting for TimeEnd
-		protected int minutesChkEnOrder = 60; //how long before checking an entry order filled or not
+		protected int minutesChkEnOrder = 30; //how long before checking an entry order filled or not
+		protected int minutesChkPnL = 30; //how long before checking P&L
         protected int barsSincePtSl = 1; // Default setting for BarsSincePtSl
 		protected int barsToCheckPL = 2; // Number of Bars to check P&L since the entry
         protected double enSwingMinPnts = 11; //6 Default setting for EnSwingMinPnts
@@ -47,6 +53,9 @@ namespace NinjaTrader.Strategy
 		protected IText it_gap = null; //the Text draw for gap on current bar
 
 		protected IOrder entryOrder = null;
+		protected double trailingPT = 400;
+		protected double trailingSL = 200;
+		
 		protected string AccName = null;
 		
 		protected IDataSeries zzHighValue;
@@ -82,6 +91,9 @@ namespace NinjaTrader.Strategy
 			zigZagSizeSeries = new DataSeries(this, MaximumBarsLookBack.Infinite);
 			zigZagSizeZigZag = new DataSeries(this, MaximumBarsLookBack.Infinite);
 			dictZZText = new Dictionary<int, IText>();
+			
+			trailingPT = profitTargetAmt/2;
+			trailingSL = stopLossAmt;
 //			SetProfitTarget(CalculationMode.Ticks, ProfitTargetAmt);
 //            SetStopLoss(CalculationMode.Ticks, StopLossAmt);
             SetStopLoss(StopLossAmt);
@@ -96,7 +108,6 @@ namespace NinjaTrader.Strategy
 			ExitOnClose = true;
 			ExitOnCloseSeconds = 30;
         }
-
 		
 		/// <summary>
 		/// Print zig zag size.
@@ -107,7 +118,7 @@ namespace NinjaTrader.Strategy
 			String str_Minus = " -- ";
 			String str_Minutes = "m";
 			//Update();
-			Print(CurrentBar + " PrintZZSize called from GS");			
+			Print(CurrentBar + " PrintZZSize called from GS");
 			double zzSize = 0;
 			double zzSizeAbs = -1;
 			double zzS = 0;
@@ -510,11 +521,34 @@ namespace NinjaTrader.Strategy
 
 		protected bool ChangeSLPT()
 		{
+			int bse = BarsSinceEntry();
+			double timeSinceEn = -1;
+			if(bse > 0) {
+				timeSinceEn = GetMinutesDiff(Time[0], Time[bse]);
+			}
+			
 			double pl = Position.GetProfitLoss(Close[0], PerformanceUnit.Currency);
-			 // If not flat print our unrealized PnL
+			 // If not flat print out unrealized PnL
     		if (Position.MarketPosition != MarketPosition.Flat) {
          		Print(AccName + "- Open PnL: " + pl);
-				if(pl >= breakEvenAmt) { //setup breakeven order
+
+				if(timeSinceEn >= minutesChkPnL) {
+					int nChkPnL = (int)(timeSinceEn/minutesChkPnL);
+					if(pl > (profitTargetAmt + profitTgtIncAmt*nChkPnL))
+					{
+						trailingPT = trailingPT + profitTgtIncAmt*nChkPnL;
+						trailingSL = trailingSL - stopLossIncAmt*nChkPnL;
+						Print(AccName + "- update SL/PT: PnL=" + pl + ",SL=" + trailingSL + ",PT=" + trailingPT);
+						SetStopLoss(trailingSL);
+						//SetStopLoss(CalculationMode.Price, Position.AvgPrice);
+						SetProfitTarget(trailingPT);
+					}
+					else if(pl >= breakEvenAmt) { //setup breakeven order
+						Print(AccName + "- setup SL Breakeven1:" + pl);
+						SetStopLoss(0);
+					}
+				}
+				else if(pl >= breakEvenAmt) { //setup breakeven order
 					Print(AccName + "- setup SL Breakeven:" + pl);
 					SetStopLoss(0);
 				}
@@ -599,6 +633,8 @@ namespace NinjaTrader.Strategy
 			if (position.MarketPosition == MarketPosition.Flat)
 			{
 				// Do something like reset some variables here
+				trailingPT = profitTargetAmt/2;
+				trailingSL = stopLossAmt;
 			}
 			else 
 			{
@@ -621,15 +657,31 @@ namespace NinjaTrader.Strategy
         public double ProfitTargetAmt
         {
             get { return profitTargetAmt; }
-            set { profitTargetAmt = value; }
+            set { profitTargetAmt = Math.Max(0, value); }
         }
 
+        [Description("Money amount for profit target increasement")]
+        [GridCategory("Parameters")]
+        public double ProfitTgtIncAmt
+        {
+            get { return profitTgtIncAmt; }
+            set { profitTgtIncAmt = Math.Max(0, value); }
+        }
+		
         [Description("Money amount of stop loss")]
         [GridCategory("Parameters")]
         public double StopLossAmt
         {
             get { return stopLossAmt; }
-            set { stopLossAmt = value; }
+            set { stopLossAmt = Math.Max(0, value); }
+        }
+		
+		[Description("Money amount for stop loss increasement")]
+        [GridCategory("Parameters")]
+        public double StopLossIncAmt
+        {
+            get { return stopLossIncAmt; }
+            set { stopLossIncAmt = Math.Max(0, value); }
         }
 		
         [Description("Break Even amount")]
@@ -670,8 +722,16 @@ namespace NinjaTrader.Strategy
         {
             get { return minutesChkEnOrder; }
             set { minutesChkEnOrder = Math.Max(0, value); }
-        }		
-
+        }
+		
+        [Description("How long to check P&L")]
+        [GridCategory("Parameters")]
+        public int MinutesChkPnL
+        {
+            get { return minutesChkPnL; }
+            set { minutesChkPnL = Math.Max(-1, value); }
+        }
+		
         [Description("Bar count since last filled PT or SL")]
         [GridCategory("Parameters")]
         public int BarsSincePtSl
