@@ -92,7 +92,7 @@ namespace NinjaTrader.Strategy
 			zigZagSizeZigZag = new DataSeries(this, MaximumBarsLookBack.Infinite);
 			dictZZText = new Dictionary<int, IText>();
 			
-			trailingPT = profitTargetAmt/2;
+			trailingPT = profitTargetAmt;
 			trailingSL = stopLossAmt;
 //			SetProfitTarget(CalculationMode.Ticks, ProfitTargetAmt);
 //            SetStopLoss(CalculationMode.Ticks, StopLossAmt);
@@ -486,21 +486,21 @@ namespace NinjaTrader.Strategy
 			double pnl = CheckAccPnL();//GetAccountValue(AccountItem.RealizedProfitLoss);
 			double plrt = CheckAccCumProfit();
 			if(PrintOut > -1)				
-				Print(CurrentBar + "-" + AccName + ": GetAccountValue(AccountItem.RealizedProfitLoss)= " + pnl + " -- " + Time[0].ToString());	
+				Print(CurrentBar + "-" + AccName + ":(RealizedProfitLoss,RealtimeTrades.CumProfit)=(" + pnl + "," + plrt + ")--" + Time[0].ToString());	
 
 			if((backTest && !Historical) || (!backTest && Historical)) {
 				Print(CurrentBar + "-" + AccName + "[backTest,Historical]=" + backTest + "," + Historical + "- NewOrderAllowed=false - " + Time[0].ToString());
 				return false;
 			}
-			if(!backTest && plrt <= dailyLossLmt)
+			if(!backTest && (plrt <= dailyLossLmt || pnl <= dailyLossLmt))
 			{
 				if(PrintOut > -1) {					
-					Print(CurrentBar + "-" + AccName + ": dailyLossLmt reached = " + plrt);
+					Print(CurrentBar + "-" + AccName + ": dailyLossLmt reached = " + pnl + "," + plrt);
 				}
 				return false;
 			}
 		
-			if (ToTime(Time[0]) >= TimeStart && ToTime(Time[0]) <= TimeEnd && Position.Quantity == 0)
+		if (IsTradingTime(TimeStart, TimeEnd, 170000) && Position.Quantity == 0)
 			{
 				if (entryOrder == null || entryOrder.OrderState != OrderState.Working)
 				{
@@ -531,22 +531,15 @@ namespace NinjaTrader.Strategy
 			 // If not flat print out unrealized PnL
     		if (Position.MarketPosition != MarketPosition.Flat) {
          		Print(AccName + "- Open PnL: " + pl);
-
-				if(timeSinceEn >= minutesChkPnL) {
-					int nChkPnL = (int)(timeSinceEn/minutesChkPnL);
-					if(pl > (profitTargetAmt + profitTgtIncAmt*nChkPnL))
-					{
-						trailingPT = trailingPT + profitTgtIncAmt*nChkPnL;
-						trailingSL = trailingSL - stopLossIncAmt*nChkPnL;
-						Print(AccName + "- update SL/PT: PnL=" + pl + ",SL=" + trailingSL + ",PT=" + trailingPT);
-						SetStopLoss(trailingSL);
-						//SetStopLoss(CalculationMode.Price, Position.AvgPrice);
-						SetProfitTarget(trailingPT);
-					}
-					else if(pl >= breakEvenAmt) { //setup breakeven order
-						Print(AccName + "- setup SL Breakeven1:" + pl);
-						SetStopLoss(0);
-					}
+				int nChkPnL = (int)(timeSinceEn/minutesChkPnL);
+				if(pl > (trailingPT - 2*profitTgtIncAmt))
+				{
+					trailingPT = trailingPT + profitTgtIncAmt;
+					trailingSL = trailingSL - stopLossIncAmt;
+					Print(AccName + "- update SL/PT: PnL=" + pl + ",SL=" + trailingSL + ",PT=" + trailingPT);
+					SetStopLoss(trailingSL);
+					//SetStopLoss(CalculationMode.Price, Position.AvgPrice);
+					SetProfitTarget(trailingPT);
 				}
 				else if(pl >= breakEvenAmt) { //setup breakeven order
 					Print(AccName + "- setup SL Breakeven:" + pl);
@@ -633,7 +626,7 @@ namespace NinjaTrader.Strategy
 			if (position.MarketPosition == MarketPosition.Flat)
 			{
 				// Do something like reset some variables here
-				trailingPT = profitTargetAmt/2;
+				trailingPT = profitTargetAmt;
 				trailingSL = stopLossAmt;
 			}
 			else 
