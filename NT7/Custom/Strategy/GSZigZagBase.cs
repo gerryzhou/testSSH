@@ -30,6 +30,7 @@ namespace NinjaTrader.Strategy
 		protected double retracePnts = 4; // Default setting for RetracePnts
 		protected double profitTargetAmt = 450; //36 Default setting for ProfitTargetAmt
 		protected double profitTgtIncAmt = 100; //36 Default setting for ProfitTargetAmt
+		protected double profitLockAmt = 24; //24 Default ticks Amt for Profit locking
         protected double stopLossAmt = 200; //16 Default setting for StopLossAmt
 		protected double stopLossIncAmt = 50; //16 Default setting for StopLossAmt
 		protected double breakEvenAmt = 150; //150 the profits amount to trigger setting breakeven order
@@ -535,13 +536,17 @@ namespace NinjaTrader.Strategy
 				if(pl > (trailingPT - 2*profitTgtIncAmt))
 				{
 					trailingPT = trailingPT + profitTgtIncAmt;
-					trailingSL = trailingSL - stopLossIncAmt;
-					Print(AccName + "- update SL/PT: PnL=" + pl + ",SL=" + trailingSL + ",PT=" + trailingPT);
-					SetStopLoss(trailingSL);
-					//SetStopLoss(CalculationMode.Price, Position.AvgPrice);
+					//trailingSL = trailingSL - stopLossIncAmt;
+					Print(AccName + "- update PT: PnL=" + pl + ",trailingPT=" + trailingPT);
+					//SetStopLoss(trailingSL);					
 					SetProfitTarget(trailingPT);
 				}
-				else if(pl >= breakEvenAmt) { //setup breakeven order
+				if(pl >= (12.5*profitLockAmt + 2*profitTgtIncAmt)) {
+					trailingSL = trailingSL + 12.5*profitLockAmt;
+					double slPrc = Position.AvgPrice+0.25*profitLockAmt;
+					Print(AccName + "- update SL: PnL=" + pl + ",trailingSL=" + trailingSL + ",SL Prc=" + slPrc);
+					SetStopLoss(CalculationMode.Price, slPrc);
+				} else if(pl >= breakEvenAmt) { //setup breakeven order
 					Print(AccName + "- setup SL Breakeven:" + pl);
 					SetStopLoss(0);
 				}
@@ -659,6 +664,14 @@ namespace NinjaTrader.Strategy
         {
             get { return profitTgtIncAmt; }
             set { profitTgtIncAmt = Math.Max(0, value); }
+        }
+		
+        [Description("Tick amount for profit locking")]
+        [GridCategory("Parameters")]
+        public double ProfitLockAmt
+        {
+            get { return profitLockAmt; }
+            set { profitLockAmt = Math.Max(0, value); }
         }
 		
         [Description("Money amount of stop loss")]
