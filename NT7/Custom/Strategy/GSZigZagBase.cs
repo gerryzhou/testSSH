@@ -29,10 +29,11 @@ namespace NinjaTrader.Strategy
 		
 		protected double retracePnts = 4; // Default setting for RetracePnts
 		protected double profitTargetAmt = 450; //36 Default setting for ProfitTargetAmt
-		protected double profitTgtIncAmt = 100; //36 Default setting for ProfitTargetAmt
-		protected double profitLockAmt = 24; //24 Default ticks Amt for Profit locking
+		protected double profitTgtIncTic = 8; //8 Default tick Amt for ProfitTarget increase Amt
+		protected double profitLockMin = 24; //24 Default ticks Amt for Min Profit locking
+		protected double profitLockMax = 80; //80 Default ticks Amt for Max Profit locking
         protected double stopLossAmt = 200; //16 Default setting for StopLossAmt
-		protected double stopLossIncAmt = 50; //16 Default setting for StopLossAmt
+		protected double stopLossIncTic = 4; //4 Default tick Amt for StopLoss increase Amt
 		protected double breakEvenAmt = 150; //150 the profits amount to trigger setting breakeven order
 		protected double dailyLossLmt = -400; //-400 the daily loss limit amount
 		protected double enOffsetPnts = 1;//the price offset for entry
@@ -46,6 +47,8 @@ namespace NinjaTrader.Strategy
         protected double enSwingMaxPnts = 15; //10 Default setting for EnSwingMaxPnts
 		protected double enPullbackMinPnts = 5; //6 Default setting for EnPullbackMinPnts
         protected double enPullbackMaxPnts = 9; //10 Default setting for EnPullbackMaxPnts
+		protected bool enTrailing = true; //use trailing entry every bar;
+		protected bool slTrailing = false; //use trailing stop loss every bar;
 		protected int tradeDirection = 0; // -1=short; 0-both; 1=long;
 		protected int tradeStyle = 1; // -1=counter trend; 1=trend following;
 		protected bool backTest = false; //if it runs for backtesting;
@@ -54,8 +57,8 @@ namespace NinjaTrader.Strategy
 		protected IText it_gap = null; //the Text draw for gap on current bar
 
 		protected IOrder entryOrder = null;
-		protected double trailingPT = 400;
-		protected double trailingSL = 200;
+		protected double trailingPT = 32; //400, tick amount of trailing target
+		protected double trailingSL = 16; // 200, tick amount of trailing stop loss
 		
 		protected string AccName = null;
 		
@@ -93,8 +96,8 @@ namespace NinjaTrader.Strategy
 			zigZagSizeZigZag = new DataSeries(this, MaximumBarsLookBack.Infinite);
 			dictZZText = new Dictionary<int, IText>();
 			
-			trailingPT = profitTargetAmt;
-			trailingSL = stopLossAmt;
+			trailingPT = profitTargetAmt/12.5;
+			trailingSL = stopLossAmt/12.5;
 //			SetProfitTarget(CalculationMode.Ticks, ProfitTargetAmt);
 //            SetStopLoss(CalculationMode.Ticks, StopLossAmt);
             SetStopLoss(StopLossAmt);
@@ -465,19 +468,34 @@ namespace NinjaTrader.Strategy
 		protected void NewShortLimitOrder(string msg)
 		{
 			double prc = High[0]+EnOffsetPnts;
-			if(PrintOut > -1)
-				Print(CurrentBar + "-" + AccName + ":" + msg + ", EnterShortLimit called short price=" + prc + "--" + Time[0].ToString());			
-		
-			entryOrder = EnterShortLimit(0, true, DefaultQuantity, prc, zzEntrySignal);
+			if(entryOrder == null) {
+				entryOrder = EnterShortLimit(0, true, DefaultQuantity, prc, zzEntrySignal);
+				if(PrintOut > -1)
+					Print(CurrentBar + "-" + AccName + ":" + msg + ", EnterShortLimit called short price=" + prc + "--" + Time[0].ToString());			
 			}
+			else if (entryOrder.OrderState == OrderState.Working) {
+				if(PrintOut > -1)
+					Print(CurrentBar + "-" + AccName + ":" + msg +  ", EnterShortLimit updated short price (old, new)=(" + entryOrder.LimitPrice + "," + prc + ") -- " + Time[0].ToString());		
+				CancelOrder(entryOrder);
+				entryOrder = EnterShortLimit(0, true, DefaultQuantity, prc, zzEntrySignal);
+			}
+		}
 		
 		protected void NewLongLimitOrder(string msg)
 		{
 			double prc = Low[0]-EnOffsetPnts;
-			if(PrintOut > -1)
-				Print(CurrentBar + "-" + AccName + ":" + msg +  ", EnterLongLimit called buy price= " + prc + " -- " + Time[0].ToString());		
-		
-			entryOrder = EnterLongLimit(0, true, DefaultQuantity, prc, zzEntrySignal);
+
+			if(entryOrder == null) {
+				entryOrder = EnterLongLimit(0, true, DefaultQuantity, prc, zzEntrySignal);
+				if(PrintOut > -1)
+					Print(CurrentBar + "-" + AccName + ":" + msg +  ", EnterLongLimit called buy price= " + prc + " -- " + Time[0].ToString());		
+			}
+			else if (entryOrder.OrderState == OrderState.Working) {
+				if(PrintOut > -1)
+					Print(CurrentBar + "-" + AccName + ":" + msg +  ", EnterLongLimit updated buy price (old, new)=(" + entryOrder.LimitPrice + "," + prc + ") -- " + Time[0].ToString());
+				CancelOrder(entryOrder);
+				entryOrder = EnterLongLimit(0, true, DefaultQuantity, prc, zzEntrySignal);
+			}
 		}
 		
 		protected bool NewOrderAllowed()
@@ -495,7 +513,7 @@ namespace NinjaTrader.Strategy
 			}
 			if(!backTest && (plrt <= dailyLossLmt || pnl <= dailyLossLmt))
 			{
-				if(PrintOut > -1) {					
+				if(PrintOut > -1) {
 					Print(CurrentBar + "-" + AccName + ": dailyLossLmt reached = " + pnl + "," + plrt);
 				}
 				return false;
@@ -503,7 +521,7 @@ namespace NinjaTrader.Strategy
 		
 		if (IsTradingTime(TimeStart, TimeEnd, 170000) && Position.Quantity == 0)
 			{
-				if (entryOrder == null || entryOrder.OrderState != OrderState.Working)
+				if (entryOrder == null || entryOrder.OrderState != OrderState.Working || EnTrailing)
 				{
 					if(bsx == -1 || bsx > barsSincePtSl)
 					{
@@ -533,18 +551,33 @@ namespace NinjaTrader.Strategy
     		if (Position.MarketPosition != MarketPosition.Flat) {
          		Print(AccName + "- Open PnL: " + pl);
 				int nChkPnL = (int)(timeSinceEn/minutesChkPnL);
-				if(pl > (trailingPT - 2*profitTgtIncAmt))
+				double slPrc = Position.AvgPrice;
+				if(pl > 12.5*(trailingPT + 2*profitTgtIncTic))
 				{
-					trailingPT = trailingPT + profitTgtIncAmt;
-					//trailingSL = trailingSL - stopLossIncAmt;
+					trailingPT = trailingPT + profitTgtIncTic;
+					//trailingSL = trailingSL - stopLossIncTic;
 					Print(AccName + "- update PT: PnL=" + pl + ",trailingPT=" + trailingPT);
 					//SetStopLoss(trailingSL);					
-					SetProfitTarget(trailingPT);
+					SetProfitTarget(CalculationMode.Ticks, trailingPT);
 				}
-				if(pl >= (12.5*profitLockAmt + 2*profitTgtIncAmt)) {
-					trailingSL = trailingSL + 12.5*profitLockAmt;
-					double slPrc = Position.AvgPrice+0.25*profitLockAmt;
-					Print(AccName + "- update SL: PnL=" + pl + ",trailingSL=" + trailingSL + ",SL Prc=" + slPrc);
+				
+				if(pl >= 12.5*(profitLockMax + 2*profitTgtIncTic)) { // lock max profits
+					trailingSL = trailingSL + profitLockMax;
+					if(Position.MarketPosition == MarketPosition.Long)
+						slPrc = slTrailing ? Position.AvgPrice+0.25*trailingSL : Position.AvgPrice+0.25*profitLockMax;
+					if(Position.MarketPosition == MarketPosition.Short)
+						slPrc = slTrailing ? Position.AvgPrice-0.25*trailingSL : Position.AvgPrice-0.25*profitLockMax;
+
+					Print(AccName + "- update SL Max: PnL=" + pl + "(slTrailing, trailingSL, slPrc)= " + slTrailing + "," + trailingSL + "," + slPrc);
+					SetStopLoss(CalculationMode.Price, slPrc);
+				} else if(pl >= 12.5*(profitLockMin + 2*profitTgtIncTic)) { //lock min profits
+					trailingSL = trailingSL + profitLockMin;
+					if(Position.MarketPosition == MarketPosition.Long)
+						slPrc = slTrailing ? Position.AvgPrice+0.25*trailingSL : Position.AvgPrice+0.25*profitLockMax;
+					if(Position.MarketPosition == MarketPosition.Short)
+						slPrc = slTrailing ? Position.AvgPrice-0.25*trailingSL : Position.AvgPrice-0.25*profitLockMax;
+
+					Print(AccName + "- update SL Min: PnL=" + pl + "(slTrailing, trailingSL, slPrc)= " + slTrailing + "," + trailingSL + "," + slPrc);
 					SetStopLoss(CalculationMode.Price, slPrc);
 				} else if(pl >= breakEvenAmt) { //setup breakeven order
 					Print(AccName + "- setup SL Breakeven:" + pl);
@@ -631,12 +664,8 @@ namespace NinjaTrader.Strategy
 			if (position.MarketPosition == MarketPosition.Flat)
 			{
 				// Do something like reset some variables here
-				trailingPT = profitTargetAmt;
-				trailingSL = stopLossAmt;
-			}
-			else 
-			{
-				
+				trailingPT = profitTargetAmt/12.5;
+				trailingSL = stopLossAmt/12.5;
 			}
 		}
 		
@@ -660,18 +689,26 @@ namespace NinjaTrader.Strategy
 
         [Description("Money amount for profit target increasement")]
         [GridCategory("Parameters")]
-        public double ProfitTgtIncAmt
+        public double ProfitTgtIncTic
         {
-            get { return profitTgtIncAmt; }
-            set { profitTgtIncAmt = Math.Max(0, value); }
+            get { return profitTgtIncTic; }
+            set { profitTgtIncTic = Math.Max(0, value); }
         }
 		
-        [Description("Tick amount for profit locking")]
+        [Description("Tick amount for min profit locking")]
         [GridCategory("Parameters")]
-        public double ProfitLockAmt
+        public double ProfitLockMin
         {
-            get { return profitLockAmt; }
-            set { profitLockAmt = Math.Max(0, value); }
+            get { return profitLockMin; }
+            set { profitLockMin = Math.Max(0, value); }
+        }
+
+		[Description("Tick amount for max profit locking")]
+        [GridCategory("Parameters")]
+        public double ProfitLockMax
+        {
+            get { return profitLockMax; }
+            set { profitLockMax = Math.Max(0, value); }
         }
 		
         [Description("Money amount of stop loss")]
@@ -684,10 +721,10 @@ namespace NinjaTrader.Strategy
 		
 		[Description("Money amount for stop loss increasement")]
         [GridCategory("Parameters")]
-        public double StopLossIncAmt
+        public double StopLossIncTic
         {
-            get { return stopLossIncAmt; }
-            set { stopLossIncAmt = Math.Max(0, value); }
+            get { return stopLossIncTic; }
+            set { stopLossIncTic = Math.Max(0, value); }
         }
 		
         [Description("Break Even amount")]
@@ -792,7 +829,23 @@ namespace NinjaTrader.Strategy
         {
             get { return enOffsetPnts; }
             set { enOffsetPnts = Math.Max(0, value); }
-        }		
+        }
+		
+		[Description("Use trailing entry every bar")]
+        [GridCategory("Parameters")]
+        public bool EnTrailing
+        {
+            get { return enTrailing; }
+            set { enTrailing = value; }
+        }
+		
+		[Description("Use trailing stop loss every bar")]
+        [GridCategory("Parameters")]
+        public bool SlTrailing
+        {
+            get { return slTrailing; }
+            set { slTrailing = value; }
+        }
 		
         [Description("Short, Long or both direction for entry")]
         [GridCategory("Parameters")]
