@@ -31,23 +31,23 @@ namespace NinjaTrader.Strategy
 		protected double profitTargetAmt = 450; //36 Default setting for ProfitTargetAmt
 		protected double profitTgtIncTic = 8; //8 Default tick Amt for ProfitTarget increase Amt
 		protected double profitLockMin = 24; //24 Default ticks Amt for Min Profit locking
-		protected double profitLockMax = 80; //80 Default ticks Amt for Max Profit locking
+		protected double profitLockMax = 40; //80 Default ticks Amt for Max Profit locking
         protected double stopLossAmt = 200; //16 Default setting for StopLossAmt
 		protected double stopLossIncTic = 4; //4 Default tick Amt for StopLoss increase Amt
 		protected double breakEvenAmt = 150; //150 the profits amount to trigger setting breakeven order
-		protected double dailyLossLmt = -400; //-400 the daily loss limit amount
-		protected double enOffsetPnts = 1;//the price offset for entry
-        protected int timeStart = 0; //93300 Default setting for TimeStart
-        protected int timeEnd = 235900; // Default setting for TimeEnd
-		protected int minutesChkEnOrder = 30; //how long before checking an entry order filled or not
+		protected double dailyLossLmt = -200; //-300 the daily loss limit amount
+		protected double enOffsetPnts = 3;//the price offset for entry
+        protected int timeStart = 85000; //93300 Default setting for TimeStart
+        protected int timeEnd = 95900; // Default setting for TimeEnd
+		protected int minutesChkEnOrder = 3; //how long before checking an entry order filled or not
 		protected int minutesChkPnL = 30; //how long before checking P&L
         protected int barsSincePtSl = 1; // Default setting for BarsSincePtSl
 		protected int barsToCheckPL = 2; // Number of Bars to check P&L since the entry
-        protected double enSwingMinPnts = 11; //6 Default setting for EnSwingMinPnts
+        protected double enSwingMinPnts = 10; //6 Default setting for EnSwingMinPnts
         protected double enSwingMaxPnts = 15; //10 Default setting for EnSwingMaxPnts
 		protected double enPullbackMinPnts = 5; //6 Default setting for EnPullbackMinPnts
         protected double enPullbackMaxPnts = 9; //10 Default setting for EnPullbackMaxPnts
-		protected bool enTrailing = true; //use trailing entry every bar;
+		protected bool enTrailing = false; //use trailing entry every bar;
 		protected bool slTrailing = false; //use trailing stop loss every bar;
 		protected int tradeDirection = 0; // -1=short; 0-both; 1=long;
 		protected int tradeStyle = 1; // -1=counter trend; 1=trend following;
@@ -413,7 +413,8 @@ namespace NinjaTrader.Strategy
 					if(gap < 0 && gapAbs >= enPullbackMinPnts && gapAbs < enPullbackMaxPnts)
 						NewLongLimitOrder("scalping long");
 				}
-				else if(tradeDirection <= 0) //-1=short only, 0 is for both;
+				 
+				if(tradeDirection <= 0) //-1=short only, 0 is for both;
 				{
 					if(gap > 0 && gapAbs >= enPullbackMinPnts && gapAbs < enPullbackMaxPnts)
 						NewShortLimitOrder("scalping short");
@@ -426,7 +427,8 @@ namespace NinjaTrader.Strategy
 					if(gap < 0 && gapAbs >= enSwingMinPnts && gapAbs < enSwingMaxPnts)
 						NewLongLimitOrder("counter trade long");
 				}
-				else if(tradeDirection <= 0) //-1=short only, 0 is for both;
+				
+				if(tradeDirection <= 0) //-1=short only, 0 is for both;
 				{
 					if(gap > 0 && gapAbs >= enSwingMinPnts && gapAbs < enSwingMaxPnts)
 						NewShortLimitOrder("counter trade short");
@@ -440,7 +442,8 @@ namespace NinjaTrader.Strategy
 					if(gap > 0 && gapAbs >= enSwingMinPnts && gapAbs < enSwingMaxPnts)
 						NewLongLimitOrder("trend follow long entry at breakout");
 				}
-				else if(tradeDirection <= 0) //-1=short only, 0 is for both;
+				
+				if(tradeDirection <= 0) //-1=short only, 0 is for both;
 				{
 					if(gap < 0 && gapAbs >= enSwingMinPnts && gapAbs < enSwingMaxPnts)
 						NewShortLimitOrder("trend follow short entry at breakout");
@@ -454,7 +457,8 @@ namespace NinjaTrader.Strategy
 					if(gap < 0 && gapAbs >= enPullbackMinPnts && gapAbs < enPullbackMaxPnts && lastZZ > 0 && lastZZAbs >= enSwingMinPnts && lastZZAbs <= enSwingMaxPnts)
 						NewLongLimitOrder("trend follow long entry at pullback");
 				}
-				else if(tradeDirection <= 0) //-1=short only, 0 is for both;
+				
+				if(tradeDirection <= 0) //-1=short only, 0 is for both;
 				{
 					if(gap > 0 && gapAbs >= enPullbackMinPnts && gapAbs < enPullbackMaxPnts && lastZZ < 0 && lastZZAbs >= enSwingMinPnts && lastZZAbs <= enSwingMaxPnts)
 						NewShortLimitOrder("trend follow short entry at pullback");
@@ -519,7 +523,7 @@ namespace NinjaTrader.Strategy
 				return false;
 			}
 		
-		if (IsTradingTime(TimeStart, TimeEnd, 170000) && Position.Quantity == 0)
+			if (IsTradingTime(TimeStart, TimeEnd, 170000) && Position.Quantity == 0)
 			{
 				if (entryOrder == null || entryOrder.OrderState != OrderState.Working || EnTrailing)
 				{
@@ -531,7 +535,6 @@ namespace NinjaTrader.Strategy
 						Print(CurrentBar + "-" + AccName + "[bsx,barsSincePtSl]" + bsx + "," + barsSincePtSl + "- NewOrderAllowed=false - " + Time[0].ToString());
 				} else
 					Print(CurrentBar + "-" + AccName + "[entryOrder.OrderState,entryOrder.OrderType]" + entryOrder.OrderState + "," + entryOrder.OrderType + "- NewOrderAllowed=false - " + Time[0].ToString());
-				
 			} else 
 				Print(CurrentBar + "-" + AccName + "[TimeStart,TimeEnd,Position.Quantity]" + TimeStart + "," + TimeEnd + "," + Position.Quantity + "- NewOrderAllowed=false - " + Time[0].ToString());
 				
@@ -622,7 +625,11 @@ namespace NinjaTrader.Strategy
                 {
                     CancelOrder(entryOrder);
                     Print("Order cancelled for " + AccName + ":" + min_en + " mins elapsed--" + entryOrder.ToString());
-                    return true;
+                    if (entryOrder != null)
+					{
+						((IDisposable)entryOrder).Dispose();
+					}
+					return true;
                 }
             }
             return false;
