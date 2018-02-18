@@ -187,6 +187,65 @@ namespace NinjaTrader.Strategy
 			}
 			return isTime;
 		}
+
+		/// <summary>
+		/// Check the first reversal bar for the pullback under current ZigZag gap
+		/// </summary>
+		/// <param name="cur_gap">current ZigZag gap</param>
+		/// <param name="tick_size">tick size of the symbol</param>
+		/// <param name="n_bars">bar count with the pullback prior to the last reversal bar</param>
+		/// <returns>is TBR or not</returns>
+		public bool IsTwoBarReversal(double cur_gap, double tick_size, int n_bars) {
+			bool isTBR= false;
+			
+			if(n_bars < 0) return isTBR;
+			
+			if(cur_gap > 0)
+			{
+				//Check if the last n_bars are pullback bars (bear bar)
+				for(int i=1; i<=n_bars; i++)
+				{
+					if(Close[i] > Open[i])
+						return isTBR;
+				}
+				if(Close[0]-Open[0] > tick_size && Open[1]-Close[1] >= tick_size) {
+					isTBR= true;
+				}
+			}
+			else if(cur_gap < 0)
+			{
+				//Check if the last n_bars are pullback bars (bull bar)
+				for(int i=1; i<=n_bars; i++)
+				{
+					if(Close[i] < Open[i])
+						return isTBR;
+				}
+				if(Open[0] - Close[0] > tick_size && Close[1] - Open[1] >= tick_size) {
+					isTBR= true;
+				}
+			}
+			return isTBR;
+		}
+		
+		/// <summary>
+		/// Get the Two Bar Reversal count for the past barsBack
+		/// </summary>
+		/// <param name="cur_gap">current ZigZag gap</param>
+		/// <param name="tick_size">tick size of the symbol</param>
+		/// <param name="barsBack">bar count to look back</param>
+		/// <returns>pairs count for TBR during the barsBack</returns>
+		public int GetTBRPairsCount(double cur_gap, double tick_size, int barsBack) {
+			int tbr_count = 0;
+			for(int i=0; i<barsBack; i++) {
+				if(cur_gap > 0 && Close[i]-Open[i] > tick_size && Open[i+1]-Close[i+1] >= tick_size) {
+					tbr_count++;
+				}
+				if(cur_gap < 0 && Open[i] - Close[i] > tick_size && Close[i+1] - Open[i+1] >= tick_size) {
+					tbr_count++;
+				}
+			}
+			return tbr_count;
+		}
 		
 		public String GetTsTAccName(String tst_acc) {
 			char[] delimiterChars = {'!'};
