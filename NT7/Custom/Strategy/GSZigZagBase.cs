@@ -31,8 +31,8 @@ namespace NinjaTrader.Strategy
 		
 		protected double profitTargetAmt = 450; //36 Default(450-650 USD) setting for ProfitTargetAmt
 		protected double profitTgtIncTic = 8; //8 Default tick Amt for ProfitTarget increase Amt
-		protected double profitLockMinTic = 24; //24 Default ticks Amt for Min Profit locking
-		protected double profitLockMaxTic = 40; //80 Default ticks Amt for Max Profit locking
+		protected double profitLockMinTic = 16; //24 Default ticks Amt for Min Profit locking
+		protected double profitLockMaxTic = 30; //80 Default ticks Amt for Max Profit locking
         protected double stopLossAmt = 200; //16 Default setting for StopLossAmt
 		protected double stopLossIncTic = 4; //4 Default tick Amt for StopLoss increase Amt
 		protected double breakEvenAmt = 150; //150 the profits amount to trigger setting breakeven order
@@ -58,7 +58,7 @@ namespace NinjaTrader.Strategy
 		protected double enSupportPrc = 2600; // Support price for entry order
 		
 		protected bool enTrailing = true; //use trailing entry: counter pullback bars or simple enOffsetPnts
-		protected bool slTrailing = false; //use trailing stop loss every bar
+		protected bool slTrailing = true; //use trailing stop loss every bar
 		protected bool resistTrailing = false; //track resistance price for entry order
 		protected bool supportTrailing = false; //track resistance price for entry order
 		
@@ -71,7 +71,7 @@ namespace NinjaTrader.Strategy
 		protected IText it_gap = null; //the Text draw for gap on current bar
 
 		protected IOrder entryOrder = null;
-		protected double trailingPTTic = 32; //400, tick amount of trailing target
+		protected double trailingPTTic = 36; //400, tick amount of trailing target
 		protected double trailingSLTic = 16; // 200, tick amount of trailing stop loss
 		protected int barsSinceEnOrd = 0; // bar count since the en order issued
 		
@@ -574,39 +574,40 @@ namespace NinjaTrader.Strategy
 			
 			double pl = Position.GetProfitLoss(Close[0], PerformanceUnit.Currency);
 			 // If not flat print out unrealized PnL
-    		if (Position.MarketPosition != MarketPosition.Flat) {
+    		if (Position.MarketPosition != MarketPosition.Flat) 
+			{
          		Print(AccName + "- Open PnL: " + pl);
 				int nChkPnL = (int)(timeSinceEn/minutesChkPnL);
 				double slPrc = Position.AvgPrice;
-				if(pl > 12.5*(trailingPTTic + 2*profitTgtIncTic))
+				if(pl >= 12.5*(trailingPTTic - 2*profitTgtIncTic))
 				{
 					trailingPTTic = trailingPTTic + profitTgtIncTic;
 					//trailingSLTic = trailingSLTic - stopLossIncTic;
-					Print(AccName + "- update PT: PnL=" + pl + ",trailingPTTic=" + trailingPTTic);
+					Print(AccName + "- update PT: PnL=" + pl + ",trailingPTTic, $amt=" + trailingPTTic + "," + 12.5*trailingPTTic);
 					//SetStopLoss(trailingSLTic);					
 					SetProfitTarget(CalculationMode.Ticks, trailingPTTic);
 				}
 				
 				if(pl >= 12.5*(profitLockMaxTic + 2*profitTgtIncTic)) { // lock max profits
-					trailingSLTic = trailingSLTic + profitLockMaxTic;
+					trailingSLTic = trailingSLTic + profitTgtIncTic;
 					if(Position.MarketPosition == MarketPosition.Long)
 						slPrc = slTrailing ? Position.AvgPrice+TickSize*trailingSLTic : Position.AvgPrice+TickSize*profitLockMaxTic;
 					if(Position.MarketPosition == MarketPosition.Short)
 						slPrc = slTrailing ? Position.AvgPrice-TickSize*trailingSLTic : Position.AvgPrice-TickSize*profitLockMaxTic;
 
-					Print(AccName + "- update SL Max: PnL=" + pl + "(slTrailing, trailingSLTic, slPrc)= " + slTrailing + "," + trailingSLTic + "," + slPrc);
+					Print(AccName + "- update SL Max: PnL=" + pl + "(slTrailing, trailingSLTic, slPrc)= (" + slTrailing + "," + trailingSLTic + "," + slPrc + ")");
 					SetStopLoss(CalculationMode.Price, slPrc);
 				} else if(pl >= 12.5*(profitLockMinTic + 2*profitTgtIncTic)) { //lock min profits
-					trailingSLTic = trailingSLTic + profitLockMinTic;
+					trailingSLTic = trailingSLTic + profitTgtIncTic;
 					if(Position.MarketPosition == MarketPosition.Long)
-						slPrc = slTrailing ? Position.AvgPrice+TickSize*trailingSLTic : Position.AvgPrice+TickSize*profitLockMaxTic;
+						slPrc = slTrailing ? Position.AvgPrice+TickSize*trailingSLTic : Position.AvgPrice+TickSize*profitLockMinTic;
 					if(Position.MarketPosition == MarketPosition.Short)
-						slPrc = slTrailing ? Position.AvgPrice-TickSize*trailingSLTic : Position.AvgPrice-TickSize*profitLockMaxTic;
+						slPrc = slTrailing ? Position.AvgPrice-TickSize*trailingSLTic : Position.AvgPrice-TickSize*profitLockMinTic;
 
-					Print(AccName + "- update SL Min: PnL=" + pl + "(slTrailing, trailingSLTic, slPrc)= " + slTrailing + "," + trailingSLTic + "," + slPrc);
+					Print(AccName + "- update SL Min: PnL=" + pl + "(slTrailing, trailingSLTic, slPrc)= (" + slTrailing + "," + trailingSLTic + "," + slPrc + ")");
 					SetStopLoss(CalculationMode.Price, slPrc);
 				} else if(pl >= breakEvenAmt) { //setup breakeven order
-					Print(AccName + "- setup SL Breakeven:" + pl);
+					Print(AccName + "- setup SL Breakeven: (PnL, posAvgPrc)=(" + pl + "," + Position.AvgPrice + ")");
 					SetStopLoss(0);
 				}
 			} else {
