@@ -964,7 +964,7 @@ namespace NinjaTrader.Strategy
 		
 		[Description("Use trailing stop loss every bar")]
         [GridCategory("Parameters")]
-        public bool SlTrailing
+        public bool SLTrailing
         {
             get { return slTrailing; }
             set { slTrailing = value; }
