@@ -1,4 +1,4 @@
-8: initial lastZigZagIdx,lastZigZagPrice-1,0,Low[2]=2693.5,High[2]=2696.5- lastSwingPrice, lastSwingIdx=2698, 7
+8888: initial lastZigZagIdx,lastZigZagPrice-1,0,Low[2]=2693.5,High[2]=2696.5- lastSwingPrice, lastSwingIdx=2698, 7
 22-Backtest: Cum all PnL= 0, Cum runtime PnL= 0
 22-Backtest:GI gap=-12.5,Flat=0, price=0, BarsSinceEx=-1, BarsSinceEn=0
 22-Backtest:(RealizedProfitLoss,RealtimeTrades.CumProfit)=(0,0)--12/19/2017 12:00:05
